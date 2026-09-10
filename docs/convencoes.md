@@ -45,25 +45,25 @@ Nosso fluxo de trabalho será estruturado da seguinte forma para garantir que o 
 
 ### Branch `main` (Principal)
 *   É a branch oficial do projeto.
-*   **Regra de Ouro:** A branch `develop` **só será mergeada na `main` no final do projeto** (entrega final).
+*   **Regra de Ouro:** A branch `sprint#` **só será mergeada na `main` no final do projeto** (entrega final).
 *   Nenhum desenvolvedor deve commitar diretamente nesta branch.
 
-### Branch `develop` (Desenvolvimento)
+### Branch `sprint#` (Desenvolvimento)
 *   É a branch base do nosso dia a dia, criada a partir da `main`.
-*   Ela contém o código mais recente com todas as novas funcionalidades integradas pela equipe.
+*   Ela contém o código mais recente com todas as novas funcionalidades integradas pela equipe durante a sprint "#" (01, 02, etc).
 *   As novas features devem ser criadas a partir desta branch.
 
 ### Branches de Funcionalidade (`feature/*` ou `fix/*`)
-*   Sempre que você for trabalhar em uma nova tarefa, funcionalidade ou correção, você deve criar uma nova branch **a partir da `develop`**.
+*   Sempre que você for trabalhar em uma nova tarefa, funcionalidade ou correção, você deve criar uma nova branch **a partir da `sprint#`**.
     *   *Exemplo:* `git checkout -b feature/tela-de-login` ou `git checkout -b fix/erro-carrinho`.
 *   **Processo de Merge (Pull Request):** 
     1. Você desenvolve a tarefa na sua branch de funcionalidade.
     2. Após terminar, você faz o *push* da sua branch e abre um **Pull Request (PR)**.
     3. A branch de funcionalidade **só será mesclada após os outros membros da equipe revisarem o PR e confirmarem que tudo está funcionando corretamente**.
-    4. Uma vez aprovada, a branch de funcionalidade é mesclada de volta na `develop` (para garantir que a `main` continue intacta até o final do projeto, conforme as regras estabelecidas).
+    4. Uma vez aprovada, a branch de funcionalidade é mesclada de volta na `sprint#` (para garantir que a `main` continue intacta até o final do projeto, conforme as regras estabelecidas).
 
 ### Resumo do Fluxo Passo a Passo:
-1. `git checkout develop` (garante que está na base correta)
+1. `git checkout sprint#` (garante que está na base correta)
 2. `git pull` (atualiza com o que a equipe já fez)
 3. `git checkout -b feature/minha-tarefa` (cria sua branch)
 4. Trabalha no código... `git add .` e `git commit -m "feat: descrição"`
