@@ -1,0 +1,47 @@
+create extension if not exists "pgcrypto";   - Adiciona a extensão que permite geração de IDs automaticamente
+
+do $$ - cria uma área com lógica de computação, para usar if, else, while etc…
+
+select 1 from pg_type where typnamespace = 'public'::regnamespace
+    and typname = 'course_level'
+  ) then
+    create type public.course_level as enum (
+      'Beginner', 'Intermediate', 'Advanced'
+    );
+
+O SELECT 1 é uma convenção no SQL usada para verificar se um registro existe, sem gastar memória trazendo dados reais da tabela. Em vez de retornar colunas inteiras com informações pesadas, o banco apenas devolve o número 1 para cada linha encontrada.
+pg_type é uma tabela de catálogo do sistema interna do PostgreSQL que funciona como um "dicionário" de todos os tipos de dados reconhecidos pelo seu banco.
+ele busca em todas as informações públicas (esse nivel de acesso será definido posteriormente), ::regnamespace( busa por ID em vez do nome public), e caso a consulta confirme que esse tipo ainda não existe, o comando CREATE TYPE public.course_level AS ENUM ('Beginner', 'Intermediate', 'Advanced'); cria oficialmente esse novo tipo de dado personalizado dentro do schema public. Os ENUM no geral fazem isso, criam tipos de atributos que só aceitam alguns valores específicos no nosso banco de dados.
+
+create table public."Usuario" (
+  "ID" uuid primary key references auth.users (id) on delete cascade,
+  "Nome_Display" text not null default 'Athen learner',
+  "Avatar_Url" text,
+  "Biografia" text not null default '',
+  "Cargo" text not null default 'learner' check ("Cargo" in ('learner', 'creator', 'moderator')),
+  "Nome_Usuario" text unique,
+  "Data_Criacao" timestamptz not null default now(),
+  "Data_Atualizacao" timestamptz not null default now()
+);
+crio todas as tabelas, 
+
+"ID": Nome da coluna. As aspas duplas exigem que o PostgreSQL respeite exatamente as letras maiúsculas da palavra.
+
+uuid: Tipo de dado da coluna (Universally Unique Identifier), um código numérico/hexadecimal único no mundo de 128 bits.
+
+primary key: Marca o campo como a Chave Primária da tabela Usuario. Garante que não existam dois usuários com o mesmo ID e que o campo nunca fique em branco (NOT NULL).
+
+references auth.users (id): Cria uma Chave Estrangeira (Foreign Key). Vincula este ID diretamente ao campo id da tabela interna do Supabase (auth.users), associando cada perfil público de usuário à sua conta de login real.
+
+on delete cascade: Regra de exclusão em cascata. Se o cadastro do usuário for deletado da tabela principal de login (auth.users), o banco apaga automaticamente a linha correspondente nesta tabela Usuario, evitando dados órfãos no sistema.
+
+timestamptz: Tipo de dado (Timestamp with Time Zone). Guarda a data e a hora exatas incluindo a informação do fuso horário. Ele ajusta automaticamente o horário exibido dependendo do fuso de quem está consultando os dados.
+
+not null: Restrição de integridade. Impede que o campo fique vazio (NULL), garantindo que todo registro tenha uma data vinculada.
+
+default now(): Valor padrão automático. Se a sua aplicação não enviar esse campo na hora de criar o registro, o próprio PostgreSQL executa a função now() e grava a data/hora exata do instante da inserção.
+
+jsonb: Tipo de dado JSON binário. Em vez de salvar apenas um texto simples, ele permite guardar um documento estruturado (ex: {"texto": "Qual a saída?", "midia_url": "imagem.png"}) otimizado para pesquisas rápidas e indexação no banco.
+
+DEFAULT '{}'::jsonb: Define o valor padrão atribuído automaticamente caso nenhum dado seja informado no cadastro. O '{}' representa um objeto JSON vazio, e o sintaxe ::jsonb faz a conversão de tipo explícita para que o banco processe esse texto como um objeto jsonb.
+
