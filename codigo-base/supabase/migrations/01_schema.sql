@@ -226,3 +226,331 @@ create table public."Anotacoes" (
   "Data_Criacao" timestamptz not null default now(),
   "Data_Atualizacao" timestamptz not null default now()
 );
+
+-- ============================================================
+-- ÍNDICES
+-- ============================================================
+create index curso_status_categoria_idx on public."Curso" ("Status", "Categoria");
+
+create index curso_criador_idx on public."Curso" ("ID_Criador");
+
+create index sala_criador_idx on public."Sala" ("ID_Criador");
+
+create index sala_curso_idx on public."Sala" ("fk_Curso_ID");
+
+create index modulo_curso_idx on public."Modulo" ("ID_Curso", "Posicao");
+
+create index aula_modulo_idx on public."Aula" ("ID_Modulo", "Posicao");
+
+create index questao_aula_idx on public."Questao" ("ID_Aula", "Posicao");
+
+create index matricula_usuario_idx on public."matricula" ("fk_Usuario_ID");
+
+create index matricula_curso_idx on public."matricula" ("fk_Curso_ID");
+
+create index participa_sala_pontos_idx on public."participa" ("fk_Sala_ID", "Pontos" desc);
+
+create index participa_usuario_idx on public."participa" ("fk_Usuario_ID");
+
+create index conclui_usuario_idx on public."conclui" ("fk_Usuario_ID", "Data_Finalizacao" desc);
+
+create index conclui_aula_idx on public."conclui" ("fk_Aula_ID");
+
+create index notebook_usuario_idx on public."Notebook" ("ID_Usuario");
+
+create index notebook_curso_idx on public."Notebook" ("ID_Curso");
+
+create index notebook_modulo_idx on public."Notebook" ("ID_Modulo");
+
+create index notebook_sala_idx on public."Notebook" ("ID_Sala");
+
+create index anotacoes_notebook_idx on public."Anotacoes" ("ID_Notebook", "Data_Criacao" desc);
+
+-- ============================================================
+-- FUNÇÃO GENÉRICA DE DATA DE ATUALIZAÇÃO
+-- ============================================================
+create or replace function public.atualizar_data_atualizacao () returns trigger language plpgsql as $$
+begin
+  new."Data_Atualizacao" = now();
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- XP_DIARIO -> XP_TOTAL
+-- ============================================================
+create or replace function public.atualizar_xp_matricula () returns trigger language plpgsql as $$
+declare
+  diferenca integer;
+begin
+  if tg_op = 'INSERT' then
+    new."XP_Total" = new."XP_Diario";
+    if new."XP_Diario" > 0 or new."Ultima_Aparicao" is null then
+      new."Ultima_Aparicao" = coalesce(new."Ultima_Aparicao", now());
+    end if;
+    return new;
+  end if;
+
+  -- Impede alteração manual de XP_Total.
+  new."XP_Total" = old."XP_Total";
+
+  if new."XP_Diario" is distinct from old."XP_Diario" then
+    if old."Ultima_Aparicao" is not null
+       and old."Ultima_Aparicao"::date = current_date then
+      diferenca = new."XP_Diario" - old."XP_Diario";
+      new."XP_Total" = greatest(old."XP_Total" + diferenca, 0);
+    else
+      new."XP_Total" = old."XP_Total" + new."XP_Diario";
+    end if;
+
+    new."Ultima_Aparicao" = now();
+  else
+    new."Ultima_Aparicao" = old."Ultima_Aparicao";
+  end if;
+
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- AULAS_FINALIZADAS
+-- ============================================================
+create or replace function public.recalcular_aulas_finalizadas_matricula () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+declare
+  curso_id uuid;
+  usuario_id uuid;
+  total_aulas integer;
+begin
+  usuario_id = coalesce(new."fk_Usuario_ID", old."fk_Usuario_ID");
+  curso_id = coalesce(new."fk_Curso_ID", old."fk_Curso_ID");
+
+  select count(*)
+    into total_aulas
+  from public."conclui" c
+  join public."Aula" a on a."ID" = c."fk_Aula_ID"
+  join public."Modulo" m on m."ID" = a."ID_Modulo"
+  where c."fk_Usuario_ID" = usuario_id
+    and m."ID_Curso" = curso_id;
+
+  if tg_op <> 'DELETE' then
+    new."Aulas_Finalizadas" = total_aulas;
+    return new;
+  end if;
+
+  return old;
+end;
+$$;
+
+create or replace function public.atualizar_aulas_finalizadas () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+declare
+  curso_id uuid;
+  total_aulas integer;
+begin
+  select m."ID_Curso"
+    into curso_id
+  from public."Aula" a
+  join public."Modulo" m on m."ID" = a."ID_Modulo"
+  where a."ID" = new."fk_Aula_ID";
+
+  select count(*)
+    into total_aulas
+  from public."conclui" c
+  join public."Aula" a on a."ID" = c."fk_Aula_ID"
+  join public."Modulo" m on m."ID" = a."ID_Modulo"
+  where c."fk_Usuario_ID" = new."fk_Usuario_ID"
+    and m."ID_Curso" = curso_id;
+
+  update public."matricula"
+  set "Aulas_Finalizadas" = total_aulas
+  where "fk_Usuario_ID" = new."fk_Usuario_ID"
+    and "fk_Curso_ID" = curso_id;
+
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- CONTAGEM DE ESTUDANTES
+-- ============================================================
+create or replace function public.atualizar_contagem_estudantes () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+declare
+  curso_id uuid;
+begin
+  if tg_op = 'INSERT' then
+    curso_id = new."fk_Curso_ID";
+  elsif tg_op = 'DELETE' then
+    curso_id = old."fk_Curso_ID";
+  else
+    return new;
+  end if;
+
+  update public."Curso" c
+  set "Contagem_Estudante" = (
+    select count(*)::integer
+    from public."matricula" m
+    where m."fk_Curso_ID" = curso_id
+  )
+  where c."ID" = curso_id;
+
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- AVALIAÇÃO: UMA VEZ POR MATRÍCULA
+-- ============================================================
+create or replace function public.impedir_alteracao_avaliacao () returns trigger language plpgsql as $$
+begin
+  if old."Avaliacao" is not null
+     and new."Avaliacao" is distinct from old."Avaliacao" then
+    raise exception 'A avaliação deste curso já foi realizada e não pode ser alterada.';
+  end if;
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- AGREGADOS DO CURSO
+-- ============================================================
+create or replace function public.atualizar_avaliacao_curso () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+declare
+  curso_id uuid;
+  contagem integer;
+  media numeric;
+begin
+  if tg_op = 'DELETE' then
+    curso_id = old."fk_Curso_ID";
+  else
+    curso_id = new."fk_Curso_ID";
+  end if;
+
+  -- Se o FK do curso mudou, recalcula o curso antigo.
+  if tg_op = 'UPDATE'
+     and old."fk_Curso_ID" is distinct from new."fk_Curso_ID" then
+    select count(*)::integer, coalesce(avg("Avaliacao"), 0)
+      into contagem, media
+    from public."matricula"
+    where "fk_Curso_ID" = old."fk_Curso_ID"
+      and "Avaliacao" is not null;
+
+    update public."Curso"
+    set "Contagem_Avaliacao" = contagem,
+        "Avaliacao" = round(media, 2)
+    where "ID" = old."fk_Curso_ID";
+  end if;
+
+  select count(*)::integer, coalesce(avg("Avaliacao"), 0)
+    into contagem, media
+  from public."matricula"
+  where "fk_Curso_ID" = curso_id
+    and "Avaliacao" is not null;
+
+  update public."Curso"
+  set "Contagem_Avaliacao" = contagem,
+      "Avaliacao" = round(media, 2)
+  where "ID" = curso_id;
+
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- PROTEÇÃO DOS CAMPOS DERIVADOS
+-- ============================================================
+-- Recalcula os campos derivados quando alguém tenta alterá-los
+-- diretamente. Isso evita que o cliente sobrescreva os valores.
+-- ============================================================
+create or replace function public.proteger_campos_derivados_matricula () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+declare
+  total_aulas integer;
+begin
+  if tg_op = 'UPDATE' then
+    if new."fk_Usuario_ID" is distinct from old."fk_Usuario_ID"
+       or new."fk_Curso_ID" is distinct from old."fk_Curso_ID" then
+      raise exception 'Não é permitido alterar o usuário ou o curso de uma matrícula.';
+    end if;
+  end if;
+
+  select count(*)::integer
+    into total_aulas
+  from public."conclui" c
+  join public."Aula" a on a."ID" = c."fk_Aula_ID"
+  join public."Modulo" m on m."ID" = a."ID_Modulo"
+  where c."fk_Usuario_ID" = new."fk_Usuario_ID"
+    and m."ID_Curso" = new."fk_Curso_ID";
+
+  new."Aulas_Finalizadas" = total_aulas;
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- PROTEÇÃO DOS CAMPOS DERIVADOS DO CURSO
+-- ============================================================
+-- O cliente não pode definir manualmente a média ou as contagens.
+-- Os valores são sempre calculados a partir das tabelas relacionadas.
+-- ============================================================
+create or replace function public.proteger_campos_derivados_curso () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+declare
+  contagem_avaliacao integer;
+  media_avaliacao numeric;
+  contagem_estudante integer;
+begin
+  select count(*)::integer, coalesce(avg("Avaliacao"), 0)
+    into contagem_avaliacao, media_avaliacao
+  from public."matricula"
+  where "fk_Curso_ID" = new."ID"
+    and "Avaliacao" is not null;
+
+  select count(*)::integer
+    into contagem_estudante
+  from public."matricula"
+  where "fk_Curso_ID" = new."ID";
+
+  new."Contagem_Avaliacao" = contagem_avaliacao;
+  new."Avaliacao" = round(media_avaliacao, 2);
+  new."Contagem_Estudante" = contagem_estudante;
+
+  return new;
+end;
+$$;
+
+-- ============================================================
+-- USUÁRIO APÓS SIGNUP
+-- ============================================================
+create or replace function public.handle_new_user () returns trigger language plpgsql security definer
+set
+  search_path = public as $$
+begin
+  insert into public."Usuario" (
+    "ID", "Nome_Display", "Avatar_Url", "Biografia", "Cargo", "Nome_Usuario"
+  )
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'name',
+             new.raw_user_meta_data ->> 'full_name',
+             'Novo usuário'),
+    new.raw_user_meta_data ->> 'avatar_url',
+    '',
+    'learner',
+    new.raw_user_meta_data ->> 'username'
+  )
+  on conflict ("ID") do nothing;
+
+  return new;
+end;
+$$;
