@@ -1,6 +1,6 @@
 # Guia de Convenções: Git e Fluxo de Trabalho
 
-Este documento estabelece o padrão de uso do Git ao longo do projeto, as convenções de commits, a estratégia de versionamento e as regras de nomenclatura para o nosso projeto de desenvolvimento de software.
+Este documento estabelece o padrão de uso do Git ao longo do projeto, as convenções de commits, a estratégia de versionamento, as regras de nomenclatura e diretrizes para resolução de conflitos em nosso projeto de desenvolvimento de software.
 
 ## 1. Cheat Sheet (Comandos Mais Comuns)
 
@@ -44,13 +44,14 @@ Para manter o histórico legível e organizado, utilizaremos o padrão **Convent
 Nosso fluxo de trabalho será estruturado da seguinte forma para garantir que o código principal esteja sempre protegido e funcional:
 
 ### Branch `main` (Principal)
-*   É a branch oficial do projeto.
+*   É a branch oficial do projeto, representando a versão final e estável.
 *   **Regra de Ouro:** A branch `sprint#` **só será mergeada na `main` no final do projeto** (entrega final).
 *   Nenhum desenvolvedor deve commitar diretamente nesta branch.
+*   *Nota sobre CI/CD:* Como a `main` permanecerá estática até a entrega, eventuais automações de testes e deploy contínuo (CI/CD) para ambientes de homologação deverão apontar para a branch `sprint#` atual.
 
 ### Branch `sprint#` (Desenvolvimento)
-*   É a branch base do nosso dia a dia, criada a partir da `main`.
-*   Ela contém o código mais recente com todas as novas funcionalidades integradas pela equipe durante a sprint "#" (01, 02, etc).
+*   É a branch base do nosso dia a dia, criada a partir da `main` (ex: `sprint1`, `sprint2`).
+*   Ela contém o código mais recente com todas as novas funcionalidades integradas pela equipe durante a sprint em andamento.
 *   As novas features devem ser criadas a partir desta branch.
 
 ### Branches de Funcionalidade (`feature/*` ou `fix/*`)
@@ -60,26 +61,36 @@ Nosso fluxo de trabalho será estruturado da seguinte forma para garantir que o 
     1. Você desenvolve a tarefa na sua branch de funcionalidade.
     2. Após terminar, você faz o *push* da sua branch e abre um **Pull Request (PR)**.
     3. A branch de funcionalidade **só será mesclada após os outros membros da equipe revisarem o PR e confirmarem que tudo está funcionando corretamente**.
-    4. Uma vez aprovada, a branch de funcionalidade é mesclada de volta na `sprint#` (para garantir que a `main` continue intacta até o final do projeto, conforme as regras estabelecidas).
+    4. Uma vez aprovada, a branch de funcionalidade é mesclada de volta na `sprint#`.
 
 ### Resumo do Fluxo Passo a Passo:
-1. `git checkout sprint#` (garante que está na base correta)
-2. `git pull` (atualiza com o que a equipe já fez)
-3. `git checkout -b feature/minha-tarefa` (cria sua branch)
-4. Trabalha no código... `git add .` e `git commit -m "feat: descrição"`
-5. `git push origin feature/minha-tarefa`
+1. `git checkout sprint#` (garante que está na base correta).
+2. `git pull` (atualiza sua máquina com o que a equipe já fez).
+3. `git checkout -b feature/minha-tarefa` (cria sua branch).
+4. Trabalha no código... `git add .` e `git commit -m "feat: descrição"`.
+5. `git push origin feature/minha-tarefa`.
 6. Abre o Pull Request para revisão da equipe.
 7. Após aprovado, o merge é feito e o ciclo recomeça.
 
 ## 4. Nomenclatura de Arquivos e Pastas
 
-Para mantermos a padronização e evitarmos problemas de compatibilidade entre diferentes sistemas operacionais e ferramentas, adotaremos as seguintes regras rigorosas para nomear qualquer arquivo ou diretório no projeto:
+Para mantermos a padronização e evitarmos problemas de compatibilidade entre diferentes sistemas operacionais e ferramentas, adotaremos as seguintes regras rigorosas:
 
 *   **Tudo em minúsculo:** Letras maiúsculas não devem ser utilizadas.
-*   **Hífen (`-`) como separador:** Nunca utilize espaços em branco, *underscores* (`_`) ou *camelCase* para nomes de arquivos e pastas. Use sempre o hífen para separar palavras.
+*   **Hífen (`-`) como separador:** Nunca utilize espaços em branco, *underscores* (`_`) ou *camelCase*. Use sempre o hífen para separar palavras.
     *   *Certo:* `minha-nova-pasta`, `estilo-principal.css`, `script-de-validacao.js`
     *   *Errado:* `MinhaNovaPasta`, `estilo_principal.css`, `script de validacao.js`
 *   **Sem caracteres especiais ou acentuação:** Não utilize til, cedilha ou acentos (á, é, ã, ç, etc.).
     *   *Certo:* `relatorio-mensal.html`, `funcoes-calculo.py`
     *   *Errado:* `relatório-mensal.html`, `funções-cálculo.py`
 *   **Seja descritivo e conciso:** Dê nomes que deixem claro o que o arquivo ou pasta contém, mas evite nomes longos demais.
+
+## 5. Resolução de Conflitos de Merge
+
+Conflitos acontecem quando duas pessoas alteram a mesma parte de um arquivo em branches diferentes. Se você se deparar com um conflito ao tentar fazer um `pull` ou `merge`, **Abra os arquivos conflitantes.** No seu editor de código (como o VS Code), o trecho problemático estará marcado com delimitadores do Git:
+   ```text
+   <<<<<<< HEAD
+   (Seu código atual / Código da branch de destino)
+   =======
+   (Código que está chegando / Código da branch que está sendo mergeada)
+   >>>>>>> nome-da-branch
