@@ -539,3 +539,552 @@ begin
   return new;
 end;
 $$;
+
+-- ============================================================
+-- TRIGGERS
+-- ============================================================
+-- Datas
+drop trigger if exists trg_curso_data_atualizacao on public."Curso";
+
+create trigger trg_curso_data_atualizacao before
+update on public."Curso" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_sala_data_atualizacao on public."Sala";
+
+create trigger trg_sala_data_atualizacao before
+update on public."Sala" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_usuario_data_atualizacao on public."Usuario";
+
+create trigger trg_usuario_data_atualizacao before
+update on public."Usuario" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_matricula_data_atualizacao on public."matricula";
+
+create trigger trg_matricula_data_atualizacao before
+update on public."matricula" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_notebook_data_atualizacao on public."Notebook";
+
+create trigger trg_notebook_data_atualizacao before
+update on public."Notebook" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_anotacoes_data_atualizacao on public."Anotacoes";
+
+create trigger trg_anotacoes_data_atualizacao before
+update on public."Anotacoes" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_aula_data_atualizacao on public."Aula";
+
+create trigger trg_aula_data_atualizacao before
+update on public."Aula" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_modulo_data_atualizacao on public."Modulo";
+
+create trigger trg_modulo_data_atualizacao before
+update on public."Modulo" for each row
+execute function public.atualizar_data_atualizacao ();
+
+drop trigger if exists trg_questao_data_atualizacao on public."Questao";
+
+create trigger trg_questao_data_atualizacao before
+update on public."Questao" for each row
+execute function public.atualizar_data_atualizacao ();
+
+-- Protege os campos agregados do curso.
+drop trigger if exists trg_proteger_campos_derivados_curso on public."Curso";
+
+create trigger trg_proteger_campos_derivados_curso before insert
+or
+update on public."Curso" for each row
+execute function public.proteger_campos_derivados_curso ();
+
+-- XP: dispara em qualquer INSERT/UPDATE para impedir edição direta de XP_Total.
+drop trigger if exists trg_atualizar_xp_matricula on public."matricula";
+
+create trigger trg_atualizar_xp_matricula before insert
+or
+update on public."matricula" for each row
+execute function public.atualizar_xp_matricula ();
+
+-- Protege Aulas_Finalizadas e a identidade da matrícula.
+drop trigger if exists trg_proteger_matricula on public."matricula";
+
+create trigger trg_proteger_matricula before insert
+or
+update on public."matricula" for each row
+execute function public.proteger_campos_derivados_matricula ();
+
+-- Avaliação não pode ser alterada depois de preenchida.
+drop trigger if exists trg_impedir_alteracao_avaliacao on public."matricula";
+
+create trigger trg_impedir_alteracao_avaliacao before
+update of "Avaliacao" on public."matricula" for each row
+execute function public.impedir_alteracao_avaliacao ();
+
+-- Matrícula: contagem de estudantes.
+drop trigger if exists trg_contagem_estudantes on public."matricula";
+
+create trigger trg_contagem_estudantes
+after insert
+or delete on public."matricula" for each row
+execute function public.atualizar_contagem_estudantes ();
+
+-- Matrícula: média e quantidade de avaliações.
+drop trigger if exists trg_avaliacao_curso on public."matricula";
+
+create trigger trg_avaliacao_curso
+after insert
+or
+update of "Avaliacao"
+or delete on public."matricula" for each row
+execute function public.atualizar_avaliacao_curso ();
+
+-- Conclusão: aulas finalizadas.
+drop trigger if exists trg_aulas_finalizadas on public."conclui";
+
+create trigger trg_aulas_finalizadas
+after insert on public."conclui" for each row
+execute function public.atualizar_aulas_finalizadas ();
+
+-- Usuário criado no Auth.
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+after insert on auth.users for each row
+execute function public.lidar_novo_user ();
+
+-- ============================================================
+-- RLS
+-- ============================================================
+alter table public."Usuario" enable row level security;
+
+alter table public."Curso" enable row level security;
+
+alter table public."Modulo" enable row level security;
+
+alter table public."Aula" enable row level security;
+
+alter table public."Questao" enable row level security;
+
+alter table public."Sala" enable row level security;
+
+alter table public."matricula" enable row level security;
+
+alter table public."participa" enable row level security;
+
+alter table public."conclui" enable row level security;
+
+alter table public."Notebook" enable row level security;
+
+alter table public."Anotacoes" enable row level security;
+
+-- ============================================================
+-- HELPERS SECURITY DEFINER PARA RLS
+-- ============================================================
+create or replace function public.usuario_e_criador_curso (p_curso_id uuid) returns boolean language sql stable security definer
+set
+  search_path = public as $$
+  select exists (
+    select 1 from public."Curso"
+    where "ID" = p_curso_id and "ID_Criador" = auth.uid()
+  );
+$$;
+
+create or replace function public.usuario_participa_sala (p_sala_id uuid) returns boolean language sql stable security definer
+set
+  search_path = public as $$
+  select exists (
+    select 1 from public."participa"
+    where "fk_Sala_ID" = p_sala_id and "fk_Usuario_ID" = auth.uid()
+  );
+$$;
+
+-- ============================================================
+-- REMOÇÃO SEGURA DE POLICIES ANTIGAS
+-- ============================================================
+-- Usuario
+drop policy if exists "usuario gerencia proprio perfil" on public."Usuario";
+
+drop policy if exists "usuario le perfis" on public."Usuario";
+
+-- Curso
+drop policy if exists "cursos publicados podem ser lidos" on public."Curso";
+
+drop policy if exists "criadores gerenciam seus cursos" on public."Curso";
+
+-- Modulo
+drop policy if exists "modulos de cursos publicados podem ser lidos" on public."Modulo";
+
+drop policy if exists "criadores gerenciam seus modulos" on public."Modulo";
+
+-- Aula
+drop policy if exists "aulas publicadas podem ser lidas" on public."Aula";
+
+drop policy if exists "criadores gerenciam suas aulas" on public."Aula";
+
+-- Questao
+drop policy if exists "questoes de cursos publicados podem ser lidas" on public."Questao";
+
+drop policy if exists "criadores gerenciam suas questoes" on public."Questao";
+
+-- Matricula
+drop policy if exists "usuario gerencia propria matricula" on public."matricula";
+
+drop policy if exists "usuario le sua matricula" on public."matricula";
+
+drop policy if exists "usuario cria sua matricula" on public."matricula";
+
+drop policy if exists "usuario atualiza sua avaliacao" on public."matricula";
+
+-- Conclui
+drop policy if exists "usuario le suas conclusoes" on public."conclui";
+
+drop policy if exists "usuario le suas conclusoes" on public."conclui";
+
+drop policy if exists "usuario registra suas conclusoes" on public."conclui";
+
+-- Sala
+drop policy if exists "usuarios autenticados leem salas" on public."Sala";
+
+drop policy if exists "criadores gerenciam suas salas" on public."Sala";
+
+-- Participa
+drop policy if exists "participantes leem participacoes" on public."participa";
+
+drop policy if exists "usuario entra em salas" on public."participa";
+
+drop policy if exists "usuario sai de salas" on public."participa";
+
+-- Notebook / Anotacoes
+drop policy if exists "usuario gerencia seus notebooks" on public."Notebook";
+
+drop policy if exists "usuario gerencia suas anotacoes" on public."Anotacoes";
+
+-- ============================================================
+-- POLICIES — USUARIO
+-- ============================================================
+create policy "usuario gerencia proprio perfil" on public."Usuario" for all using ("ID" = auth.uid ())
+with
+  check ("ID" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — CURSO
+-- ============================================================
+create policy "cursos publicados podem ser lidos" on public."Curso" for
+select
+  using (
+    "Status" = 'published'
+    or "ID_Criador" = auth.uid ()
+  );
+
+create policy "criadores gerenciam seus cursos" on public."Curso" for all using ("ID_Criador" = auth.uid ())
+with
+  check ("ID_Criador" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — MODULO
+-- ============================================================
+create policy "modulos de cursos publicados podem ser lidos" on public."Modulo" for
+select
+  using (
+    exists (
+      select
+        1
+      from
+        public."Curso" c
+      where
+        c."ID" = "ID_Curso"
+        and (
+          c."Status" = 'published'
+          or c."ID_Criador" = auth.uid ()
+        )
+    )
+  );
+
+create policy "criadores gerenciam seus modulos" on public."Modulo" for all using (public.usuario_e_criador_curso ("ID_Curso"))
+with
+  check (public.usuario_e_criador_curso ("ID_Curso"));
+
+-- ============================================================
+-- POLICIES — AULA
+-- ============================================================
+create policy "aulas publicadas podem ser lidas" on public."Aula" for
+select
+  using (
+    exists (
+      select
+        1
+      from
+        public."Modulo" m
+        join public."Curso" c on c."ID" = m."ID_Curso"
+      where
+        m."ID" = "ID_Modulo"
+        and (
+          c."Status" = 'published'
+          or c."ID_Criador" = auth.uid ()
+        )
+    )
+  );
+
+create policy "criadores gerenciam suas aulas" on public."Aula" for all using (
+  exists (
+    select
+      1
+    from
+      public."Modulo" m
+    where
+      m."ID" = "ID_Modulo"
+      and public.usuario_e_criador_curso (m."ID_Curso")
+  )
+)
+with
+  check (
+    exists (
+      select
+        1
+      from
+        public."Modulo" m
+      where
+        m."ID" = "ID_Modulo"
+        and public.usuario_e_criador_curso (m."ID_Curso")
+    )
+  );
+
+-- ============================================================
+-- POLICIES — QUESTAO
+-- ============================================================
+create policy "questoes de cursos publicados podem ser lidas" on public."Questao" for
+select
+  using (
+    exists (
+      select
+        1
+      from
+        public."Aula" a
+        join public."Modulo" m on m."ID" = a."ID_Modulo"
+        join public."Curso" c on c."ID" = m."ID_Curso"
+      where
+        a."ID" = "ID_Aula"
+        and (
+          c."Status" = 'published'
+          or c."ID_Criador" = auth.uid ()
+        )
+    )
+  );
+
+create policy "criadores gerenciam suas questoes" on public."Questao" for all using (
+  exists (
+    select
+      1
+    from
+      public."Aula" a
+      join public."Modulo" m on m."ID" = a."ID_Modulo"
+    where
+      a."ID" = "ID_Aula"
+      and public.usuario_e_criador_curso (m."ID_Curso")
+  )
+)
+with
+  check (
+    exists (
+      select
+        1
+      from
+        public."Aula" a
+        join public."Modulo" m on m."ID" = a."ID_Modulo"
+      where
+        a."ID" = "ID_Aula"
+        and public.usuario_e_criador_curso (m."ID_Curso")
+    )
+  );
+
+-- ============================================================
+-- POLICIES — MATRICULA
+-- ============================================================
+-- INSERT: o próprio usuário pode se matricular.
+-- SELECT: o próprio usuário vê sua matrícula.
+-- UPDATE: somente a avaliação é permitida pelo cliente; os demais
+-- campos são protegidos pelos triggers e pela ausência de DELETE.
+-- ============================================================
+create policy "usuario le sua matricula" on public."matricula" for
+select
+  using ("fk_Usuario_ID" = auth.uid ());
+
+create policy "usuario cria sua matricula" on public."matricula" for insert
+with
+  check ("fk_Usuario_ID" = auth.uid ());
+
+create policy "usuario atualiza sua avaliacao" on public."matricula"
+for update
+  using ("fk_Usuario_ID" = auth.uid ())
+with
+  check ("fk_Usuario_ID" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — CONCLUI
+-- ============================================================
+create policy "usuario le suas conclusoes" on public."conclui" for
+select
+  using ("fk_Usuario_ID" = auth.uid ());
+
+create policy "usuario registra suas conclusoes" on public."conclui" for insert
+with
+  check ("fk_Usuario_ID" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — SALA
+-- ============================================================
+create policy "usuarios autenticados leem salas" on public."Sala" for
+select
+  using (auth.uid () is not null);
+
+create policy "criadores gerenciam suas salas" on public."Sala" for all using ("ID_Criador" = auth.uid ())
+with
+  check ("ID_Criador" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — PARTICIPA
+-- ============================================================
+create policy "participantes leem participacoes" on public."participa" for
+select
+  using (
+    "fk_Usuario_ID" = auth.uid ()
+    or public.usuario_participa_sala ("fk_Sala_ID")
+  );
+
+create policy "usuario entra em salas" on public."participa" for insert
+with
+  check ("fk_Usuario_ID" = auth.uid ());
+
+create policy "usuario sai de salas" on public."participa" for delete using ("fk_Usuario_ID" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — NOTEBOOK
+-- ============================================================
+create policy "usuario gerencia seus notebooks" on public."Notebook" for all using ("ID_Usuario" = auth.uid ())
+with
+  check ("ID_Usuario" = auth.uid ());
+
+-- ============================================================
+-- POLICIES — ANOTACOES
+-- ============================================================
+create policy "usuario gerencia suas anotacoes" on public."Anotacoes" for all using (
+  exists (
+    select
+      1
+    from
+      public."Notebook" n
+    where
+      n."ID" = "ID_Notebook"
+      and n."ID_Usuario" = auth.uid ()
+  )
+)
+with
+  check (
+    exists (
+      select
+        1
+      from
+        public."Notebook" n
+      where
+        n."ID" = "ID_Notebook"
+        and n."ID_Usuario" = auth.uid ()
+    )
+  );
+
+-- ============================================================
+-- PRIVILÉGIOS
+-- ============================================================
+-- O acesso real continua sendo controlado por RLS.
+grant usage on schema public to anon,
+authenticated;
+
+grant
+select
+  on public."Curso",
+  public."Modulo",
+  public."Aula",
+  public."Questao",
+  public."Sala" to anon,
+  authenticated;
+
+grant
+select
+,
+  insert on public."matricula" to authenticated;
+
+grant
+update on public."matricula" to authenticated;
+
+grant
+select
+,
+  insert on public."conclui" to authenticated;
+
+grant
+select
+,
+  insert,
+  delete on public."participa" to authenticated;
+
+grant
+select
+,
+  insert,
+update,
+delete on public."Notebook" to authenticated;
+
+grant
+select
+,
+  insert,
+update,
+delete on public."Anotacoes" to authenticated;
+
+grant
+select
+,
+update on public."Usuario" to authenticated;
+
+grant insert,
+update,
+delete on public."Curso" to authenticated;
+
+grant insert,
+update,
+delete on public."Modulo" to authenticated;
+
+grant insert,
+update,
+delete on public."Aula" to authenticated;
+
+grant insert,
+update,
+delete on public."Questao" to authenticated;
+
+grant insert,
+update,
+delete on public."Sala" to authenticated;
+
+-- Funções auxiliares são usadas internamente por RLS/triggers.
+revoke all on function public.usuario_e_criador_curso (uuid)
+from
+  public;
+
+revoke all on function public.usuario_participa_sala (uuid)
+from
+  public;
+
+grant
+execute on function public.usuario_e_criador_curso (uuid) to authenticated;
+
+grant
+execute on function public.usuario_participa_sala (uuid) to authenticated;
