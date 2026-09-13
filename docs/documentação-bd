@@ -85,4 +85,56 @@ Bloqueia tentativas de alteração manual de métricas agregadas da tabela de cu
 Criação Automática de Usuário (lidar_novo_user)
 Cria o perfil do usuário na tabela pública do sistema assim que o cadastro na camada de autenticação é concluído. Seu objetivo é extrair metadados como nome, avatar e nome de usuário, gerando o registro inicial de forma automatizada.
 
+1. Gatilhos de Automação e Integridade (Triggers)
 
+Os gatilhos (triggers) atuam como escutadores de eventos (INSERT, UPDATE, DELETE) nas tabelas, disparando as funções de automação e regras de negócio de forma totalmente transparente para a aplicação.
+
+Atualização de Timestamps (trg_*_data_atualizacao): Disparados antes de qualquer atualização (BEFORE UPDATE) nas tabelas Curso, Sala, Usuario, matricula, Notebook, Anotacoes, Aula, Modulo e Questao. Executam a função que grava o momento exato da alteração em Data_Atualizacao.
+
+Proteção do Curso (trg_proteger_campos_derivados_curso): Executado antes de inserções ou atualizações na tabela Curso. Garante que métricas como notas e contagem de alunos não sejam forçadas manualmente por chamadas externas.
+
+Controle de XP (trg_atualizar_xp_matricula): Disparado em inserções ou atualizações na tabela matricula. Impede a edição direta do XP_Total e gerencia o acúmulo de pontos com base na frequência do usuário.
+
+Integridade da Matrícula (trg_proteger_matricula): Executa antes de cadastrar ou alterar uma matrícula para impedir a troca de dono ou curso e recalcular o total de aulas concluídas.
+
+Imutabilidade de Avaliações (trg_impedir_alteracao_avaliacao): Disparado especificamente quando há tentativa de alteração na coluna Avaliacao da tabela matricula. Bloqueia modificações caso o curso já tenha sido avaliado.
+
+Métricas da Matrícula (trg_contagem_estudantes e trg_avaliacao_curso): Disparados após inserções, edições de nota ou deleções na tabela matricula. Atualizam automaticamente a contagem de alunos, a média de avaliações e o total de notas diretamente no cadastro do curso afetado.
+
+Progresso do Aluno (trg_aulas_finalizadas): Disparado após o registro de conclusão de uma aula na tabela conclui. Recalcula e sincroniza o progresso global do usuário na sua matrícula.
+
+Criação de Perfil (on_auth_user_created): Escuta a criação de contas no sistema de autenticação (auth.users) e dispara a função para gerar automaticamente o perfil público na tabela Usuario.
+
+2. Funções Auxiliares de Segurança (Security Definer Helpers)
+
+Essas funções fornecem verificações reaproveitáveis que simplificam as regras de segurança do banco, rodando com permissões elevadas para consultar dados sem expor as tabelas diretamente.
+
+usuario_e_criador_curso: Verifica se o usuário autenticado (auth.uid()) é o criador do curso informado. Retorna verdadeiro ou falso para autorizar modificações nos conteúdos do curso.
+
+usuario_participa_sala: Checa se o usuário autenticado está registrado como membro de uma determinada sala na tabela participa.
+
+3. Políticas de Segurança em Nível de Linha (Row Level Security - RLS)
+
+O RLS restringe quais linhas de cada tabela um usuário pode ler, inserir, atualizar ou deletar, aplicando isolamento de dados diretamente na camada do PostgreSQL.
+
+Perfis de Usuário (Usuario): A política permite que qualquer usuário leia ou edite estritamente o seu próprio registro (ID = auth.uid()).
+
+Cursos e Conteúdos (Curso, Modulo, Aula, Questao): Conteúdos com status published ficam visíveis para leitura pública. A criação, edição e exclusão de qualquer elemento da hierarquia do curso são restritas exclusivamente ao seu criador.
+
+Matrículas e Progresso (matricula, conclui): O usuário tem permissão para visualizar, criar e atualizar apenas os seus próprios registros de matrícula e de conclusões de aulas.
+
+Salas e Comunidades (Sala, participa): Qualquer usuário autenticado pode listar salas. A gestão da sala pertence ao criador, enquanto a leitura de interações na tabela participa é liberada apenas para quem é membro daquela sala.
+
+Notebooks e Anotações (Notebook, Anotacoes): O usuário possui controle total (leitura, escrita e deleção) sobre seus próprios blocos de notas e anotações vinculadas.
+
+4. Concessão de Privilégios (Grants e Revokes)
+
+Define o nível de acesso direto que as rotas de API anônimas e autenticadas possuem sobre as tabelas e funções do banco.
+
+Nível do Schema: Concede permissão de uso do schema public para usuários anônimos (anon) e autenticados (authenticated).
+
+Acesso Anônimo e Autenticado: Libera acesso de leitura (SELECT) em tabelas públicas do sistema, como catálogo de cursos, módulos, aulas, questões e salas.
+
+Acesso Autenticado: Concede permissões operacionais de escrita e leitura (SELECT, INSERT, UPDATE, DELETE) para tabelas de uso pessoal do aluno, como matrículas, conclusões de aulas, histórico de participação, notebooks e anotações.
+
+Isolamento de Funções: Revoga a execução pública das funções auxiliares de segurança (REVOKE ALL) e libera a execução (GRANT EXECUTE) apenas para usuários autenticados, prevenindo execuções não autorizadas.
