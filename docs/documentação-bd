@@ -45,3 +45,44 @@ jsonb: Tipo de dado JSON binário. Em vez de salvar apenas um texto simples, ele
 
 DEFAULT '{}'::jsonb: Define o valor padrão atribuído automaticamente caso nenhum dado seja informado no cadastro. O '{}' representa um objeto JSON vazio, e o sintaxe ::jsonb faz a conversão de tipo explícita para que o banco processe esse texto como um objeto jsonb.
 
+O uso de índices evita a leitura completa da tabela durante uma busca, otimizando o tempo de resposta do banco, o index define quais colunas devem ser consultadas. Ao adicionar o modificador desc, os dados são salvos pré-ordenados do valor mais recente para o mais antigo, permitindo que consultas por históricos ou atividades recentes entreguem o resultado instantaneamente, sem o custo computacional de reordenar as linhas na hora da execução. 
+Funções de Automação e Regras de Negócio (PL/pgSQL)
+O uso de blocos e funções em PL/pgSQL permite criar rotinas procedurais no banco de dados,
+algumas funções usadas: create or replace function ... security definer: Cria ou atualiza a função de gatilho e define que ela será executada com permissões de administrador. Isso garante que a atualização das tabelas ocorra com segurança, independentemente das permissões do usuário que disparou a ação.
+if tg_op <> 'DELETE' then: Estrutura condicional que identifica qual operação disparou o gatilho, garantindo que o bloco de código só seja executado se a ação for uma inserção (INSERT) ou alteração (UPDATE), e não uma exclusão. tg_op diz se é insert, update ou delete, <> é o operador de “diferente”
+select count(*)::integer ...: Executa a contagem total de linhas da tabela para uma determinada condição (como o total de matrículas de um curso) e faz a conversão do resultado para o tipo numérico inteiro (::integer).
+select count(*)::integer, coalesce(avg("Avaliacao"), 0): Calcula a quantidade total de avaliações e a média das notas. A função coalesce serve para tratar o valor nulo: caso o curso ainda não tenha nenhuma avaliação, o banco retorna 0 em vez de NULL.
+FUNÇÕES:
+
+
+Atualização Automática de Data (atualizar_data_atualizacao)
+Atualiza automaticamente o campo Data_Atualizacao com o timestamp corrente sempre que uma linha é alterada em uma tabela. Seu objetivo é garantir a rastreabilidade e a auditoria de modificações dos registros do sistema.
+
+Controle de XP e Frequência (atualizar_xp_matricula)
+Gerencia a pontuação do aluno calculando a variação do XP diário, atualizando o saldo acumulado e registrando a data do último acesso. Também bloqueia alterações manuais ou não autorizadas no total de pontuação.
+
+Recálculo Local de Aulas Finalizadas (recalcular_aulas_finalizadas_matricula)
+Calcula a quantidade total de aulas concluídas por um estudante em um curso específico diretamente durante eventos na matrícula. Seu objetivo é atualizar o contador interno de progresso no momento da operação.
+
+Sincronização de Conclusão de Aula (atualizar_aulas_finalizadas)
+Sincroniza o progresso do aluno na tabela de matrículas sempre que uma nova aula é concluída. A função identifica a qual curso a aula pertence e atualiza o total global de aulas finalizadas correspondente.
+
+Contagem de Estudantes por Curso (atualizar_contagem_estudantes)
+Recalcula e atualiza o total de inscritos diretamente no cadastro do curso sempre que ocorre uma nova matrícula ou cancelamento. Seu objetivo é manter o número total de estudantes denormalizado e atualizado para leitura rápida.
+
+Imutabilidade da Avaliação (impedir_alteracao_avaliacao)
+Garante que a nota atribuída a um curso seja definitiva. Seu objetivo é abortar a operação e lançar um erro caso o usuário tente modificar uma avaliação que já tenha sido registrada anteriormente.
+
+Agregação de Avaliações do Curso (atualizar_avaliacao_curso)
+Recalcula a média das notas e a quantidade total de avaliações enviadas a um curso sempre que uma nota é inserida, alterada ou removida, mantendo a nota média arredondada e sincronizada na tabela do curso.
+
+Proteção de Dados da Matrícula (proteger_campos_derivados_matricula)
+Impede a alteração dos vínculos de usuário e curso em matrículas já existentes e força o recálculo do campo de aulas finalizadas pelo próprio banco, evitando que dados manipulados sejam gravados na aplicação.
+
+Proteção de Dados do Curso (proteger_campos_derivados_curso)
+Bloqueia tentativas de alteração manual de métricas agregadas da tabela de cursos, como total de estudantes, contagem de avaliações e média de notas, garantindo que esses valores venham exclusivamente de cálculos do banco.
+
+Criação Automática de Usuário (lidar_novo_user)
+Cria o perfil do usuário na tabela pública do sistema assim que o cadastro na camada de autenticação é concluído. Seu objetivo é extrair metadados como nome, avatar e nome de usuário, gerando o registro inicial de forma automatizada.
+
+
