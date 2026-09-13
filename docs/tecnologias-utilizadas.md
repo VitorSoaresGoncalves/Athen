@@ -28,6 +28,9 @@
 * **@eslint/js 10.0.1** — configurações e regras base do ESLint.
 * **globals 17.11.0** — definições de variáveis globais utilizadas pelas configurações do ESLint.
 
+### Deploy
+* **Vercel** — plataforma de hospedagem e implantação rápida focada em aplicações web modernas e frameworks front-end.
+
 ### Resumo da Stack
 
 **Frontend:** React + TypeScript + Vite
