@@ -433,21 +433,6 @@ begin
     curso_id = new."fk_Curso_ID";
   end if;
 
-  -- Se o FK do curso mudou, recalcula o curso antigo.
-  if tg_op = 'UPDATE'
-     and old."fk_Curso_ID" is distinct from new."fk_Curso_ID" then
-    select count(*)::integer, coalesce(avg("Avaliacao"), 0)
-      into contagem, media
-    from public."matricula"
-    where "fk_Curso_ID" = old."fk_Curso_ID"
-      and "Avaliacao" is not null;
-
-    update public."Curso"
-    set "Contagem_Avaliacao" = contagem,
-        "Avaliacao" = round(media, 2)
-    where "ID" = old."fk_Curso_ID";
-  end if;
-
   select count(*)::integer, coalesce(avg("Avaliacao"), 0)
     into contagem, media
   from public."matricula"
