@@ -26,12 +26,12 @@ type FormSala = { ID_Criador: string; Nome: string; Codigo: string; fk_Curso_ID:
 type FormMatricula = { fk_Curso_ID: string; fk_Usuario_ID: string; Avaliacao: string }
 
 
-const initialUsuario: FormUsuario = { email: '', password: '', Nome_Display: '', Nome_Usuario: '', Cargo: 'learner', Biografia: '' }
-const initialCurso: FormCurso = { ID_Criador: '', Titulo: '', Slug: '', Descricao: '', Dificuldade: 'Beginner', Categoria: '', Tags: '', Cor_Capa: '#fff', Icone: '◒', Status: 'draft' }
-const initialModulo: FormModulo = { ID_Curso: '', Titulo: '', Subtitulo: '', Icone: '📘', Cor_Tema: '#fff', Posicao: '0' }
-const initialAula: FormAula = { ID_Modulo: '', Titulo: '', Descricao: '', Duracao: '', Posicao: '0', Publicado: false }
-const initialQuestao: FormQuestao = { ID_Aula: '', Enunciado: '', Explicacao: '', Tipo: 'multiple_choice', Tipo_Resposta: '', XP: '0', Posicao: '0' }
-const initialSala: FormSala = { ID_Criador: '', Nome: '', Codigo: '', fk_Curso_ID: '' }
+const initialUsuario: FormUsuario = { email: 'a@a', password: '123456', Nome_Display: 'jorge', Nome_Usuario: 'aaaa', Cargo: 'learner', Biografia: 'aaa' }
+const initialCurso: FormCurso = { ID_Criador: '', Titulo: 'aaa', Slug: 'zzz', Descricao: 'zzz', Dificuldade: 'Beginner', Categoria: 'zz', Tags: 'zzz', Cor_Capa: '#fff', Icone: '◒', Status: 'draft' }
+const initialModulo: FormModulo = { ID_Curso: '', Titulo: 'zz', Subtitulo: 'zz', Icone: '📘', Cor_Tema: '#fff', Posicao: '0' }
+const initialAula: FormAula = { ID_Modulo: '', Titulo: 'zzzz', Descricao: 'zzz', Duracao: '11', Posicao: '0', Publicado: false }
+const initialQuestao: FormQuestao = { ID_Aula: '', Enunciado: 'zzzzz', Explicacao: 'zzzz', Tipo: 'multiple_choice', Tipo_Resposta: 'zzzz', XP: '0', Posicao: '0' }
+const initialSala: FormSala = { ID_Criador: '', Nome: 'zzzzz', Codigo: 'zzzz', fk_Curso_ID: '' }
 const initialMatricula: FormMatricula = { fk_Curso_ID: '', fk_Usuario_ID: '', Avaliacao: '' }
 
 
@@ -103,7 +103,7 @@ export function CrudConsole() {
     setFMatricula((current) => ({ ...current, fk_Usuario_ID: data.user.id }))} }) }, [])
 
     // handles
-
+ 
     const handleUsuario = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault(); setStatusMsg(null); setLoading(true)
         try {
