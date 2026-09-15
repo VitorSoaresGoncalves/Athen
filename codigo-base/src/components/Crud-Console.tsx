@@ -9,6 +9,7 @@ type Curso = Database['public']['Tables']['Curso']['Row']
 type Modulo = Database['public']['Tables']['Modulo']['Row']
 type Aula = Database['public']['Tables']['Aula']['Row']
 type Questao = Database['public']['Tables']['Questao']['Row']
+type Sala = Database['public']['Tables']['Sala']['Row']
 type Cargo = 'learner' | 'creator' | 'moderator'
 type CourseLevel = Database['public']['Enums']['course_level']
 type CourseStatus = Database['public']['Enums']['course_status']
@@ -20,6 +21,7 @@ type FormCurso = { ID_Criador: string; Titulo: string; Slug: string; Descricao: 
 type FormModulo = { ID_Curso: string; Titulo: string; Subtitulo: string; Icone: string; Cor_Tema: string; Posicao: string }
 type FormAula = { ID_Modulo: string; Titulo: string; Descricao: string; Duracao: string; Posicao: string; Publicado: boolean }
 type FormQuestao = { ID_Aula: string; Enunciado: string; Explicacao: string; Tipo: QuestionType; Tipo_Resposta: string; XP: string; Posicao: string }
+type FormSala = { ID_Criador: string; Nome: string; Codigo: string; fk_Curso_ID: string }
 
 
 const initialUsuario: FormUsuario = { email: '', password: '', Nome_Display: '', Nome_Usuario: '', Cargo: 'learner', Biografia: '' }
@@ -27,6 +29,7 @@ const initialCurso: FormCurso = { ID_Criador: '', Titulo: '', Slug: '', Descrica
 const initialModulo: FormModulo = { ID_Curso: '', Titulo: '', Subtitulo: '', Icone: '📘', Cor_Tema: '#fff', Posicao: '0' }
 const initialAula: FormAula = { ID_Modulo: '', Titulo: '', Descricao: '', Duracao: '', Posicao: '0', Publicado: false }
 const initialQuestao: FormQuestao = { ID_Aula: '', Enunciado: '', Explicacao: '', Tipo: 'multiple_choice', Tipo_Resposta: '', XP: '0', Posicao: '0' }
+const initialSala: FormSala = { ID_Criador: '', Nome: '', Codigo: '', fk_Curso_ID: '' }
 
 
 export function CrudConsole() {
@@ -36,16 +39,19 @@ export function CrudConsole() {
   const [modulos, setModulos] = useState<Modulo[]>([])
   const [aulas, setAulas] = useState<Aula[]>([])
   const [questoes, setQuestoes] = useState<Questao[]>([])
+  const [salas, setSalas] = useState<Sala[]>([])
   const [fUsuario, setFUsuario] = useState<FormUsuario>(initialUsuario)
   const [fCurso, setFCurso] = useState<FormCurso>(initialCurso)
   const [fModulo, setFModulo] = useState<FormModulo>(initialModulo)
   const [fAula, setFAula] = useState<FormAula>(initialAula)
   const [fQuestao, setFQuestao] = useState<FormQuestao>(initialQuestao) 
+  const [fSala, setFSala] = useState<FormSala>(initialSala)
   const [editingUsuarioId, setEditingUsuarioId] = useState<string | null>(null)
   const [editingCursoId, setEditingCursoId] = useState<string | null>(null)
   const [editingModuloId, setEditingModuloId] = useState<string | null>(null)
   const [editingAulaId, setEditingAulaId] = useState<string | null>(null)
   const [editingQuestaoId, setEditingQuestaoId] = useState<string | null>(null)
+  const [editingSalaId, setEditingSalaId] = useState<string | null>(null)
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -55,17 +61,18 @@ export function CrudConsole() {
   const loadModulos = useCallback(async () => { try { setModulos(await moduloRepository.listar()) } catch (error) { notify(`Erro ao carregar módulos: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
   const loadAulas = useCallback(async () => { try { setAulas(await aulaRepository.listar()) } catch (error) { notify(`Erro ao carregar aulas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
   const loadQuestoes = useCallback(async () => { try { setQuestoes(await questaoRepository.listar()) } catch (error) { notify(`Erro ao carregar questões: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  
+  const loadSalas = useCallback(async () => { try { setSalas(await salaRepository.listar()) } catch (error) { notify(`Erro ao carregar salas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
+
 
   useEffect(() => { if (activeTab === 'usuarios') void loadUsuarios(); 
                     else if (activeTab === 'cursos') void loadCursos()
                     else if (activeTab === 'modulo') { void loadCursos(); void loadModulos() }
                     else if (activeTab === 'aula') { void loadCursos(); void loadModulos(); void loadAulas() }
                     else if (activeTab === 'questao') { void loadCursos(); void loadModulos(); void loadAulas(); void loadQuestoes() }
-                  }, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes])
+                    else if (activeTab === 'sala') { void loadCursos(); void loadSalas() }
+                  }, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes, loadSalas])
 
-  useEffect(() => { void supabase.auth.getUser().then(({ data }) => { if (data.user) setFCurso((current) => ({ ...current, ID_Criador: data.user.id })) }) }, [])
-
+  useEffect(() => { void supabase.auth.getUser().then(({ data }) => { if (data.user) { setFCurso((current) => ({ ...current, ID_Criador: data.user.id })); setFSala((current) => ({ ...current, ID_Criador: data.user.id })) } }) }, [])
 
     // handles
 
@@ -242,17 +249,46 @@ export function CrudConsole() {
         finally { setLoading(false) }
     }
 
+    const handleSala = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault(); setStatusMsg(null); setLoading(true)
+        try {
+            const creatorId = fSala.ID_Criador.trim()
+            if (!creatorId) throw new Error('Informe o ID do criador.')
+            if (!fSala.Nome.trim() || !fSala.Codigo.trim()) throw new Error('Nome e código são obrigatórios.')
+            const payload = {
+                ID_Criador: creatorId,
+                Nome: fSala.Nome.trim(),
+                Codigo: fSala.Codigo.trim().toUpperCase(),
+                fk_Curso_ID: fSala.fk_Curso_ID || null,
+            }
+            if (editingSalaId) {
+                await salaRepository.atualizar(editingSalaId, payload)
+                notify('Sala atualizada com sucesso.')
+            } else {
+                await salaRepository.criar(payload)
+                notify('Sala criada com sucesso.')
+            }
+            const lastCreator = fSala.ID_Criador
+            setFSala({ ...initialSala, ID_Criador: lastCreator })
+            setEditingSalaId(null)
+            await loadSalas()
+        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar sala.', true) }
+        finally { setLoading(false) }
+    }
+
     const editUsuario = (usuario: Usuario) => { setFUsuario({ email: '', password: '', Nome_Display: usuario.Nome_Display, Nome_Usuario: usuario.Nome_Usuario ?? '', Cargo: usuario.Cargo as Cargo, Biografia: usuario.Biografia }); setEditingUsuarioId(usuario.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editCurso = (curso: Curso) => { setFCurso({ ID_Criador: curso.ID_Criador, Titulo: curso.Titulo, Slug: curso.Slug, Descricao: curso.Descricao, Dificuldade: curso.Dificuldade, Categoria: curso.Categoria, Tags: curso.Tags.join(', '), Cor_Capa: curso.Cor_Capa, Icone: curso.Icone, Status: curso.Status }); setEditingCursoId(curso.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editModulo = (modulo: Modulo) => { setFModulo({ ID_Curso: modulo.ID_Curso, Titulo: modulo.Titulo, Subtitulo: modulo.Subtitulo, Icone: modulo.Icone, Cor_Tema: modulo.Cor_Tema, Posicao: String(modulo.Posicao) }); setEditingModuloId(modulo.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editAula = (aula: Aula) => { setFAula({ ID_Modulo: aula.ID_Modulo, Titulo: aula.Titulo, Descricao: aula.Descricao, Duracao: aula.Duracao, Posicao: String(aula.Posicao), Publicado: aula.Publicado }); setEditingAulaId(aula.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editQuestao = (questao: Questao) => { setFQuestao({ ID_Aula: questao.ID_Aula, Enunciado: questao.Enunciado, Explicacao: questao.Explicacao, Tipo: questao.Tipo, Tipo_Resposta: questao.Tipo_Resposta ?? '', XP: String(questao.XP), Posicao: String(questao.Posicao) }); setEditingQuestaoId(questao.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+    const editSala = (sala: Sala) => { setFSala({ ID_Criador: sala.ID_Criador, Nome: sala.Nome, Codigo: sala.Codigo, fk_Curso_ID: sala.fk_Curso_ID ?? '' }); setEditingSalaId(sala.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
     const removeUsuario = async (id: string) => { if (!window.confirm('Excluir este usuário?')) return; setLoading(true); try { await usuarioRepository.deletar(id); notify('Usuário excluído com sucesso.'); await loadUsuarios() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir usuário.', true) } finally { setLoading(false) } }
     const removeCurso = async (id: string) => { if (!window.confirm('Excluir este curso?')) return; setLoading(true); try { await cursoRepository.deletar(id); notify('Curso excluído com sucesso.'); await loadCursos() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir curso.', true) } finally { setLoading(false) } }
     const removeModulo = async (id: string) => { if (!window.confirm('Excluir este módulo?')) return; setLoading(true); try { await moduloRepository.deletar(id); notify('Módulo excluído com sucesso.'); await loadModulos() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir módulo.', true) } finally { setLoading(false) } }
     const removeAula = async (id: string) => { if (!window.confirm('Excluir esta aula?')) return; setLoading(true); try { await aulaRepository.deletar(id); notify('Aula excluída com sucesso.'); await loadAulas() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir aula.', true) } finally { setLoading(false) } }
     const removeQuestao = async (id: string) => { if (!window.confirm('Excluir esta questão?')) return; setLoading(true); try { await questaoRepository.deletar(id); notify('Questão excluída com sucesso.'); await loadQuestoes() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir questão.', true) } finally { setLoading(false) } }
+    const removeSala = async (id: string) => { if (!window.confirm('Excluir esta sala?')) return; setLoading(true); try { await salaRepository.deletar(id); notify('Sala excluída com sucesso.'); await loadSalas() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir sala.', true) } finally { setLoading(false) } }
 
     const resetCurrentForm = () => {
         setStatusMsg(null); setEditingUsuarioId(null); setEditingCursoId(null); setEditingModuloId(null)
@@ -260,7 +296,8 @@ export function CrudConsole() {
         else if (activeTab === 'cursos') setFCurso((current) => ({ ...initialCurso, ID_Criador: current.ID_Criador }))
         else if (activeTab === 'modulo') setFModulo((current) => ({ ...initialModulo, ID_Curso: current.ID_Curso }))
         else if (activeTab === 'aula') setFAula((current) => ({ ...initialAula, ID_Modulo: current.ID_Modulo }))
-        else setFQuestao((current) => ({ ...initialQuestao, ID_Aula: current.ID_Aula }))
+        else if (activeTab === 'questao') setFQuestao((current) => ({ ...initialQuestao, ID_Aula: current.ID_Aula }))
+        else setFSala((current) => ({ ...initialSala, ID_Criador: current.ID_Criador }))
     }
         
     return <main className="crud-shell">
@@ -270,7 +307,8 @@ export function CrudConsole() {
             <button className={activeTab === 'cursos' ? 'active' : ''} onClick={() => { setActiveTab('cursos'); resetCurrentForm() }}>Cursos</button>
             <button className={activeTab === 'modulo' ? 'active' : ''} onClick={() => { setActiveTab('modulo'); resetCurrentForm() }}>modulo</button>
             <button className={activeTab === 'aula' ? 'active' : ''} onClick={() => { setActiveTab('aula'); resetCurrentForm() }}>aula</button>
-            <button className={activeTab === 'questao' ? 'active' : ''} onClick={() => { setActiveTab('questao'); resetCurrentForm() }}>Questões</button> 
+            <button className={activeTab === 'questao' ? 'active' : ''} onClick={() => { setActiveTab('questao'); resetCurrentForm() }}>Questões</button>
+            <button className={activeTab === 'sala' ? 'active' : ''} onClick={() => { setActiveTab('sala'); resetCurrentForm() }}>Salas</button> {/* 👈 NOVO */}
         </nav>
         
         {statusMsg && <div className={`crud-status ${statusMsg.isError ? 'error' : 'success'}`} role="status">{statusMsg.text}</div>}
@@ -413,7 +451,7 @@ export function CrudConsole() {
                 <AulaTable aulas={aulas} modulos={modulos} loading={loading} onEdit={editAula} onDelete={(id) => void removeAula(id)} />
             </section>
         </>
-        : <>
+        : activeTab === 'questao' ? <>
             <section className="crud-card form-card">
                 <div className="section-heading">
                     <span className="eyebrow">{editingQuestaoId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
@@ -452,6 +490,38 @@ export function CrudConsole() {
                 </div>
                 <button className="button ghost" onClick={() => void loadQuestoes()} disabled={loading}>Atualizar lista</button></div>
                 <QuestaoTable questoes={questoes} aulas={aulas} loading={loading} onEdit={editQuestao} onDelete={(id) => void removeQuestao(id)} />
+            </section>
+        </>
+        : <>
+        <section className="crud-card form-card">
+                <div className="section-heading">
+                    <span className="eyebrow">{editingSalaId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
+                    <h2>{editingSalaId ? 'Alterar sala' : 'Criar sala'}</h2>
+                    <p>Vínculo com curso é opcional. Código precisa ser único.</p>
+                </div>
+
+                <form onSubmit={handleSala} className="crud-form">
+                    <label><span>ID do criador *</span><input value={fSala.ID_Criador} readOnly placeholder="Último usuário cadastrado" /></label>
+                    <label><span>Nome *</span><input value={fSala.Nome} onChange={(event) => setFSala({ ...fSala, Nome: event.target.value })} required /></label>
+                    <label><span>Código *</span><input value={fSala.Codigo} onChange={(event) => setFSala({ ...fSala, Codigo: event.target.value })} placeholder="ex: TURMA2024" required /></label>
+                    <label>
+                        <span>Curso vinculado</span>
+                        <select value={fSala.fk_Curso_ID} onChange={(event) => setFSala({ ...fSala, fk_Curso_ID: event.target.value })}>
+                            <option value="">Nenhum</option>
+                            {cursos.filter((curso) => curso.ID_Criador === fSala.ID_Criador).map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
+                        </select>
+                    </label>
+                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingSalaId ? 'Salvar alterações' : 'Criar sala'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
+                </form>
+            </section>
+
+            <section className="crud-card list-card">
+                <div className="list-toolbar"><div>
+                    <span className="eyebrow">REGISTROS</span>
+                    <h2>Salas</h2>
+                </div>
+                <button className="button ghost" onClick={() => void loadSalas()} disabled={loading}>Atualizar lista</button></div>
+                <SalaTable salas={salas} cursos={cursos} loading={loading} onEdit={editSala} onDelete={(id) => void removeSala(id)} />
             </section>
         </>}
     </main>
@@ -615,6 +685,35 @@ function QuestaoTable({ questoes, aulas, loading, onEdit, onDelete }: { questoes
                 }
                 { questoes.length === 0 && <tr>
                     <td className="empty" colSpan={7}>{loading ? 'Carregando...' : 'Nenhuma questão cadastrada.'}</td>
+                    </tr>}
+            </tbody>
+        </table>
+        </div>
+}
+
+function SalaTable({ salas, cursos, loading, onEdit, onDelete }: { salas: Sala[]; cursos: Curso[]; loading: boolean; onEdit: (sala: Sala) => void; onDelete: (id: string) => void }) {
+    return <div className="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Código</th>
+                    <th>Curso vinculado</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>{salas.map((sala) =>
+                <tr key={sala.ID}>
+                    <td><code>{sala.ID}</code></td>
+                    <td>{sala.Nome}</td>
+                    <td><code>{sala.Codigo}</code></td>
+                    <td>{sala.fk_Curso_ID ? (cursos.find((c) => c.ID === sala.fk_Curso_ID)?.Titulo ?? <code>{sala.fk_Curso_ID}</code>) : '—'}</td>
+                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(sala)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(sala.ID)}>Apagar</button></td>
+                </tr>)
+                }
+                { salas.length === 0 && <tr>
+                    <td className="empty" colSpan={5}>{loading ? 'Carregando...' : 'Nenhuma sala cadastrada.'}</td>
                     </tr>}
             </tbody>
         </table>
