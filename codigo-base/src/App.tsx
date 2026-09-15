@@ -7,6 +7,12 @@ export function App() {
       <h1>Athen: Plataforma de Educação</h1>
       <h2> Aprendizado por reforço e Competitividade amigável</h2>
 
+      <img 
+        src="/Athen.png" 
+        alt="Descrição da imagem" 
+        style={{ width: '150px', height: 'auto' }} 
+      />
+
       <section className="esquerda">
       <h2> Plataforma de aprendizado por reforço gamificada</h2>
       <p>Muitos tipos de atividades para criar sua própria trilha de estudos para seu objetivo</p>
