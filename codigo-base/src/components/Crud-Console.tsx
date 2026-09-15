@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { cursoRepository, usuarioRepository, moduloRepository, aulaRepository, questaoRepository, salaRepository, notebookRepository, matriculaRepository } from '../data/repositories'
+import { cursoRepository, usuarioRepository, moduloRepository, aulaRepository, questaoRepository, salaRepository, matriculaRepository } from '../data/repositories'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
-import './Crud-Console.css'
+import './crud-console.css'
 
 type Usuario = Database['public']['Tables']['Usuario']['Row']
 type Curso = Database['public']['Tables']['Curso']['Row']
@@ -71,14 +71,31 @@ export function CrudConsole() {
   const loadMatriculas = useCallback(async () => { try { setMatriculas(await matriculaRepository.listar()) } catch (error) { notify(`Erro ao carregar matrículas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
   
 
-  useEffect(() => { if (activeTab === 'usuarios') void loadUsuarios(); 
-                    else if (activeTab === 'cursos') void loadCursos()
-                    else if (activeTab === 'modulo') { void loadCursos(); void loadModulos() }
-                    else if (activeTab === 'aula') { void loadCursos(); void loadModulos(); void loadAulas() }
-                    else if (activeTab === 'questao') { void loadCursos(); void loadModulos(); void loadAulas(); void loadQuestoes() }
-                    else if (activeTab === 'sala') { void loadCursos(); void loadSalas() }
-                    else if (activeTab === 'matricula') { void loadCursos(); void loadMatriculas() }
-                  }, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes, loadSalas])
+  useEffect(() => {
+  const carregarDados = async () => {
+    if (activeTab === 'usuarios') await loadUsuarios()
+    else if (activeTab === 'cursos') await loadCursos()
+    else if (activeTab === 'modulo') {
+      await loadCursos()
+      await loadModulos()
+    } else if (activeTab === 'aula') {
+      await loadCursos()
+      await loadModulos()
+      await loadAulas()
+    } else if (activeTab === 'questao') {
+      await loadCursos()
+      await loadModulos()
+      await loadAulas()
+      await loadQuestoes()
+    } else if (activeTab === 'sala') {
+      await loadCursos()
+      await loadSalas()
+    } else if (activeTab === 'matricula') {
+      await loadCursos()
+      await loadMatriculas()
+    }
+  }
+  void carregarDados()}, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes, loadSalas, loadMatriculas,])
 
   useEffect(() => { void supabase.auth.getUser().then(({ data }) => { if (data.user) { 
     setFCurso((current) => ({ ...current, ID_Criador: data.user.id }))
