@@ -109,3 +109,49 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+section {
+  width: 50%;
+}
+
+.esquerda {
+  margin-top: 200px;
+  margin-right: auto;
+}
+
+.direita {
+  margin-top: 200px;
+  margin-left: auto;
+}
+
+footer {
+  background-color: #A020F0;
+  color: white;
+  padding: 60px 10%;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 50px;
+}
+
+footer section {
+  margin: 0;
+}
+
+footer h3 {
+  margin-bottom: 15px;
+}
+
+footer p {
+  margin: 10px 0;
+  color: #d7ffb8;
+}
+
+footer a {
+  display: block;
+  margin: 10px 0;
+  color: #d7ffb8;
+  text-decoration: none;
+}
