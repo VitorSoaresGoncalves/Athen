@@ -10,11 +10,12 @@ type Modulo = Database['public']['Tables']['Modulo']['Row']
 type Aula = Database['public']['Tables']['Aula']['Row']
 type Questao = Database['public']['Tables']['Questao']['Row']
 type Sala = Database['public']['Tables']['Sala']['Row']
+type Matricula = Database['public']['Tables']['matricula']['Row']
 type Cargo = 'learner' | 'creator' | 'moderator'
 type CourseLevel = Database['public']['Enums']['course_level']
 type CourseStatus = Database['public']['Enums']['course_status']
 type QuestionType = Database['public']['Enums']['question_type']
-type Tab = 'usuarios' | 'cursos' | 'modulo' | 'sala' | 'aula' | 'questao' | 'notebook' | 'matricula';
+type Tab = 'usuarios' | 'cursos' | 'modulo' | 'aula' | 'questao' | 'sala' | 'matricula' | 'notebook';
 
 type FormUsuario = { email: string; password: string; Nome_Display: string; Nome_Usuario: string; Cargo: Cargo; Biografia: string }
 type FormCurso = { ID_Criador: string; Titulo: string; Slug: string; Descricao: string; Dificuldade: CourseLevel; Categoria: string; Tags: string; Cor_Capa: string; Icone: string; Status: CourseStatus }
@@ -22,6 +23,7 @@ type FormModulo = { ID_Curso: string; Titulo: string; Subtitulo: string; Icone: 
 type FormAula = { ID_Modulo: string; Titulo: string; Descricao: string; Duracao: string; Posicao: string; Publicado: boolean }
 type FormQuestao = { ID_Aula: string; Enunciado: string; Explicacao: string; Tipo: QuestionType; Tipo_Resposta: string; XP: string; Posicao: string }
 type FormSala = { ID_Criador: string; Nome: string; Codigo: string; fk_Curso_ID: string }
+type FormMatricula = { fk_Curso_ID: string; fk_Usuario_ID: string; Avaliacao: string }
 
 
 const initialUsuario: FormUsuario = { email: '', password: '', Nome_Display: '', Nome_Usuario: '', Cargo: 'learner', Biografia: '' }
@@ -30,6 +32,7 @@ const initialModulo: FormModulo = { ID_Curso: '', Titulo: '', Subtitulo: '', Ico
 const initialAula: FormAula = { ID_Modulo: '', Titulo: '', Descricao: '', Duracao: '', Posicao: '0', Publicado: false }
 const initialQuestao: FormQuestao = { ID_Aula: '', Enunciado: '', Explicacao: '', Tipo: 'multiple_choice', Tipo_Resposta: '', XP: '0', Posicao: '0' }
 const initialSala: FormSala = { ID_Criador: '', Nome: '', Codigo: '', fk_Curso_ID: '' }
+const initialMatricula: FormMatricula = { fk_Curso_ID: '', fk_Usuario_ID: '', Avaliacao: '' }
 
 
 export function CrudConsole() {
@@ -40,18 +43,21 @@ export function CrudConsole() {
   const [aulas, setAulas] = useState<Aula[]>([])
   const [questoes, setQuestoes] = useState<Questao[]>([])
   const [salas, setSalas] = useState<Sala[]>([])
+  const [matriculas, setMatriculas] = useState<Matricula[]>([])
   const [fUsuario, setFUsuario] = useState<FormUsuario>(initialUsuario)
   const [fCurso, setFCurso] = useState<FormCurso>(initialCurso)
   const [fModulo, setFModulo] = useState<FormModulo>(initialModulo)
   const [fAula, setFAula] = useState<FormAula>(initialAula)
   const [fQuestao, setFQuestao] = useState<FormQuestao>(initialQuestao) 
   const [fSala, setFSala] = useState<FormSala>(initialSala)
+  const [fMatricula, setFMatricula] = useState<FormMatricula>(initialMatricula)
   const [editingUsuarioId, setEditingUsuarioId] = useState<string | null>(null)
   const [editingCursoId, setEditingCursoId] = useState<string | null>(null)
   const [editingModuloId, setEditingModuloId] = useState<string | null>(null)
   const [editingAulaId, setEditingAulaId] = useState<string | null>(null)
   const [editingQuestaoId, setEditingQuestaoId] = useState<string | null>(null)
   const [editingSalaId, setEditingSalaId] = useState<string | null>(null)
+  const [editingMatricula, setEditingMatricula] = useState<{ fk_Curso_ID: string; fk_Usuario_ID: string } | null>(null)
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -62,7 +68,8 @@ export function CrudConsole() {
   const loadAulas = useCallback(async () => { try { setAulas(await aulaRepository.listar()) } catch (error) { notify(`Erro ao carregar aulas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
   const loadQuestoes = useCallback(async () => { try { setQuestoes(await questaoRepository.listar()) } catch (error) { notify(`Erro ao carregar questões: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
   const loadSalas = useCallback(async () => { try { setSalas(await salaRepository.listar()) } catch (error) { notify(`Erro ao carregar salas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-
+  const loadMatriculas = useCallback(async () => { try { setMatriculas(await matriculaRepository.listar()) } catch (error) { notify(`Erro ao carregar matrículas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
+  
 
   useEffect(() => { if (activeTab === 'usuarios') void loadUsuarios(); 
                     else if (activeTab === 'cursos') void loadCursos()
@@ -70,9 +77,13 @@ export function CrudConsole() {
                     else if (activeTab === 'aula') { void loadCursos(); void loadModulos(); void loadAulas() }
                     else if (activeTab === 'questao') { void loadCursos(); void loadModulos(); void loadAulas(); void loadQuestoes() }
                     else if (activeTab === 'sala') { void loadCursos(); void loadSalas() }
+                    else if (activeTab === 'matricula') { void loadCursos(); void loadMatriculas() }
                   }, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes, loadSalas])
 
-  useEffect(() => { void supabase.auth.getUser().then(({ data }) => { if (data.user) { setFCurso((current) => ({ ...current, ID_Criador: data.user.id })); setFSala((current) => ({ ...current, ID_Criador: data.user.id })) } }) }, [])
+  useEffect(() => { void supabase.auth.getUser().then(({ data }) => { if (data.user) { 
+    setFCurso((current) => ({ ...current, ID_Criador: data.user.id }))
+    setFSala((current) => ({ ...current, ID_Criador: data.user.id }))
+    setFMatricula((current) => ({ ...current, fk_Usuario_ID: data.user.id }))} }) }, [])
 
     // handles
 
@@ -276,20 +287,42 @@ export function CrudConsole() {
         finally { setLoading(false) }
     }
 
+    const handleMatricula = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault(); setStatusMsg(null); setLoading(true)
+        try {
+            if (editingMatricula) {
+                const nota = Number(fMatricula.Avaliacao)
+                if (!fMatricula.Avaliacao || Number.isNaN(nota)) throw new Error('Informe uma avaliação numérica.')
+                await matriculaRepository.atualizarAvaliacao(editingMatricula.fk_Curso_ID, editingMatricula.fk_Usuario_ID, nota)
+                notify('Avaliação atualizada com sucesso.')
+            } else {
+                if (!fMatricula.fk_Curso_ID) throw new Error('Selecione o curso.')
+                await matriculaRepository.criar({ fk_Curso_ID: fMatricula.fk_Curso_ID, fk_Usuario_ID: fMatricula.fk_Usuario_ID })
+                notify('Matrícula criada com sucesso.')
+            }
+            setFMatricula((current) => ({ ...initialMatricula, fk_Usuario_ID: current.fk_Usuario_ID }))
+            setEditingMatricula(null)
+            await loadMatriculas()
+        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar matrícula.', true) }
+        finally { setLoading(false) }
+    }
+
     const editUsuario = (usuario: Usuario) => { setFUsuario({ email: '', password: '', Nome_Display: usuario.Nome_Display, Nome_Usuario: usuario.Nome_Usuario ?? '', Cargo: usuario.Cargo as Cargo, Biografia: usuario.Biografia }); setEditingUsuarioId(usuario.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editCurso = (curso: Curso) => { setFCurso({ ID_Criador: curso.ID_Criador, Titulo: curso.Titulo, Slug: curso.Slug, Descricao: curso.Descricao, Dificuldade: curso.Dificuldade, Categoria: curso.Categoria, Tags: curso.Tags.join(', '), Cor_Capa: curso.Cor_Capa, Icone: curso.Icone, Status: curso.Status }); setEditingCursoId(curso.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editModulo = (modulo: Modulo) => { setFModulo({ ID_Curso: modulo.ID_Curso, Titulo: modulo.Titulo, Subtitulo: modulo.Subtitulo, Icone: modulo.Icone, Cor_Tema: modulo.Cor_Tema, Posicao: String(modulo.Posicao) }); setEditingModuloId(modulo.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editAula = (aula: Aula) => { setFAula({ ID_Modulo: aula.ID_Modulo, Titulo: aula.Titulo, Descricao: aula.Descricao, Duracao: aula.Duracao, Posicao: String(aula.Posicao), Publicado: aula.Publicado }); setEditingAulaId(aula.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editQuestao = (questao: Questao) => { setFQuestao({ ID_Aula: questao.ID_Aula, Enunciado: questao.Enunciado, Explicacao: questao.Explicacao, Tipo: questao.Tipo, Tipo_Resposta: questao.Tipo_Resposta ?? '', XP: String(questao.XP), Posicao: String(questao.Posicao) }); setEditingQuestaoId(questao.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editSala = (sala: Sala) => { setFSala({ ID_Criador: sala.ID_Criador, Nome: sala.Nome, Codigo: sala.Codigo, fk_Curso_ID: sala.fk_Curso_ID ?? '' }); setEditingSalaId(sala.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-
+    const editMatricula = (matricula: Matricula) => { setFMatricula({ fk_Curso_ID: matricula.fk_Curso_ID, fk_Usuario_ID: matricula.fk_Usuario_ID, Avaliacao: matricula.Avaliacao !== null ? String(matricula.Avaliacao) : '' }); setEditingMatricula({ fk_Curso_ID: matricula.fk_Curso_ID, fk_Usuario_ID: matricula.fk_Usuario_ID }); window.scrollTo({ top: 0, behavior: 'smooth' })
+}
     const removeUsuario = async (id: string) => { if (!window.confirm('Excluir este usuário?')) return; setLoading(true); try { await usuarioRepository.deletar(id); notify('Usuário excluído com sucesso.'); await loadUsuarios() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir usuário.', true) } finally { setLoading(false) } }
     const removeCurso = async (id: string) => { if (!window.confirm('Excluir este curso?')) return; setLoading(true); try { await cursoRepository.deletar(id); notify('Curso excluído com sucesso.'); await loadCursos() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir curso.', true) } finally { setLoading(false) } }
     const removeModulo = async (id: string) => { if (!window.confirm('Excluir este módulo?')) return; setLoading(true); try { await moduloRepository.deletar(id); notify('Módulo excluído com sucesso.'); await loadModulos() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir módulo.', true) } finally { setLoading(false) } }
     const removeAula = async (id: string) => { if (!window.confirm('Excluir esta aula?')) return; setLoading(true); try { await aulaRepository.deletar(id); notify('Aula excluída com sucesso.'); await loadAulas() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir aula.', true) } finally { setLoading(false) } }
     const removeQuestao = async (id: string) => { if (!window.confirm('Excluir esta questão?')) return; setLoading(true); try { await questaoRepository.deletar(id); notify('Questão excluída com sucesso.'); await loadQuestoes() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir questão.', true) } finally { setLoading(false) } }
     const removeSala = async (id: string) => { if (!window.confirm('Excluir esta sala?')) return; setLoading(true); try { await salaRepository.deletar(id); notify('Sala excluída com sucesso.'); await loadSalas() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir sala.', true) } finally { setLoading(false) } }
-
+    const removeMatricula = async (fkCursoId: string, fkUsuarioId: string) => { if (!window.confirm('Excluir esta matrícula?')) return; setLoading(true); try { await matriculaRepository.deletar(fkCursoId, fkUsuarioId); notify('Matrícula excluída com sucesso.'); await loadMatriculas()} catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir matrícula.', true) }finally { setLoading(false) }}
+    
     const resetCurrentForm = () => {
         setStatusMsg(null); setEditingUsuarioId(null); setEditingCursoId(null); setEditingModuloId(null)
         if (activeTab === 'usuarios') setFUsuario(initialUsuario)
@@ -297,7 +330,8 @@ export function CrudConsole() {
         else if (activeTab === 'modulo') setFModulo((current) => ({ ...initialModulo, ID_Curso: current.ID_Curso }))
         else if (activeTab === 'aula') setFAula((current) => ({ ...initialAula, ID_Modulo: current.ID_Modulo }))
         else if (activeTab === 'questao') setFQuestao((current) => ({ ...initialQuestao, ID_Aula: current.ID_Aula }))
-        else setFSala((current) => ({ ...initialSala, ID_Criador: current.ID_Criador }))
+        else if (activeTab === 'sala') setFSala((current) => ({ ...initialSala, ID_Criador: current.ID_Criador }))
+        else if (activeTab === 'matricula') setFMatricula((current) => ({ ...initialMatricula, fk_Usuario_ID: current.fk_Usuario_ID }))
     }
         
     return <main className="crud-shell">
@@ -308,7 +342,8 @@ export function CrudConsole() {
             <button className={activeTab === 'modulo' ? 'active' : ''} onClick={() => { setActiveTab('modulo'); resetCurrentForm() }}>modulo</button>
             <button className={activeTab === 'aula' ? 'active' : ''} onClick={() => { setActiveTab('aula'); resetCurrentForm() }}>aula</button>
             <button className={activeTab === 'questao' ? 'active' : ''} onClick={() => { setActiveTab('questao'); resetCurrentForm() }}>Questões</button>
-            <button className={activeTab === 'sala' ? 'active' : ''} onClick={() => { setActiveTab('sala'); resetCurrentForm() }}>Salas</button> {/* 👈 NOVO */}
+            <button className={activeTab === 'sala' ? 'active' : ''} onClick={() => { setActiveTab('sala'); resetCurrentForm() }}>Salas</button>
+            <button className={activeTab === 'matricula' ? 'active' : ''} onClick={() => { setActiveTab('matricula'); resetCurrentForm() }}>Matriculas</button>
         </nav>
         
         {statusMsg && <div className={`crud-status ${statusMsg.isError ? 'error' : 'success'}`} role="status">{statusMsg.text}</div>}
@@ -492,7 +527,7 @@ export function CrudConsole() {
                 <QuestaoTable questoes={questoes} aulas={aulas} loading={loading} onEdit={editQuestao} onDelete={(id) => void removeQuestao(id)} />
             </section>
         </>
-        : <>
+        : activeTab === 'sala' ? <>
         <section className="crud-card form-card">
                 <div className="section-heading">
                     <span className="eyebrow">{editingSalaId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
@@ -523,6 +558,41 @@ export function CrudConsole() {
                 <button className="button ghost" onClick={() => void loadSalas()} disabled={loading}>Atualizar lista</button></div>
                 <SalaTable salas={salas} cursos={cursos} loading={loading} onEdit={editSala} onDelete={(id) => void removeSala(id)} />
             </section>
+        </>
+        : <>
+        <section className="crud-card form-card">
+            <div className="section-heading">
+                <span className="eyebrow">{editingMatricula ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
+                <h2>{editingMatricula ? 'Atualizar avaliação' : 'Nova matrícula'}</h2>
+                <p>Aqui você só vê e mexe nas suas próprias matrículas (RLS "self only").</p>
+            </div>
+
+            <form onSubmit={handleMatricula} className="crud-form">
+                {!editingMatricula && (
+                    <label>
+                        <span>Curso *</span>
+                        <select value={fMatricula.fk_Curso_ID} onChange={(event) => setFMatricula({ ...fMatricula, fk_Curso_ID: event.target.value })} required>
+                            <option value="" disabled>Selecione um curso</option>
+                            {cursos.map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
+                        </select>
+                    </label>
+                )}
+                {editingMatricula && (
+                    <p><strong>Curso:</strong> {cursos.find((c) => c.ID === editingMatricula.fk_Curso_ID)?.Titulo ?? editingMatricula.fk_Curso_ID}</p>
+                )}
+                <label><span>Avaliação {editingMatricula ? '*' : '(deixe em branco ao matricular)'}</span><input type="number" min={0} max={5} step={1} value={fMatricula.Avaliacao} onChange={(event) => setFMatricula({ ...fMatricula, Avaliacao: event.target.value })} required={!!editingMatricula} /></label>
+                <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingMatricula ? 'Salvar avaliação' : 'Matricular'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
+            </form>
+        </section>
+
+        <section className="crud-card list-card">
+            <div className="list-toolbar"><div>
+                <span className="eyebrow">REGISTROS</span>
+                <h2>Minhas matrículas</h2>
+            </div>
+            <button className="button ghost" onClick={() => void loadMatriculas()} disabled={loading}>Atualizar lista</button></div>
+            <MatriculaTable matriculas={matriculas} cursos={cursos} loading={loading} onEdit={editMatricula} onDelete={(fkCurso, fkUsuario) => void removeMatricula(fkCurso, fkUsuario)} />
+        </section>
         </>}
     </main>
 }
@@ -714,6 +784,39 @@ function SalaTable({ salas, cursos, loading, onEdit, onDelete }: { salas: Sala[]
                 }
                 { salas.length === 0 && <tr>
                     <td className="empty" colSpan={5}>{loading ? 'Carregando...' : 'Nenhuma sala cadastrada.'}</td>
+                    </tr>}
+            </tbody>
+        </table>
+        </div>
+}
+
+function MatriculaTable({ matriculas, cursos, loading, onEdit, onDelete }: { matriculas: Matricula[]; cursos: Curso[]; loading: boolean; onEdit: (matricula: Matricula) => void; onDelete: (fkCursoId: string, fkUsuarioId: string) => void }) {
+    return <div className="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Curso</th>
+                    <th>Aulas finalizadas</th>
+                    <th>Avaliação</th>
+                    <th>XP total</th>
+                    <th>XP diário</th>
+                    <th>Última aparição</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>{matriculas.map((matricula) =>
+                <tr key={`${matricula.fk_Curso_ID}-${matricula.fk_Usuario_ID}`}>
+                    <td>{cursos.find((c) => c.ID === matricula.fk_Curso_ID)?.Titulo ?? <code>{matricula.fk_Curso_ID}</code>}</td>
+                    <td>{matricula.Aulas_Finalizadas}</td>
+                    <td>{matricula.Avaliacao ?? '—'}</td>
+                    <td>{matricula.XP_Total}</td>
+                    <td>{matricula.XP_Diario}</td>
+                    <td>{matricula.Ultima_Aparicao ?? '—'}</td>
+                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(matricula)}>Avaliar</button><button className="link-button danger" onClick={() => onDelete(matricula.fk_Curso_ID, matricula.fk_Usuario_ID)}>Apagar</button></td>
+                </tr>)
+                }
+                { matriculas.length === 0 && <tr>
+                    <td className="empty" colSpan={7}>{loading ? 'Carregando...' : 'Nenhuma matrícula.'}</td>
                     </tr>}
             </tbody>
         </table>
