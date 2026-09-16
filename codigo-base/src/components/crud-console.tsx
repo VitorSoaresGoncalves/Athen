@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { cursoRepository, usuarioRepository, moduloRepository, aulaRepository, questaoRepository, salaRepository, matriculaRepository } from '../data/repositories'
 import { supabase } from '../lib/supabase'
-import type { Database } from '../types/database'
+import type { Database, Json } from '../types/database'
 import './crud-console.css'
 
 type Usuario = Database['public']['Tables']['Usuario']['Row']
@@ -15,13 +15,30 @@ type Cargo = 'learner' | 'creator' | 'moderator'
 type CourseLevel = Database['public']['Enums']['course_level']
 type CourseStatus = Database['public']['Enums']['course_status']
 type QuestionType = Database['public']['Enums']['question_type']
+type Alternativa = { texto: string; correta: boolean }
+type ParMatch = { esquerda: string; direita: string }
 type Tab = 'usuarios' | 'cursos' | 'modulo' | 'aula' | 'questao' | 'sala' | 'matricula' | 'notebook';
+
+const questionTypeLabels: Record<QuestionType, string> = {
+    multiple_choice: 'Múltipla escolha',
+    fill_blank: 'Preencher lacuna',
+    word_match: 'Associação de palavras',
+    order_sequence: 'Ordenar sequência',
+}
+
+function textoDoEnunciado(enunciado: Json): string {
+    if (typeof enunciado === 'string') return enunciado
+    if (enunciado && typeof enunciado === 'object' && !Array.isArray(enunciado) && 'texto' in enunciado && typeof (enunciado as { texto?: unknown }).texto === 'string') {
+        return (enunciado as { texto: string }).texto
+    }
+    return JSON.stringify(enunciado)
+}
 
 type FormUsuario = { email: string; password: string; Nome_Display: string; Nome_Usuario: string; Cargo: Cargo; Biografia: string }
 type FormCurso = { ID_Criador: string; Titulo: string; Slug: string; Descricao: string; Dificuldade: CourseLevel; Categoria: string; Tags: string; Cor_Capa: string; Icone: string; Status: CourseStatus }
 type FormModulo = { ID_Curso: string; Titulo: string; Subtitulo: string; Icone: string; Cor_Tema: string; Posicao: string }
 type FormAula = { ID_Modulo: string; Titulo: string; Descricao: string; Duracao: string; Posicao: string; Publicado: boolean }
-type FormQuestao = { ID_Aula: string; Enunciado: string; Explicacao: string; Tipo: QuestionType; Tipo_Resposta: string; XP: string; Posicao: string }
+type FormQuestao = { ID_Aula: string; TextoEnunciado: string; Explicacao: string; Tipo: QuestionType; XP: string; Posicao: string; Alternativas: Alternativa[]; RespostaFillBlank: string; Pares: ParMatch[]; ItensOrdem: string[] }
 type FormSala = { ID_Criador: string; Nome: string; Codigo: string; fk_Curso_ID: string }
 type FormMatricula = { fk_Curso_ID: string; fk_Usuario_ID: string; Avaliacao: string }
 
@@ -30,7 +47,7 @@ const initialUsuario: FormUsuario = { email: 'a@a', password: '123456', Nome_Dis
 const initialCurso: FormCurso = { ID_Criador: '', Titulo: 'aaa', Slug: 'zzz', Descricao: 'zzz', Dificuldade: 'Beginner', Categoria: 'zz', Tags: 'zzz', Cor_Capa: '#fff', Icone: '◒', Status: 'draft' }
 const initialModulo: FormModulo = { ID_Curso: '', Titulo: 'zz', Subtitulo: 'zz', Icone: '📘', Cor_Tema: '#fff', Posicao: '0' }
 const initialAula: FormAula = { ID_Modulo: '', Titulo: 'zzzz', Descricao: 'zzz', Duracao: '11', Posicao: '0', Publicado: false }
-const initialQuestao: FormQuestao = { ID_Aula: '', Enunciado: 'zzzzz', Explicacao: 'zzzz', Tipo: 'multiple_choice', Tipo_Resposta: 'zzzz', XP: '0', Posicao: '0' }
+const initialQuestao: FormQuestao = { ID_Aula: '', TextoEnunciado: 'zzzzz', Explicacao: 'zzzz', Tipo: 'multiple_choice', XP: '1', Posicao: '0', Alternativas: [{ texto: '', correta: true }, { texto: '', correta: false }], RespostaFillBlank: '', Pares: [{ esquerda: '', direita: '' }], ItensOrdem: ['', ''] }
 const initialSala: FormSala = { ID_Criador: '', Nome: 'zzzzz', Codigo: 'zzzz', fk_Curso_ID: '' }
 const initialMatricula: FormMatricula = { fk_Curso_ID: '', fk_Usuario_ID: '', Avaliacao: '' }
 
@@ -252,13 +269,35 @@ export function CrudConsole() {
         event.preventDefault(); setStatusMsg(null); setLoading(true)
         try {
             if (!fQuestao.ID_Aula) throw new Error('Selecione a aula.')
-            if (!fQuestao.Enunciado.trim()) throw new Error('Enunciado é obrigatório.')
+            if (!fQuestao.TextoEnunciado.trim()) throw new Error('Enunciado é obrigatório.')
+
+            let respostaJson: Json
+
+            if (fQuestao.Tipo === 'multiple_choice') {
+                const alternativasValidas = fQuestao.Alternativas.map((a) => a.texto.trim()).filter(Boolean)
+                if (alternativasValidas.length < 2) throw new Error('Adicione ao menos 2 alternativas.')
+                const indiceCorreto = fQuestao.Alternativas.findIndex((a) => a.correta && a.texto.trim())
+                if (indiceCorreto === -1) throw new Error('Marque qual alternativa é a correta.')
+                respostaJson = { alternativas: alternativasValidas, indiceCorreto }
+            } else if (fQuestao.Tipo === 'fill_blank') {
+                if (!fQuestao.RespostaFillBlank.trim()) throw new Error('Informe a resposta correta da lacuna.')
+                respostaJson = { resposta: fQuestao.RespostaFillBlank.trim() }
+            } else if (fQuestao.Tipo === 'word_match') {
+                const paresValidos = fQuestao.Pares.filter((p) => p.esquerda.trim() && p.direita.trim()).map((p) => ({ esquerda: p.esquerda.trim(), direita: p.direita.trim() }))
+                if (paresValidos.length < 1) throw new Error('Adicione ao menos um par completo.')
+                respostaJson = { pares: paresValidos }
+            } else {
+                const itensValidos = fQuestao.ItensOrdem.map((i) => i.trim()).filter(Boolean)
+                if (itensValidos.length < 2) throw new Error('Adicione ao menos 2 itens.')
+                respostaJson = { itens: itensValidos }
+            }
+
             const payload = {
                 ID_Aula: fQuestao.ID_Aula,
-                Enunciado: fQuestao.Enunciado.trim(),
+                Enunciado: { texto: fQuestao.TextoEnunciado.trim() }, 
                 Explicacao: fQuestao.Explicacao.trim(),
                 Tipo: fQuestao.Tipo,
-                Tipo_Resposta: fQuestao.Tipo_Resposta.trim() || null,
+                Tipo_Resposta: respostaJson,
                 XP: Number(fQuestao.XP) || 0,
                 Posicao: Number(fQuestao.Posicao) || 0,
             }
@@ -328,7 +367,19 @@ export function CrudConsole() {
     const editCurso = (curso: Curso) => { setFCurso({ ID_Criador: curso.ID_Criador, Titulo: curso.Titulo, Slug: curso.Slug, Descricao: curso.Descricao, Dificuldade: curso.Dificuldade, Categoria: curso.Categoria, Tags: curso.Tags.join(', '), Cor_Capa: curso.Cor_Capa, Icone: curso.Icone, Status: curso.Status }); setEditingCursoId(curso.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editModulo = (modulo: Modulo) => { setFModulo({ ID_Curso: modulo.ID_Curso, Titulo: modulo.Titulo, Subtitulo: modulo.Subtitulo, Icone: modulo.Icone, Cor_Tema: modulo.Cor_Tema, Posicao: String(modulo.Posicao) }); setEditingModuloId(modulo.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editAula = (aula: Aula) => { setFAula({ ID_Modulo: aula.ID_Modulo, Titulo: aula.Titulo, Descricao: aula.Descricao, Duracao: aula.Duracao, Posicao: String(aula.Posicao), Publicado: aula.Publicado }); setEditingAulaId(aula.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    const editQuestao = (questao: Questao) => { setFQuestao({ ID_Aula: questao.ID_Aula, Enunciado: questao.Enunciado, Explicacao: questao.Explicacao, Tipo: questao.Tipo, Tipo_Resposta: questao.Tipo_Resposta ?? '', XP: String(questao.XP), Posicao: String(questao.Posicao) }); setEditingQuestaoId(questao.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+    const editQuestao = (questao: Questao) => { const resposta = questao.Tipo_Resposta as { alternativas?: string[]; indiceCorreto?: number; resposta?: string; pares?: ParMatch[]; itens?: string[] } | null; setFQuestao({ ID_Aula: questao.ID_Aula, TextoEnunciado: textoDoEnunciado(questao.Enunciado), Explicacao: questao.Explicacao, Tipo: questao.Tipo, XP: String(questao.XP), Posicao: String(questao.Posicao), Alternativas: questao.Tipo === 'multiple_choice' && Array.isArray(resposta?.alternativas) ? resposta.alternativas.map((texto, i) => ({ texto, correta: resposta?.indiceCorreto === i })) : initialQuestao.Alternativas, RespostaFillBlank: questao.Tipo === 'fill_blank' ? (resposta?.resposta ?? '') : '', Pares: questao.Tipo === 'word_match' && Array.isArray(resposta?.pares) ? resposta.pares : initialQuestao.Pares, ItensOrdem: questao.Tipo === 'order_sequence' && Array.isArray(resposta?.itens) ? resposta.itens : initialQuestao.ItensOrdem }); setEditingQuestaoId(questao.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+    
+    const addAlternativa = () => setFQuestao((current) => ({ ...current, Alternativas: [...current.Alternativas, { texto: '', correta: false }] }))
+    const removeAlternativa = (index: number) => setFQuestao((current) => ({ ...current, Alternativas: current.Alternativas.filter((_, i) => i !== index) }))
+    const updateAlternativaTexto = (index: number, texto: string) => setFQuestao((current) => ({ ...current, Alternativas: current.Alternativas.map((a, i) => (i === index ? { ...a, texto } : a)) }))
+    const setAlternativaCorreta = (index: number) => setFQuestao((current) => ({ ...current, Alternativas: current.Alternativas.map((a, i) => ({ ...a, correta: i === index })) }))
+    const addPar = () => setFQuestao((current) => ({ ...current, Pares: [...current.Pares, { esquerda: '', direita: '' }] }))
+    const removePar = (index: number) => setFQuestao((current) => ({ ...current, Pares: current.Pares.filter((_, i) => i !== index) }))
+    const updatePar = (index: number, lado: 'esquerda' | 'direita', valor: string) => setFQuestao((current) => ({ ...current, Pares: current.Pares.map((p, i) => (i === index ? { ...p, [lado]: valor } : p)) }))
+    const addItemOrdem = () => setFQuestao((current) => ({ ...current, ItensOrdem: [...current.ItensOrdem, ''] }))
+    const removeItemOrdem = (index: number) => setFQuestao((current) => ({ ...current, ItensOrdem: current.ItensOrdem.filter((_, i) => i !== index) }))
+    const updateItemOrdem = (index: number, valor: string) => setFQuestao((current) => ({ ...current, ItensOrdem: current.ItensOrdem.map((item, i) => (i === index ? valor : item)) }))
+
     const editSala = (sala: Sala) => { setFSala({ ID_Criador: sala.ID_Criador, Nome: sala.Nome, Codigo: sala.Codigo, fk_Curso_ID: sala.fk_Curso_ID ?? '' }); setEditingSalaId(sala.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
     const editMatricula = (matricula: Matricula) => { setFMatricula({ fk_Curso_ID: matricula.fk_Curso_ID, fk_Usuario_ID: matricula.fk_Usuario_ID, Avaliacao: matricula.Avaliacao !== null ? String(matricula.Avaliacao) : '' }); setEditingMatricula({ fk_Curso_ID: matricula.fk_Curso_ID, fk_Usuario_ID: matricula.fk_Usuario_ID }); window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -525,9 +576,54 @@ export function CrudConsole() {
                                 .map((aula) => <option key={aula.ID} value={aula.ID}>{aula.Titulo}</option>)}
                         </select>
                     </label>
-                    <label className="wide"><span>Enunciado *</span><textarea value={fQuestao.Enunciado} onChange={(event) => setFQuestao({ ...fQuestao, Enunciado: event.target.value })} rows={3} required /></label>
-                    <label><span>Tipo</span><select value={fQuestao.Tipo} onChange={(event) => setFQuestao({ ...fQuestao, Tipo: event.target.value as QuestionType })}><option value="multiple_choice">multiple_choice</option><option value="word_match">word_match</option><option value="fill_blank">fill_blank</option><option value="order_sequence">order_sequence</option></select></label>
-                    <label><span>Tipo de resposta</span><input value={fQuestao.Tipo_Resposta} onChange={(event) => setFQuestao({ ...fQuestao, Tipo_Resposta: event.target.value })} placeholder="opcional" /></label>
+                    <label><span>Tipo</span><select value={fQuestao.Tipo} onChange={(event) => setFQuestao({ ...fQuestao, Tipo: event.target.value as QuestionType })}>{Object.entries(questionTypeLabels).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}</select></label>
+                    <label className="wide"><span>Enunciado *</span><textarea value={fQuestao.TextoEnunciado} onChange={(event) => setFQuestao({ ...fQuestao, TextoEnunciado: event.target.value })} rows={3} required /></label>
+
+                    {fQuestao.Tipo === 'multiple_choice' && (
+                        <div className="wide">
+                            <span>Alternativas * (marque a correta)</span>
+                            {fQuestao.Alternativas.map((alternativa, index) => (
+                                <div key={index} className="form-actions">
+                                    <input type="radio" name="alternativaCorreta" checked={alternativa.correta} onChange={() => setAlternativaCorreta(index)} />
+                                    <input value={alternativa.texto} onChange={(event) => updateAlternativaTexto(index, event.target.value)} placeholder={`Alternativa ${index + 1}`} />
+                                    <button className="button ghost" type="button" onClick={() => removeAlternativa(index)}>Remover</button>
+                                </div>
+                            ))}
+                            <button className="button ghost" type="button" onClick={addAlternativa}>+ Alternativa</button>
+                        </div>
+                    )}
+
+                    {fQuestao.Tipo === 'fill_blank' && (
+                        <label className="wide"><span>Resposta correta *</span><input value={fQuestao.RespostaFillBlank} onChange={(event) => setFQuestao({ ...fQuestao, RespostaFillBlank: event.target.value })} /></label>
+                    )}
+
+                    {fQuestao.Tipo === 'word_match' && (
+                        <div className="wide">
+                            <span>Pares (esquerda ↔ direita) *</span>
+                            {fQuestao.Pares.map((par, index) => (
+                                <div key={index} className="form-actions">
+                                    <input value={par.esquerda} onChange={(event) => updatePar(index, 'esquerda', event.target.value)} placeholder="Esquerda" />
+                                    <input value={par.direita} onChange={(event) => updatePar(index, 'direita', event.target.value)} placeholder="Direita" />
+                                    <button className="button ghost" type="button" onClick={() => removePar(index)}>Remover</button>
+                                </div>
+                            ))}
+                            <button className="button ghost" type="button" onClick={addPar}>+ Par</button>
+                        </div>
+                    )}
+
+                    {fQuestao.Tipo === 'order_sequence' && (
+                        <div className="wide">
+                            <span>Itens, na ordem correta *</span>
+                            {fQuestao.ItensOrdem.map((item, index) => (
+                                <div key={index} className="form-actions">
+                                    <input value={item} onChange={(event) => updateItemOrdem(index, event.target.value)} placeholder={`Item ${index + 1}`} />
+                                    <button className="button ghost" type="button" onClick={() => removeItemOrdem(index)}>Remover</button>
+                                </div>
+                            ))}
+                            <button className="button ghost" type="button" onClick={addItemOrdem}>+ Item</button>
+                        </div>
+                    )}
+
                     <label><span>XP</span><input type="number" value={fQuestao.XP} onChange={(event) => setFQuestao({ ...fQuestao, XP: event.target.value })} /></label>
                     <label><span>Posição</span><input type="number" value={fQuestao.Posicao} onChange={(event) => setFQuestao({ ...fQuestao, Posicao: event.target.value })} /></label>
                     <label className="wide"><span>Explicação</span><textarea value={fQuestao.Explicacao} onChange={(event) => setFQuestao({ ...fQuestao, Explicacao: event.target.value })} rows={3} /></label>
@@ -763,8 +859,8 @@ function QuestaoTable({ questoes, aulas, loading, onEdit, onDelete }: { questoes
                 <tr key={questao.ID}>
                     <td><code>{questao.ID}</code></td>
                     <td>{aulas.find((a) => a.ID === questao.ID_Aula)?.Titulo ?? <code>{questao.ID_Aula}</code>}</td>
-                    <td>{questao.Enunciado}</td>
-                    <td>{questao.Tipo}</td>
+                    <td>{textoDoEnunciado(questao.Enunciado)}</td>
+                    <td>{questionTypeLabels[questao.Tipo]}</td>
                     <td>{questao.XP}</td>
                     <td>{questao.Posicao}</td>
                     <td className="row-actions"><button className="link-button" onClick={() => onEdit(questao)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(questao.ID)}>Apagar</button></td>
