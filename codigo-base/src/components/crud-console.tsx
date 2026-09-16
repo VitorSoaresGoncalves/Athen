@@ -425,12 +425,41 @@ export function CrudConsole() {
                 
                 <form onSubmit={handleUsuario} className="crud-form">{
                     !editingUsuarioId && <>
-                    <label><span>E-mail *</span><input type="email" value={fUsuario.email} onChange={(event) => setFUsuario({ ...fUsuario, email: event.target.value })} required /></label>
-                    <label><span>Senha *</span><input type="password" value={fUsuario.password} onChange={(event) => setFUsuario({ ...fUsuario, password: event.target.value })} minLength={6} required /></label></>}
-                    <label><span>Nome de exibição *</span><input value={fUsuario.Nome_Display} onChange={(event) => setFUsuario({ ...fUsuario, Nome_Display: event.target.value })} required /></label>
-                    <label><span>Nome de usuário</span><input value={fUsuario.Nome_Usuario} onChange={(event) => setFUsuario({ ...fUsuario, Nome_Usuario: event.target.value })} /></label>
-                    <label><span>Cargo</span><select value={fUsuario.Cargo} onChange={(event) => setFUsuario({ ...fUsuario, Cargo: event.target.value as Cargo })}><option value="learner">learner</option><option value="creator">creator</option><option value="moderator">moderator</option></select></label>
-                    <label><span>Biografia</span><textarea value={fUsuario.Biografia} onChange={(event) => setFUsuario({ ...fUsuario, Biografia: event.target.value })} rows={4} /></label>
+                    <label>
+                      <span>E-mail *</span>
+                      <input type="email" value={fUsuario.email} onChange={(event) => setFUsuario({ ...fUsuario, email: event.target.value })} required />
+                      <small className="field-help">Ex.: usuario@exemplo.com — e-mail utilizado para autenticação no Supabase Auth.</small>
+                    </label>
+                    <label>
+                      <span>Senha *</span>
+                      <input type="password" value={fUsuario.password} onChange={(event) => setFUsuario({ ...fUsuario, password: event.target.value })} minLength={6} required />
+                      <small className="field-help">Mínimo de 6 caracteres.</small>
+                    </label>
+                  </>}
+                    <label>
+                      <span>Nome de exibição *</span>
+                      <input value={fUsuario.Nome_Display} onChange={(event) => setFUsuario({ ...fUsuario, Nome_Display: event.target.value })} required />
+                      <small className="field-help">Ex.: Maria Silva — nome público exibido no perfil.</small>
+                    </label>
+                    <label>
+                      <span>Nome de usuário</span>
+                      <input value={fUsuario.Nome_Usuario} onChange={(event) => setFUsuario({ ...fUsuario, Nome_Usuario: event.target.value })} />
+                      <small className="field-help">Ex.: maria_silva — nome de usuário único no sistema.</small>
+                    </label>
+                    <label>
+                      <span>Cargo</span>
+                      <select value={fUsuario.Cargo} onChange={(event) => setFUsuario({ ...fUsuario, Cargo: event.target.value as Cargo })}>
+                        <option value="learner">learner</option>
+                        <option value="creator">creator</option>
+                        <option value="moderator">moderator</option>
+                      </select>
+                      <small className="field-help">learner (estudante), creator (criador de conteúdo) ou moderator (moderador).</small>
+                    </label>
+                    <label>
+                      <span>Biografia</span>
+                      <textarea value={fUsuario.Biografia} onChange={(event) => setFUsuario({ ...fUsuario, Biografia: event.target.value })} rows={4} />
+                      <small className="field-help">Ex.: Desenvolvedor Front-end apaixonado por React e TypeScript.</small>
+                    </label>
                     <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingUsuarioId ? 'Salvar alterações' : 'Criar usuário'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
                 </form>
             </section>
@@ -457,19 +486,74 @@ export function CrudConsole() {
                 </div>
 
                 <form onSubmit={handleCurso} className="crud-form">
-                    <label><span>ID do criador *</span><input value={fCurso.ID_Criador} readOnly placeholder="Último usuário cadastrado" /></label>
-                    <label><span>Título *</span><input value={fCurso.Titulo} onChange={(event) => setFCurso({ ...fCurso, Titulo: event.target.value })} required /></label>
-                    <label><span>Slug *</span><input value={fCurso.Slug} onChange={(event) => setFCurso({ ...fCurso, Slug: event.target.value })} required /></label>
-                    <label><span>Descrição</span><textarea value={fCurso.Descricao} onChange={(event) => setFCurso({ ...fCurso, Descricao: event.target.value })} rows={4} /></label>
-                    <label><span>Dificuldade</span><select value={fCurso.Dificuldade} onChange={(event) => setFCurso({ ...fCurso, Dificuldade: event.target.value as CourseLevel })}><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
-                    <label><span>Categoria</span><input value={fCurso.Categoria} onChange={(event) => setFCurso({ ...fCurso, Categoria: event.target.value })} /></label>
-                    <label><span>Tags</span><input value={fCurso.Tags} onChange={(event) => setFCurso({ ...fCurso, Tags: event.target.value })} placeholder="javascript, frontend, web" /></label>
-                    <label><span>Cor da capa</span><input type="color" value={fCurso.Cor_Capa} onChange={(event) => setFCurso({ ...fCurso, Cor_Capa: event.target.value })} /></label>
-                    <label><span>Ícone</span><input value={fCurso.Icone} onChange={(event) => setFCurso({ ...fCurso, Icone: event.target.value })} /></label>
-                    <label><span>Status</span><select value={fCurso.Status} onChange={(event) => setFCurso({ ...fCurso, Status: event.target.value as CourseStatus })}><option value="draft">draft</option><option value="published">published</option><option value="archived">archived</option></select></label>
-                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingCursoId ? 'Salvar alterações' : 'Criar curso'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
-                </form>
-            </section>
+                    <label>
+                      <span>ID do criador *</span>
+                      <input value={fCurso.ID_Criador} readOnly placeholder="Último usuário cadastrado" />
+                      <small className="field-help">UUID do usuário criador (preenchido automaticamente).</small>
+                    </label>
+                    <label>
+                      <span>Título *</span>
+                      <input value={fCurso.Titulo} onChange={(event) => setFCurso({ ...fCurso, Titulo: event.target.value })} required />
+                      <small className="field-help">Título do curso (máximo de 100 caracteres).</small>
+                    </label>
+                    <label>
+                      <span>Slug *</span>
+                      <input value={fCurso.Slug} onChange={(event) => setFCurso({ ...fCurso, Slug: event.target.value })} required />
+                      <small className="field-help">Slug do curso (usado para a URL).</small>
+                    </label>
+                    <label>
+                      <span>Descrição</span>
+                      <textarea value={fCurso.Descricao} onChange={(event) => setFCurso({ ...fCurso, Descricao: event.target.value })} rows={4} />
+                      <small className="field-help">Descrição do curso (máximo de 200 caracteres).</small>
+                    </label>
+                    <label>
+                      <span>Dificuldade</span>
+                      <select value={fCurso.Dificuldade} onChange={(event) => setFCurso({ ...fCurso, Dificuldade: event.target.value as CourseLevel })}>
+                        <option>Beginner</option>
+                        <option>Intermediate</option>
+                        <option>Advanced</option>
+                      </select>
+                      <small className="field-help">Nível de conhecimento exigido do aluno.</small>
+                    </label>
+                    <label>
+                      <span>Categoria</span>
+                      <input value={fCurso.Categoria} onChange={(event) => setFCurso({ ...fCurso, Categoria: event.target.value })} />
+                      <small className="field-help">Ex.: Programação, Design, Data Science</small>
+                    </label>
+                    <label>
+                      <span>Tags</span>
+                      <input value={fCurso.Tags} onChange={(event) => setFCurso({ ...fCurso, Tags: event.target.value })} placeholder="javascript, frontend, web" />
+                      <small className="field-help">Tags do curso (separadas por vírgula).</small>
+                    </label>
+                    <label>
+                      <span>Cor da capa</span>
+                      <input type="color" value={fCurso.Cor_Capa} onChange={(event) => setFCurso({ ...fCurso, Cor_Capa: event.target.value })} />
+                      <small className="field-help">Cor da capa do curso.</small>
+                    </label>
+                    <label>
+                      <span>Ícone</span>
+                      <input value={fCurso.Icone} onChange={(event) => setFCurso({ ...fCurso, Icone: event.target.value })} />
+                      <small className="field-help">Ícone do curso.</small>
+                    </label>
+                    <label>
+                      <span>Status</span>
+                      <select value={fCurso.Status} onChange={(event) => setFCurso({ ...fCurso, Status: event.target.value as CourseStatus })}>
+                        <option value="draft">draft</option>
+                        <option value="published">published</option>
+                        <option value="archived">archived</option>
+                      </select>
+                      <small className="field-help">draft (rascunho), published (visível) ou archived (arquivado).</small>
+                    </label>
+                    <div className="form-actions">
+                      <button className="button primary" type="submit" disabled={loading}>
+                        {loading ? 'Salvando...' : editingCursoId ? 'Salvar alterações' : 'Criar curso'}
+                      </button>
+                      <button className="button ghost" type="button" onClick={resetCurrentForm}>
+                        Limpar
+                      </button>
+                    </div>
+                  </form>
+                </section>
 
             <section className="crud-card list-card">
                 <div className="list-toolbar"><div>
@@ -496,13 +580,41 @@ export function CrudConsole() {
                             {cursos
                             .filter((curso) => curso.ID_Criador === fCurso.ID_Criador).map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
                         </select>
+                        <small className="field-help">Selecione o curso ao qual este módulo pertence.</small>
                     </label>
-                    <label><span>Título *</span><input value={fModulo.Titulo} onChange={(event) => setFModulo({ ...fModulo, Titulo: event.target.value })} required /></label>
-                    <label><span>Subtítulo</span><input value={fModulo.Subtitulo} onChange={(event) => setFModulo({ ...fModulo, Subtitulo: event.target.value })} /></label>
-                    <label><span>Posição</span><input type="number" value={fModulo.Posicao} onChange={(event) => setFModulo({ ...fModulo, Posicao: event.target.value })} /></label>
-                    <label><span>Cor do tema</span><input type="color" value={fModulo.Cor_Tema} onChange={(event) => setFModulo({ ...fModulo, Cor_Tema: event.target.value })} /></label>
-                    <label><span>Ícone</span><input value={fModulo.Icone} onChange={(event) => setFModulo({ ...fModulo, Icone: event.target.value })} /></label>
-                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingModuloId ? 'Salvar alterações' : 'Criar módulo'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
+                    <label>
+                        <span>Título *</span>
+                        <input value={fModulo.Titulo} onChange={(event) => setFModulo({ ...fModulo, Titulo: event.target.value })} required />
+                        <small className="field-help">Título do módulo (máximo de 100 caracteres).</small>
+                    </label>
+                    <label>
+                        <span>Subtítulo</span>
+                        <input value={fModulo.Subtitulo} onChange={(event) => setFModulo({ ...fModulo, Subtitulo: event.target.value })} />
+                        <small className="field-help">Subtítulo do módulo (máximo de 100 caracteres).</small>
+                    </label>
+                    <label>
+                        <span>Posição</span>
+                        <input type="number" value={fModulo.Posicao} onChange={(event) => setFModulo({ ...fModulo, Posicao: event.target.value })} />
+                        <small className="field-help">Posição do módulo no curso.</small>
+                    </label>
+                    <label>
+                        <span>Cor do tema</span>
+                        <input type="color" value={fModulo.Cor_Tema} onChange={(event) => setFModulo({ ...fModulo, Cor_Tema: event.target.value })} />
+                        <small className="field-help">Cor associada ao tema do módulo.</small>
+                    </label>
+                    <label>
+                        <span>Ícone</span>
+                        <input value={fModulo.Icone} onChange={(event) => setFModulo({ ...fModulo, Icone: event.target.value })} />
+                        <small className="field-help">Ícone representativo do módulo.</small>
+                    </label>
+                    <div className="form-actions">
+                        <button className="button primary" type="submit" disabled={loading}>
+                            {loading ? 'Salvando...' : editingModuloId ? 'Salvar alterações' : 'Criar módulo'}
+                        </button>
+                        <button className="button ghost" type="button" onClick={resetCurrentForm}>
+                            Limpar
+                        </button>
+                    </div>
                 </form>
             </section>
 
@@ -535,13 +647,41 @@ export function CrudConsole() {
                                     return <option key={modulo.ID} value={modulo.ID}>{cursoDoModulo?.Titulo ?? '?'} → {modulo.Titulo}</option>
                                 })}
                         </select>
+                        <small className="field-help">Módulo que conterá esta aula.</small>
                     </label>
-                    <label><span>Título *</span><input value={fAula.Titulo} onChange={(event) => setFAula({ ...fAula, Titulo: event.target.value })} required /></label>
-                    <label><span>Descrição</span><textarea value={fAula.Descricao} onChange={(event) => setFAula({ ...fAula, Descricao: event.target.value })} rows={4} /></label>
-                    <label><span>Duração</span><input value={fAula.Duracao} onChange={(event) => setFAula({ ...fAula, Duracao: event.target.value })} placeholder="ex: 00:12:00" /></label>
-                    <label><span>Posição</span><input type="number" value={fAula.Posicao} onChange={(event) => setFAula({ ...fAula, Posicao: event.target.value })} /></label>
-                    <label><span>Publicado</span><input type="checkbox" checked={fAula.Publicado} onChange={(event) => setFAula({ ...fAula, Publicado: event.target.checked })} /></label>
-                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingAulaId ? 'Salvar alterações' : 'Criar aula'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
+                    <label>
+                        <span>Título *</span>
+                        <input value={fAula.Titulo} onChange={(event) => setFAula({ ...fAula, Titulo: event.target.value })} required />
+                        <small className="field-help">Título da aula (máximo de 100 caracteres).</small>
+                    </label>
+                    <label>
+                        <span>Descrição</span>
+                        <textarea value={fAula.Descricao} onChange={(event) => setFAula({ ...fAula, Descricao: event.target.value })} rows={4} />
+                        <small className="field-help">Descrição detalhada da aula.</small>
+                    </label>
+                    <label>
+                        <span>Duração</span>
+                        <input value={fAula.Duracao} onChange={(event) => setFAula({ ...fAula, Duracao: event.target.value })} placeholder="ex: 00:12:00" />
+                        <small className="field-help">Duração estimada da aula.</small>
+                    </label>
+                    <label>
+                        <span>Posição</span>
+                        <input type="number" value={fAula.Posicao} onChange={(event) => setFAula({ ...fAula, Posicao: event.target.value })} />
+                        <small className="field-help">Posição da aula no módulo.</small>
+                    </label>
+                    <label>
+                        <span>Publicado</span>
+                        <input type="checkbox" checked={fAula.Publicado} onChange={(event) => setFAula({ ...fAula, Publicado: event.target.checked })} />
+                        <small className="field-help">Indica se a aula está publicada.</small>
+                    </label>
+                    <div className="form-actions">
+                        <button className="button primary" type="submit" disabled={loading}>
+                            {loading ? 'Salvando...' : editingAulaId ? 'Salvar alterações' : 'Criar aula'}
+                        </button>
+                        <button className="button ghost" type="button" onClick={resetCurrentForm}>
+                            Limpar
+                        </button>
+                    </div>
                 </form>
             </section>
 
@@ -575,13 +715,25 @@ export function CrudConsole() {
                                 })
                                 .map((aula) => <option key={aula.ID} value={aula.ID}>{aula.Titulo}</option>)}
                         </select>
+                        <small className="field-help">Selecione a aula relacionada à questão.</small>
                     </label>
-                    <label><span>Tipo</span><select value={fQuestao.Tipo} onChange={(event) => setFQuestao({ ...fQuestao, Tipo: event.target.value as QuestionType })}>{Object.entries(questionTypeLabels).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}</select></label>
-                    <label className="wide"><span>Enunciado *</span><textarea value={fQuestao.TextoEnunciado} onChange={(event) => setFQuestao({ ...fQuestao, TextoEnunciado: event.target.value })} rows={3} required /></label>
+                    <label>
+                        <span>Tipo</span>
+                        <select value={fQuestao.Tipo} onChange={(event) => setFQuestao({ ...fQuestao, Tipo: event.target.value as QuestionType })}>
+                            {Object.entries(questionTypeLabels).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
+                        </select>
+                        <small className="field-help">Formato da interação esperada do aluno.</small>
+                    </label>
+                    <label className="wide">
+                        <span>Enunciado *</span>
+                        <textarea value={fQuestao.TextoEnunciado} onChange={(event) => setFQuestao({ ...fQuestao, TextoEnunciado: event.target.value })} rows={3} required />
+                        <small className="field-help">Ex.: Qual hook é utilizado para gerenciar estado em componentes funcionais?</small>
+                    </label>
 
                     {fQuestao.Tipo === 'multiple_choice' && (
                         <div className="wide">
                             <span>Alternativas * (marque a correta)</span>
+                            <small className="field-help">Preencha ao menos duas opções e marque o botão de seleção na opção correta.</small>
                             {fQuestao.Alternativas.map((alternativa, index) => (
                                 <div key={index} className="form-actions">
                                     <input type="radio" name="alternativaCorreta" checked={alternativa.correta} onChange={() => setAlternativaCorreta(index)} />
@@ -594,12 +746,17 @@ export function CrudConsole() {
                     )}
 
                     {fQuestao.Tipo === 'fill_blank' && (
-                        <label className="wide"><span>Resposta correta *</span><input value={fQuestao.RespostaFillBlank} onChange={(event) => setFQuestao({ ...fQuestao, RespostaFillBlank: event.target.value })} /></label>
+                        <label className="wide">
+                            <span>Resposta correta *</span>
+                            <input value={fQuestao.RespostaFillBlank} onChange={(event) => setFQuestao({ ...fQuestao, RespostaFillBlank: event.target.value })} />
+                            <small className="field-help">Ex.: useState — texto exato esperado no preenchimento da lacuna.</small>
+                        </label>
                     )}
 
                     {fQuestao.Tipo === 'word_match' && (
                         <div className="wide">
-                            <span>Pares (esquerda ↔ direita) *</span>
+                            <span>Pares (esquerda ↔ direita)</span>
+                            <small className="field-help">Ex.: Esquerda: "JSX", Direita: "Sintaxe estendida do JavaScript".</small>
                             {fQuestao.Pares.map((par, index) => (
                                 <div key={index} className="form-actions">
                                     <input value={par.esquerda} onChange={(event) => updatePar(index, 'esquerda', event.target.value)} placeholder="Esquerda" />
@@ -613,7 +770,8 @@ export function CrudConsole() {
 
                     {fQuestao.Tipo === 'order_sequence' && (
                         <div className="wide">
-                            <span>Itens, na ordem correta *</span>
+                            <span>Itens, na ordem correta</span>
+                            <small className="field-help">Adicione os itens na sequência correta em que o aluno deve ordená-los.</small>
                             {fQuestao.ItensOrdem.map((item, index) => (
                                 <div key={index} className="form-actions">
                                     <input value={item} onChange={(event) => updateItemOrdem(index, event.target.value)} placeholder={`Item ${index + 1}`} />
@@ -624,12 +782,31 @@ export function CrudConsole() {
                         </div>
                     )}
 
-                    <label><span>XP</span><input type="number" value={fQuestao.XP} onChange={(event) => setFQuestao({ ...fQuestao, XP: event.target.value })} /></label>
-                    <label><span>Posição</span><input type="number" value={fQuestao.Posicao} onChange={(event) => setFQuestao({ ...fQuestao, Posicao: event.target.value })} /></label>
-                    <label className="wide"><span>Explicação</span><textarea value={fQuestao.Explicacao} onChange={(event) => setFQuestao({ ...fQuestao, Explicacao: event.target.value })} rows={3} /></label>
-                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingQuestaoId ? 'Salvar alterações' : 'Criar questão'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
-                </form>
-            </section>
+                    <label>
+                      <span>XP</span>
+                      <input type="number" value={fQuestao.XP} onChange={(event) => setFQuestao({ ...fQuestao, XP: event.target.value })} />
+                      <small className="field-help">Ex.: 10 — quantidade de pontos de experiência concedidos.</small>
+                    </label>
+                    <label>
+                      <span>Posição</span>
+                      <input type="number" value={fQuestao.Posicao} onChange={(event) => setFQuestao({ ...fQuestao, Posicao: event.target.value })} />
+                      <small className="field-help">Ex.: 1 — ordem da questão no questionário.</small>
+                    </label>
+                    <label className="wide">
+                      <span>Explicação</span>
+                      <textarea value={fQuestao.Explicacao} onChange={(event) => setFQuestao({ ...fQuestao, Explicacao: event.target.value })} rows={3} />
+                      <small className="field-help">Ex.: O useState permite adicionar o estado do React a componentes de função.</small>
+                    </label>
+                    <div className="form-actions">
+                      <button className="button primary" type="submit" disabled={loading}>
+                        {loading ? 'Salvando...' : editingQuestaoId ? 'Salvar alterações' : 'Criar questão'}
+                      </button>
+                      <button className="button ghost" type="button" onClick={resetCurrentForm}>
+                        Limpar
+                      </button>
+                    </div>
+                  </form>
+                </section>
 
             <section className="crud-card list-card">
                 <div className="list-toolbar"><div>
@@ -649,15 +826,28 @@ export function CrudConsole() {
                 </div>
 
                 <form onSubmit={handleSala} className="crud-form">
-                    <label><span>ID do criador *</span><input value={fSala.ID_Criador} readOnly placeholder="Último usuário cadastrado" /></label>
-                    <label><span>Nome *</span><input value={fSala.Nome} onChange={(event) => setFSala({ ...fSala, Nome: event.target.value })} required /></label>
-                    <label><span>Código *</span><input value={fSala.Codigo} onChange={(event) => setFSala({ ...fSala, Codigo: event.target.value })} placeholder="ex: TURMA2024" required /></label>
+                    <label>
+                        <span>ID do criador *</span>
+                        <input value={fSala.ID_Criador} readOnly placeholder="Último usuário cadastrado" />
+                        <small className="field-help">UUID do usuário responsável pela sala.</small>
+                    </label>
+                    <label>
+                        <span>Nome *</span>
+                        <input value={fSala.Nome} onChange={(event) => setFSala({ ...fSala, Nome: event.target.value })} required />
+                        <small className="field-help">Ex.: Turma React 2026.1</small>
+                    </label>
+                    <label>
+                        <span>Código *</span>
+                        <input value={fSala.Codigo} onChange={(event) => setFSala({ ...fSala, Codigo: event.target.value })} placeholder="ex: TURMA2024" required />
+                        <small className="field-help">Ex.: TURMA2026 — código único em maiúsculas para entrada na sala.</small>
+                    </label>
                     <label>
                         <span>Curso vinculado</span>
                         <select value={fSala.fk_Curso_ID} onChange={(event) => setFSala({ ...fSala, fk_Curso_ID: event.target.value })}>
                             <option value="">Nenhum</option>
                             {cursos.filter((curso) => curso.ID_Criador === fSala.ID_Criador).map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
                         </select>
+                        <small className="field-help">Associe um curso opcional para os estudantes da sala.</small>
                     </label>
                     <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingSalaId ? 'Salvar alterações' : 'Criar sala'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
                 </form>
@@ -688,12 +878,17 @@ export function CrudConsole() {
                             <option value="" disabled>Selecione um curso</option>
                             {cursos.map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
                         </select>
+                        <small className="field-help">Selecione o curso para realizar a matrícula.</small>
                     </label>
                 )}
                 {editingMatricula && (
                     <p><strong>Curso:</strong> {cursos.find((c) => c.ID === editingMatricula.fk_Curso_ID)?.Titulo ?? editingMatricula.fk_Curso_ID}</p>
                 )}
-                <label><span>Avaliação {editingMatricula ? '*' : '(deixe em branco ao matricular)'}</span><input type="number" min={0} max={5} step={1} value={fMatricula.Avaliacao} onChange={(event) => setFMatricula({ ...fMatricula, Avaliacao: event.target.value })} required={!!editingMatricula} /></label>
+                <label>
+                  <span>Avaliação {editingMatricula ? '*' : '(deixe em branco ao matricular)'}</span>
+                  <input type="number" min={0} max={5} step={1} value={fMatricula.Avaliacao} onChange={(event) => setFMatricula({ ...fMatricula, Avaliacao: event.target.value })} required={!!editingMatricula} />
+                  <small className="field-help">Ex.: Nota inteira de 0 a 5 avaliando o curso.</small>
+                </label>
                 <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingMatricula ? 'Salvar avaliação' : 'Matricular'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
             </form>
         </section>
