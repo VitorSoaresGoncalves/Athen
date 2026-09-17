@@ -1,9 +1,14 @@
-// eslint-disable-next-line check-file/filename-naming-convention
-import { SupaConnect } from './components/supabase-connect'
+import React from 'react'
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { SupaConnect, ProtectedRoute } from './components/supabase-connect'
+import { CrudConsole } from './components/crud-console'
 
-export function App() {
+const HomePage: React.FC = () => {
   return (
     <main style={{ padding: '20px' }}>
+      <SupaConnect />
+      <Link to="/crud">Console CRUD</Link>
+      <hr />
       <h1>Athen: Plataforma de Educação</h1>
       <h2> Aprendizado por reforço e Competitividade amigável</h2>
 
@@ -72,9 +77,17 @@ export function App() {
 
         </div>
       </footer>
-      <SupaConnect />
     </main>
   )
 }
 
-export default App
+export default function app() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
