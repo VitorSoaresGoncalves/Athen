@@ -11,7 +11,7 @@ Diferencial: O projeto vai além dos aplicativos convencionais de flashcards ao 
 uma economia própria de compartilhamento de conteúdo.
 
 - Principais caracteristicas do Athen 
-- revisao gamificada de conteúdos
+- revisão gamificada de conteúdos
 - modelo de jogos (quizz, pergunta e resposta, ligar termos, completar frase, etc...)
 - customizaçao/criação de trilhas usando os modelos
 - local para anotações

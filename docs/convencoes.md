@@ -1,6 +1,6 @@
 # Guia de Convenções: Git e Fluxo de Trabalho
 
-Este documento estabelece o padrão de uso do Git ao longo do projeto, as convenções de commits, a estratégia de versionamento e as regras de nomenclatura para o nosso projeto de desenvolvimento de software.
+Este documento estabelece o padrão de uso do Git ao longo do projeto, as convenções de commits, a estratégia de versionamento, as regras de nomenclatura e diretrizes para resolução de conflitos em nosso projeto de desenvolvimento de software.
 
 ## 1. Cheat Sheet (Comandos Mais Comuns)
 
@@ -47,6 +47,7 @@ Nosso fluxo de trabalho será estruturado da seguinte forma para garantir que o 
 *   É a branch oficial do projeto em produção.
 *   **Regra de Ouro:** A branch `develop` **só será mergeada na `main` após validação no Preview e entrega final**.
 *   Nenhum desenvolvedor deve commitar diretamente nesta branch.
+*   *Nota sobre CI/CD:* Como a `main` permanecerá estática até a entrega, eventuais automações de testes e deploy contínuo (CI/CD) para ambientes de homologação deverão apontar para a branch `sprint#` atual.
 
 ### Branch `develop` (Desenvolvimento)
 *   É o ponto de conexão das sprints, criada a partir da `main`.
@@ -96,3 +97,13 @@ Para mantermos a padronização e evitarmos problemas de compatibilidade entre d
     *   *Certo:* `relatorio-mensal.html`, `funcoes-calculo.py`
     *   *Errado:* `relatório-mensal.html`, `funções-cálculo.py`
 *   **Seja descritivo e conciso:** Dê nomes que deixem claro o que o arquivo ou pasta contém, mas evite nomes longos demais.
+
+## 5. Resolução de Conflitos de Merge
+
+Conflitos acontecem quando duas pessoas alteram a mesma parte de um arquivo em branches diferentes. Se você se deparar com um conflito ao tentar fazer um `pull` ou `merge`, **Abra os arquivos conflitantes.** No seu editor de código (como o VS Code), o trecho problemático estará marcado com delimitadores do Git:
+   ```text
+   <<<<<<< HEAD
+   (Seu código atual / Código da branch de destino)
+   =======
+   (Código que está chegando / Código da branch que está sendo mergeada)
+   >>>>>>> nome-da-branch
