@@ -1,0 +1,674 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      Anotacoes: {
+        Row: {
+          Conteudo: Json
+          Data_Atualizacao: string
+          Data_Criacao: string
+          ID: string
+          ID_Notebook: string
+          Titulo: string
+        }
+        Insert: {
+          Conteudo?: Json
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          ID?: string
+          ID_Notebook: string
+          Titulo?: string
+        }
+        Update: {
+          Conteudo?: Json
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          ID?: string
+          ID_Notebook?: string
+          Titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Anotacoes_ID_Notebook_fkey"
+            columns: ["ID_Notebook"]
+            isOneToOne: false
+            referencedRelation: "Notebook"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Aula: {
+        Row: {
+          Data_Atualizacao: string
+          Data_Criacao: string
+          Descricao: string
+          Duracao: string
+          ID: string
+          ID_Modulo: string
+          Posicao: number
+          Publicado: boolean
+          Titulo: string
+        }
+        Insert: {
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Descricao?: string
+          Duracao?: string
+          ID?: string
+          ID_Modulo: string
+          Posicao?: number
+          Publicado?: boolean
+          Titulo: string
+        }
+        Update: {
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Descricao?: string
+          Duracao?: string
+          ID?: string
+          ID_Modulo?: string
+          Posicao?: number
+          Publicado?: boolean
+          Titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Aula_ID_Modulo_fkey"
+            columns: ["ID_Modulo"]
+            isOneToOne: false
+            referencedRelation: "Modulo"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      conclui: {
+        Row: {
+          Data_Finalizacao: string
+          fk_Aula_ID: string
+          fk_Usuario_ID: string
+          Pontuacao: number
+          XP_Ganho: number
+        }
+        Insert: {
+          Data_Finalizacao?: string
+          fk_Aula_ID: string
+          fk_Usuario_ID: string
+          Pontuacao?: number
+          XP_Ganho?: number
+        }
+        Update: {
+          Data_Finalizacao?: string
+          fk_Aula_ID?: string
+          fk_Usuario_ID?: string
+          Pontuacao?: number
+          XP_Ganho?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conclui_fk_Aula_ID_fkey"
+            columns: ["fk_Aula_ID"]
+            isOneToOne: false
+            referencedRelation: "Aula"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "conclui_fk_Usuario_ID_fkey"
+            columns: ["fk_Usuario_ID"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Curso: {
+        Row: {
+          Avaliacao: number
+          Categoria: string
+          Contagem_Avaliacao: number
+          Contagem_Estudante: number
+          Cor_Capa: string
+          Data_Atualizacao: string
+          Data_Criacao: string
+          Descricao: string
+          Dificuldade: Database["public"]["Enums"]["course_level"]
+          Icone: string
+          ID: string
+          ID_Criador: string
+          Slug: string
+          Status: Database["public"]["Enums"]["course_status"]
+          Tags: string[]
+          Titulo: string
+        }
+        Insert: {
+          Avaliacao?: number
+          Categoria?: string
+          Contagem_Avaliacao?: number
+          Contagem_Estudante?: number
+          Cor_Capa?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Descricao?: string
+          Dificuldade?: Database["public"]["Enums"]["course_level"]
+          Icone?: string
+          ID?: string
+          ID_Criador: string
+          Slug: string
+          Status?: Database["public"]["Enums"]["course_status"]
+          Tags?: string[]
+          Titulo: string
+        }
+        Update: {
+          Avaliacao?: number
+          Categoria?: string
+          Contagem_Avaliacao?: number
+          Contagem_Estudante?: number
+          Cor_Capa?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Descricao?: string
+          Dificuldade?: Database["public"]["Enums"]["course_level"]
+          Icone?: string
+          ID?: string
+          ID_Criador?: string
+          Slug?: string
+          Status?: Database["public"]["Enums"]["course_status"]
+          Tags?: string[]
+          Titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Curso_ID_Criador_fkey"
+            columns: ["ID_Criador"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      matricula: {
+        Row: {
+          Aulas_Finalizadas: number
+          Avaliacao: number | null
+          Data_Atualizacao: string
+          Data_Matricula: string
+          fk_Curso_ID: string
+          fk_Usuario_ID: string
+          Ultima_Aparicao: string | null
+          XP_Diario: number
+          XP_Total: number
+        }
+        Insert: {
+          Aulas_Finalizadas?: number
+          Avaliacao?: number | null
+          Data_Atualizacao?: string
+          Data_Matricula?: string
+          fk_Curso_ID: string
+          fk_Usuario_ID: string
+          Ultima_Aparicao?: string | null
+          XP_Diario?: number
+          XP_Total?: number
+        }
+        Update: {
+          Aulas_Finalizadas?: number
+          Avaliacao?: number | null
+          Data_Atualizacao?: string
+          Data_Matricula?: string
+          fk_Curso_ID?: string
+          fk_Usuario_ID?: string
+          Ultima_Aparicao?: string | null
+          XP_Diario?: number
+          XP_Total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matricula_fk_Curso_ID_fkey"
+            columns: ["fk_Curso_ID"]
+            isOneToOne: false
+            referencedRelation: "Curso"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "matricula_fk_Usuario_ID_fkey"
+            columns: ["fk_Usuario_ID"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Modulo: {
+        Row: {
+          Cor_Tema: string
+          Data_Atualizacao: string
+          Data_Criacao: string
+          Icone: string
+          ID: string
+          ID_Curso: string
+          Posicao: number
+          Subtitulo: string
+          Titulo: string
+        }
+        Insert: {
+          Cor_Tema?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Icone?: string
+          ID?: string
+          ID_Curso: string
+          Posicao?: number
+          Subtitulo?: string
+          Titulo: string
+        }
+        Update: {
+          Cor_Tema?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Icone?: string
+          ID?: string
+          ID_Curso?: string
+          Posicao?: number
+          Subtitulo?: string
+          Titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Modulo_ID_Curso_fkey"
+            columns: ["ID_Curso"]
+            isOneToOne: false
+            referencedRelation: "Curso"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Notebook: {
+        Row: {
+          Data_Atualizacao: string
+          Data_Criacao: string
+          ID: string
+          ID_Curso: string | null
+          ID_Modulo: string | null
+          ID_Sala: string | null
+          ID_Usuario: string
+          Nome: string
+        }
+        Insert: {
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          ID?: string
+          ID_Curso?: string | null
+          ID_Modulo?: string | null
+          ID_Sala?: string | null
+          ID_Usuario: string
+          Nome: string
+        }
+        Update: {
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          ID?: string
+          ID_Curso?: string | null
+          ID_Modulo?: string | null
+          ID_Sala?: string | null
+          ID_Usuario?: string
+          Nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Notebook_ID_Curso_fkey"
+            columns: ["ID_Curso"]
+            isOneToOne: false
+            referencedRelation: "Curso"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "Notebook_ID_Modulo_fkey"
+            columns: ["ID_Modulo"]
+            isOneToOne: false
+            referencedRelation: "Modulo"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "Notebook_ID_Sala_fkey"
+            columns: ["ID_Sala"]
+            isOneToOne: false
+            referencedRelation: "Sala"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "Notebook_ID_Usuario_fkey"
+            columns: ["ID_Usuario"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      participa: {
+        Row: {
+          Data_Associacao: string
+          fk_Sala_ID: string
+          fk_Usuario_ID: string
+          Pontos: number
+        }
+        Insert: {
+          Data_Associacao?: string
+          fk_Sala_ID: string
+          fk_Usuario_ID: string
+          Pontos?: number
+        }
+        Update: {
+          Data_Associacao?: string
+          fk_Sala_ID?: string
+          fk_Usuario_ID?: string
+          Pontos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participa_fk_Sala_ID_fkey"
+            columns: ["fk_Sala_ID"]
+            isOneToOne: false
+            referencedRelation: "Sala"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "participa_fk_Usuario_ID_fkey"
+            columns: ["fk_Usuario_ID"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Questao: {
+        Row: {
+          Data_Atualizacao: string
+          Data_Criacao: string
+          Enunciado: Json
+          Explicacao: string
+          ID: string
+          ID_Aula: string
+          Posicao: number
+          Tipo: Database["public"]["Enums"]["question_type"]
+          Tipo_Resposta: Json
+          XP: number
+        }
+        Insert: {
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Enunciado?: Json
+          Explicacao?: string
+          ID?: string
+          ID_Aula: string
+          Posicao?: number
+          Tipo: Database["public"]["Enums"]["question_type"]
+          Tipo_Resposta?: Json
+          XP?: number
+        }
+        Update: {
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          Enunciado?: Json
+          Explicacao?: string
+          ID?: string
+          ID_Aula?: string
+          Posicao?: number
+          Tipo?: Database["public"]["Enums"]["question_type"]
+          Tipo_Resposta?: Json
+          XP?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Questao_ID_Aula_fkey"
+            columns: ["ID_Aula"]
+            isOneToOne: false
+            referencedRelation: "Aula"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Sala: {
+        Row: {
+          Codigo: string
+          Data_Atualizacao: string
+          Data_Criacao: string
+          fk_Curso_ID: string | null
+          ID: string
+          ID_Criador: string
+          Nome: string
+        }
+        Insert: {
+          Codigo: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          fk_Curso_ID?: string | null
+          ID?: string
+          ID_Criador: string
+          Nome: string
+        }
+        Update: {
+          Codigo?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          fk_Curso_ID?: string | null
+          ID?: string
+          ID_Criador?: string
+          Nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "Sala_fk_Curso_ID_fkey"
+            columns: ["fk_Curso_ID"]
+            isOneToOne: false
+            referencedRelation: "Curso"
+            referencedColumns: ["ID"]
+          },
+          {
+            foreignKeyName: "Sala_ID_Criador_fkey"
+            columns: ["ID_Criador"]
+            isOneToOne: false
+            referencedRelation: "Usuario"
+            referencedColumns: ["ID"]
+          },
+        ]
+      }
+      Usuario: {
+        Row: {
+          Avatar_Url: string | null
+          Biografia: string
+          Cargo: string
+          Data_Atualizacao: string
+          Data_Criacao: string
+          ID: string
+          Nome_Display: string
+          Nome_Usuario: string | null
+        }
+        Insert: {
+          Avatar_Url?: string | null
+          Biografia?: string
+          Cargo?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          ID: string
+          Nome_Display?: string
+          Nome_Usuario?: string | null
+        }
+        Update: {
+          Avatar_Url?: string | null
+          Biografia?: string
+          Cargo?: string
+          Data_Atualizacao?: string
+          Data_Criacao?: string
+          ID?: string
+          Nome_Display?: string
+          Nome_Usuario?: string | null
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      usuario_e_criador_curso: {
+        Args: { p_curso_id: string }
+        Returns: boolean
+      }
+      usuario_participa_sala: { Args: { p_sala_id: string }; Returns: boolean }
+    }
+    Enums: {
+      course_level: "Beginner" | "Intermediate" | "Advanced"
+      course_status: "draft" | "published" | "archived"
+      question_type:
+        | "word_match"
+        | "fill_blank"
+        | "multiple_choice"
+        | "order_sequence"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      course_level: ["Beginner", "Intermediate", "Advanced"],
+      course_status: ["draft", "published", "archived"],
+      question_type: [
+        "word_match",
+        "fill_blank",
+        "multiple_choice",
+        "order_sequence",
+      ],
+    },
+  },
+} as const

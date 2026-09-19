@@ -39,8 +39,8 @@ export default tseslint.config(
       'check-file/filename-naming-convention': [
         'error',
         {
-          // 'src/components/**/*.{jsx,tsx}': 'PASCAL_CASE',
-          '**/*.{js,jsx,ts,tsx,css,scss,html}': 'KEBAB_CASE',
+          '**/*.{jsx,tsx}': 'PASCAL_CASE',
+          '**/*.{css,scss,html}': 'KEBAB_CASE',
         },
         {
           ignoreMiddleExtensions: true,
