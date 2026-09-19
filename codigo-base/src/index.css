@@ -1,36 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Gabriela&family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap');
 
 :root {
-  /* Paleta oficial — Guia de Estilos e Identidade Visual */
-  --amarelo-tangerina: #ffcc00;   /* destaque principal: CTA, links, ícones */
-  --amarelo-claro: #ffde5c;       /* hover / cards informativos */
-  --amarelo-muito-claro: #ffeb99; /* fundo geral de página, alertas suaves */
-  --violeta-escuro: #54318c;      /* texto principal, títulos, header/footer */
-  --violeta-dessaturado: #a486d5; /* texto de apoio, placeholders, bordas, estado inativo */
-
+  /* Variáveis de cor e fonte mantidas intactas */
+  --amarelo-tangerina: #ffcc00;
+  --amarelo-claro: #ffde5c;
+  --amarelo-muito-claro: #ffeb99;
+  --violeta-escuro: #54318c;
+  --violeta-dessaturado: #a486d5;
   --paper: #ffffff;
   --grafite: #1b1b1b;
-
-  --bg: var(--grafite);   /* fundo geral da página */
-  --text: var(--violeta-escuro);      /* texto corrido = violeta escuro */
-  --text-support: var(--violeta-dessaturado); /* subtítulos / placeholders */
+  --bg: var(--grafite);
+  --text: var(--violeta-escuro);
+  --text-support: var(--violeta-dessaturado);
   --text-h: var(--violeta-escuro);
   --border: var(--violeta-dessaturado);
   --code-bg: var(--amarelo-claro);
-
-  --heading: 'Gabriela', 'Times New Roman', serif;      /* exclusiva: H1/H2, banners, decorativo */
-  --sans: 'Roboto', system-ui, sans-serif;               /* leitura: parágrafos, H3-H6, menus, botões */
-  --input-font: 'Google Sans', 'Roboto', system-ui, sans-serif; /* exclusiva: inputs, busca, login, comentários */
+  
+  --heading: 'Gabriela', 'Times New Roman', serif;
+  --sans: 'Roboto', system-ui, sans-serif;
+  --input-font: 'Google Sans', 'Roboto', system-ui, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
-
-  --shadow:
-    rgba(84, 49, 140, 0.14) 0 10px 25px -8px, rgba(84, 49, 140, 0.08) 0 4px 10px -4px;
+  
+  --shadow: rgba(84, 49, 140, 0.14) 0 10px 25px -8px, rgba(84, 49, 140, 0.08) 0 4px 10px -4px;
 
   font: 18px/150% var(--sans);
   letter-spacing: 0.1px;
   color-scheme: light dark;
   color: var(--text);
-  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -45,263 +41,20 @@
   box-sizing: border-box;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  background: var(--bg);
-}
-
 body {
   margin: 0;
   background: var(--bg);
 }
 
-/* --- Tipografia --- */
-
-/* Gabriela: exclusiva para H1/H2 (nunca em blocos longos de texto) */
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 400;
-  color: var(--text-h);
-}
-
-/* Roboto: leitura principal — H3 a H6, parágrafos, menus */
-h3,
-h4,
-h5,
-h6 {
-  font-family: var(--sans);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -0.6px;
-  margin: 56px 0 12px;
-  color: var(--amarelo-tangerina); /* h1 fica direto sobre o fundo grafite: precisa de contraste, não de violeta escuro */
-
-  @media (max-width: 1024px) {
-    font-size: 34px;
-    margin: 32px 0 8px;
-  }
-}
-
-/* Subtítulo logo abaixo do h1 = texto de apoio -> violeta dessaturado */
-main > h2:first-of-type {
-  font-family: var(--sans);
-  font-weight: 400;
-  color: var(--text-support);
-  max-width: 640px;
-  margin: 0 auto 48px;
-
-  @media (max-width: 1024px) {
-    margin-bottom: 32px;
-  }
-}
-
-h2 {
-  font-size: 26px;
-  line-height: 122%;
-  letter-spacing: -0.1px;
-  margin: 0 0 8px;
-
-  @media (max-width: 1024px) {
-    font-size: 21px;
-  }
-}
-
-p {
-  margin: 0;
-  font-family: var(--sans);
-  color: var(--text);
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-  color: var(--violeta-escuro); /* texto sobre fundo amarelo = obrigatoriamente violeta escuro */
-}
-
-/* --- Formulários e inputs (Google Sans obrigatória) --- */
-input,
-textarea,
-select {
-  font-family: var(--input-font);
-  color: var(--text);
-  background: var(--paper);
-  border: 1.5px solid var(--violeta-dessaturado); /* estado inativo */
-  border-radius: 8px;
-  padding: 10px 14px;
-  transition: border-color 0.15s ease;
-}
-
-input:focus,
-textarea:focus,
-select:focus {
-  border-color: var(--amarelo-tangerina); /* estado em foco */
-  outline: none;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: var(--text-support);
-}
-
-/* --- Botões --- */
-.btn {
-  font-family: var(--sans);
-  font-weight: 500;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  cursor: pointer;
-  transition: opacity 0.15s ease, background-color 0.15s ease;
-}
-
-.btn-primary {
-  background-color: var(--amarelo-tangerina);
-  color: var(--violeta-escuro); /* obrigatório sobre fundo amarelo */
-}
-
-.btn-primary:hover {
-  background-color: var(--amarelo-claro);
-}
-
-.btn-secondary {
-  background-color: var(--violeta-escuro);
-  color: var(--amarelo-muito-claro);
-}
-
-.btn-secondary:hover {
-  background-color: var(--violeta-dessaturado);
-  color: var(--violeta-escuro);
-}
-
-.btn:disabled {
-  background-color: var(--violeta-dessaturado);
-  color: var(--paper);
-  cursor: not-allowed;
-}
-
-/* --- Seções em alternância esquerda/direita --- */
-section {
-  width: 50%;
-  text-align: left;
-  position: relative;
-  padding: 28px 32px;
-  box-sizing: border-box;
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  background: var(--paper); /* diferencia do fundo amarelo-claro da página */
-
-  @media (max-width: 768px) {
-    width: 100%;
-  }
-}
-
-.esquerda,
-.direita {
-  margin-top: 140px;
-
-  @media (max-width: 1024px) {
-    margin-top: 56px;
-  }
-}
-
-.esquerda {
-  margin-right: auto;
-  border-left: 4px solid var(--violeta-dessaturado); /* borda de divisória */
-}
-
-.direita {
-  margin-left: auto;
-  background: var(--amarelo-claro); /* card informativo */
-  border-left: 4px solid var(--violeta-escuro);
-}
-
-.direita h2,
-.direita p {
-  color: var(--violeta-escuro); /* obrigatório sobre fundo amarelo */
-}
-
-/* --- Rodapé (header/footer = violeta escuro) --- */
-footer {
-  background-color: var(--violeta-escuro);
-  color: var(--amarelo-muito-claro);
-  padding: 60px 10%;
-  margin-top: 160px;
-
-  @media (max-width: 1024px) {
-    margin-top: 72px;
-    padding: 48px 6%;
-  }
-}
-
-.footer-container {
+/* O #root agora não impõe text-align: center ou larguras fixas que vazam para o CRUD */
+#root {
+  min-height: 100svh;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 40px;
-  text-align: left;
+  flex-direction: column;
+  background: var(--bg);
 }
 
-footer section {
-  margin: 0;
-  padding: 0;
-  width: auto;
-  background: none;
-  border: none;
-  box-shadow: none;
-}
-
-footer h3 {
-  margin: 0 0 16px;
-  font-family: var(--sans);
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--amarelo-tangerina); /* elemento de destaque/ícone */
-}
-
-footer p {
-  margin: 10px 0;
-  color: var(--violeta-dessaturado);
-}
-
-footer a {
-  display: block;
-  margin: 10px 0;
-  font-family: var(--sans);
-  color: var(--amarelo-muito-claro);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-footer a:hover,
-footer a:focus-visible {
-  color: var(--amarelo-tangerina); /* elemento que exige atenção imediata */
-}
-
-/* --- Acessibilidade --- */
+/* Acessibilidade genérica */
 a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--amarelo-tangerina);

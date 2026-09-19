@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { cursoRepository, usuarioRepository, moduloRepository, aulaRepository, questaoRepository, salaRepository, matriculaRepository } from '../data/repositories'
 import { supabase } from '../lib/supabase'
 import type { Database, Json } from '../types/database'
-import './crud-console.css'
+import './CrudConsole.css'
 
 type Usuario = Database['public']['Tables']['Usuario']['Row']
 type Curso = Database['public']['Tables']['Curso']['Row']

@@ -1,11 +1,11 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
-import { SupaConnect, ProtectedRoute } from './components/supabase-connect'
-import { CrudConsole } from './components/crud-console'
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { SupaConnect } from '../components/SupabaseConnect';
+import './HomePage.css';
 
-const HomePage: React.FC = () => {
+export const HomePage: React.FC = () => {
   return (
-    <main style={{ padding: '20px' }}>
+    <main className="home-container">
       <SupaConnect />
       <Link to="/crud">Console CRUD</Link>
       <hr />
@@ -78,16 +78,5 @@ const HomePage: React.FC = () => {
         </div>
       </footer>
     </main>
-  )
-}
-
-export default function app() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
-      </Routes>
-    </BrowserRouter>
   )
 }

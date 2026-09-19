@@ -1,12 +1,25 @@
+/* eslint-disable no-console */
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { Client } from 'pg';
 
-// Utiliza a string de conexão informada no ambiente do Supabase
-const CONNECTION_STRING =
-  process.env.SUPABASE_DB_URL ||
-  'postgresql://postgres:Z3XGFeIK26VSXSVn@db.ugsfebcxqpdujjocdhhj.supabase.co:5432/postgres';
+interface NoticeMessage {
+  message?: string;
+}
+
+interface QuestionHandler {
+  (query: string): Promise<string>;
+}
+
+// Exige a string de conexão via variável de ambiente, sem expor credenciais no código
+const CONNECTION_STRING: string | undefined = process.env.SUPABASE_DB_URL;
+
+if (!CONNECTION_STRING) {
+  console.error('\nErro Crítico: A variável de ambiente SUPABASE_DB_URL não está definida.');
+  console.error('Execute o script passando a variável, ex: SUPABASE_DB_URL="sua_url" npx ts-node arquivo.ts\n');
+  process.exit(1);
+}
 
 async function executarScript(caminhoArquivo: string): Promise<boolean> {
   const client = new Client({
@@ -17,25 +30,24 @@ async function executarScript(caminhoArquivo: string): Promise<boolean> {
   try {
     await client.connect();
 
-    // Captura e exibe as mensagens de RAISE NOTICE emitidas pelo banco
-    client.on('notice', (msg) => {
+    client.on('notice', (msg: NoticeMessage): void => {
       if (msg.message) {
-        console.log(msg.message);
+        console.warn(msg.message);
       }
     });
 
-    const fullPath = path.resolve(caminhoArquivo);
+    const fullPath: string = path.resolve(caminhoArquivo);
     if (!fs.existsSync(fullPath)) {
       console.error(`\n Arquivo não encontrado: ${fullPath}`);
       return false;
     }
 
-    const sql = fs.readFileSync(fullPath, 'utf8');
+    const sql: string = fs.readFileSync(fullPath, 'utf8');
     await client.query(sql);
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('\n Erro durante a execução do script SQL:');
-    console.error(err.message || err);
+    console.error(err instanceof Error ? err.message : String(err));
     return false;
   } finally {
     await client.end();
@@ -55,21 +67,23 @@ function exibirMenu(): void {
   console.log('===========================================================');
 }
 
-async function main() {
-  const rl = readline.createInterface({
+async function main(): Promise<void> {
+  const rl: readline.Interface = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  const question = (query: string): Promise<string> =>
-    new Promise((resolve) => rl.question(query, resolve));
+  const question: QuestionHandler = (query: string): Promise<string> =>
+    new Promise((resolve: (value: string | PromiseLike<string>) => void) =>
+      rl.question(query, resolve)
+    );
 
-  let continuar = true;
+  let continuar: boolean = true;
 
   while (continuar) {
     exibirMenu();
-    const opcao = (await question('\nEscolha uma opção: ')).trim();
-    
+    const opcao: string = (await question('\nEscolha uma opção: ')).trim();
+
     switch (opcao) {
       case '1':
         console.log('\n Executando 01_create.sql...\n');
