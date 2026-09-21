@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ProtectedRoute } from './components/SupabaseConnect'
 import { CrudConsole } from './pages/CrudConsole'
-import { HomePage } from './pages/HomePage';
+import  HomePage  from './pages/HomePage';
 
 export default function Hub() {
   return (
