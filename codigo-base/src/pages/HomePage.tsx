@@ -11,6 +11,7 @@ export const HomePage: React.FC = () => {
       <hr />
       <h1>Athen: Plataforma de Educação</h1>
       <h2> Aprendizado por reforço e Competitividade amigável</h2>
+      <Link to= "/LoginPage">Pagina 2Login</Link>
 
       <img 
         src="/Athen.png" 
