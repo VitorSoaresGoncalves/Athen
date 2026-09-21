@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./HomePage.css";
 const logoColor = "/Athen.png";
 const logoGhost = "/Athen_ghost.png";
 
