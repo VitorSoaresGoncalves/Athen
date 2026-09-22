@@ -66,7 +66,7 @@ Estrutura padrão de uma branch nova:
 
 *   **`issue/*`**: Funcionalidades (ex: `issue/123-nova-feature`)
 
-onde o número `123` representa o número da issue no YouTrack.
+onde o número `123` representa o número da história de usuário a qual a issue pertence no YouTrack.
 
 ### Processo de Pull Request
 1. **Validação Local Pré-Envio:** Antes de enviar o código, execute na pasta do projeto as verificações locais para garantir a integridade (`lint`, checagem de tipos, testes unitários e build). Para mudanças visuais ou de gameplay, registre uma imagem ou vídeo.
