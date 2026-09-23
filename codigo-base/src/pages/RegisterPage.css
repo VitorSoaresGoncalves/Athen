@@ -34,10 +34,33 @@
   border-radius: 5px;
 }
 
-.register-box button {
+.register-box .submit-btn {
   width: 100%;
   padding: 10px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.password-wrapper input {
+  flex: 1;
+  padding-right: 70px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #555;
+  padding: 4px 8px;
 }

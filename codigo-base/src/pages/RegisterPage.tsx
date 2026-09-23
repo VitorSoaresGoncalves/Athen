@@ -1,68 +1,138 @@
-import React from "react";
+import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { SupaConnect } from "../components/SupabaseConnect";
+import { supabase, supabaseConfigured } from "../lib/supabase";
 import "./RegisterPage.css";
 
-export const RegisterPage: React.FC = () => {
+export function RegisterPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nomeExibicao, setNomeExibicao] = useState("");
+  const [nomeUsuario, setNomeUsuario] = useState("");
+
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!supabaseConfigured) {
+      setMessage("Supabase não configurado.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("Criando usuário...");
+
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          nome_exibicao: nomeExibicao.trim(),
+          nome_usuario: nomeUsuario.trim(),
+        },
+      },
+    });
+
+    if (error) {
+      setMessage(`Falha no cadastro: ${error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    setMessage("Cadastro realizado com sucesso!");
+    setRegistered(true);
+    setLoading(false);
+  };
+
+  if (registered) {
+    return (
+      <main className="register-container">
+        <div className="register-box">
+          <h1>Cadastro</h1>
+          <p className="register-message">{message}</p>
+          <Link to="/LoginPage">Ir para o login</Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="register-container">
-      {" "}
       <div className="register-box">
-        {" "}
-        <h1>Cadastro</h1>{" "}
-        <form>
-          {" "}
+        <h1>Cadastro</h1>
+        <form onSubmit={(event) => void handleRegister(event)}>
           <div className="input-group">
-            {" "}
-            <label htmlFor="email">E-mail</label>{" "}
+            <label htmlFor="email">E-mail</label>
             <input
               type="email"
               id="email"
               placeholder="Digite seu e-mail"
-            />{" "}
-          </div>{" "}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </div>
+
           <div className="input-group">
-            {" "}
-            <label htmlFor="senha">Senha</label>{" "}
-            <input
-              type="password"
-              id="senha"
-              placeholder="Digite sua senha"
-            />{" "}
-          </div>{" "}
+            <label htmlFor="senha">Senha</label>
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="senha"
+                placeholder="Digite sua senha"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={6}
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? "Ocultar" : "Mostrar"}
+              </button>
+            </div>
+          </div>
+
           <div className="input-group">
-            {" "}
-            <label htmlFor="nomeExibicao">Nome de exibição</label>{" "}
+            <label htmlFor="nomeExibicao">Nome de exibição</label>
             <input
               type="text"
               id="nomeExibicao"
               placeholder="Digite seu nome de exibição"
-            />{" "}
-          </div>{" "}
+              value={nomeExibicao}
+              onChange={(event) => setNomeExibicao(event.target.value)}
+              required
+            />
+          </div>
+
           <div className="input-group">
-            {" "}
-            <label htmlFor="nomeUsuario">Nome de usuário</label>{" "}
+            <label htmlFor="nomeUsuario">Nome de usuário</label>
             <input
               type="text"
               id="nomeUsuario"
               placeholder="Digite seu nome de usuário"
-            />{" "}
-          </div>{" "}
-          <div className="input-group">
-            {" "}
-            <label htmlFor="cargo">Cargo</label>{" "}
-            <select id="cargo" defaultValue="">
-              {" "}
-              <option value="" disabled>
-                Selecione seu cargo
-              </option>{" "}
-              <option value="aluno">Aluno</option>{" "}
-              <option value="professor">Professor</option>{" "}
-            </select>{" "}
-          </div>{" "}
-          <button type="submit">Cadastrar</button>{" "}
-        </form>{" "}
-      </div>{" "}
+              value={nomeUsuario}
+              onChange={(event) => setNomeUsuario(event.target.value)}
+              required
+            />
+          </div>
+
+          {message && <p className="register-message">{message}</p>}
+
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading ? "Criando..." : "Cadastrar"}
+          </button>
+        </form>
+
+        <p className="register-footer">
+          Já tem conta? <Link to="/LoginPage">Entrar</Link>
+        </p>
+      </div>
     </main>
   );
-};
+}
