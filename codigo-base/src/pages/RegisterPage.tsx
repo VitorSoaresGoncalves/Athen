@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import "./RegisterPage.css";
-
+/** Teste de Commit */
 export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
