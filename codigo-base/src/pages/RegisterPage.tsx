@@ -30,8 +30,8 @@ export function RegisterPage() {
       password,
       options: {
         data: {
-          nome_exibicao: nomeExibicao.trim(),
-          nome_usuario: nomeUsuario.trim(),
+          full_name: nomeExibicao.trim(),
+          username: nomeUsuario.trim(),
         },
       },
     });
