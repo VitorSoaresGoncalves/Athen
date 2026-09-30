@@ -1,5 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Gabriela&family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Gabriela&family=Roboto:wght@400;500;700&display=swap');
 @import 'tailwindcss';
+
+@theme static {
+  --font-display: 'Gabriela', 'Times New Roman', serif;
+  --font-body: 'Roboto', system-ui, sans-serif;
+  --font-ui: 'Roboto', system-ui, sans-serif;
+
+  --color-gold: #ffcc00;
+  --color-gold-light: #ffde5c;
+  --color-gold-pale: #ffeb99;
+  --color-violet: #54318c;
+  --color-violet-mid: #a486d5;
+  --color-violet-pale: #c9b8e8;
+}
 
 :root {
   /* Variáveis de cor e fonte mantidas intactas */
@@ -60,4 +73,10 @@ a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--amarelo-tangerina);
   outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
 }
