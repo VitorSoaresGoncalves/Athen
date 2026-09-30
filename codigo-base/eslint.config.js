@@ -35,12 +35,11 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
 
-      // Nomenclatura de arquivos (kebab-case)
+      //Nomenclatura de arquivos Type e JavaScript (PascalCase)
       'check-file/filename-naming-convention': [
         'error',
         {
           '**/*.{jsx,tsx}': 'PASCAL_CASE',
-          '**/*.{css,scss,html}': 'KEBAB_CASE',
         },
         {
           ignoreMiddleExtensions: true,
