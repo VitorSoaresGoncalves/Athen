@@ -1,176 +1,19 @@
-/* Recupera as propriedades de largura e alinhamento que antes poluíam o #root */
-.home-container {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  padding: 20px; /* Substitui o style inline que estava na tag main */
+@theme {
+  --font-display: 'Gabriela', serif;
+  --font-body: 'Roboto', sans-serif;
+  --font-ui: 'Google Sans', 'Roboto', sans-serif;
+
+  --color-gold: #FFCC00;
+  --color-gold-light: #FFDE5C;
+  --color-gold-pale: #FFEB99;
+  --color-violet: #54318C;
+  --color-violet-mid: #A486D5;
+  --color-violet-pale: #C9B8E8;
 }
 
-/* --- Tipografia Isolada --- */
-.home-container h1, .home-container h2 {
-  font-family: var(--heading);
-  font-weight: 400;
-  color: var(--text-h);
-}
 
-.home-container h3, .home-container h4, .home-container h5, .home-container h6 {
-  font-family: var(--sans);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-.home-container h1 {
-  font-size: 56px;
-  letter-spacing: -0.6px;
-  margin: 56px 0 12px;
-  color: var(--amarelo-tangerina);
-}
-
-.home-container > h2:first-of-type {
-  font-family: var(--sans);
-  font-weight: 400;
-  color: var(--text-support);
-  max-width: 640px;
-  margin: 0 auto 48px;
-}
-
-.home-container h2 {
-  font-size: 26px;
-  line-height: 122%;
-  letter-spacing: -0.1px;
-  margin: 0 0 8px;
-}
-
-.home-container p {
-  margin: 0;
-  font-family: var(--sans);
-  color: var(--text);
-}
-
-.home-container code {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
-  color: var(--violeta-escuro);
-}
-
-/* --- Formulários e inputs (Escopo Protegido) --- */
-.home-container input, .home-container textarea, .home-container select {
-  font-family: var(--input-font);
-  color: var(--text);
-  background: var(--paper);
-  border: 1.5px solid var(--violeta-dessaturado);
-  border-radius: 8px;
-  padding: 10px 14px;
-  transition: border-color 0.15s ease;
-}
-
-.home-container input:focus, .home-container textarea:focus, .home-container select:focus {
-  border-color: var(--amarelo-tangerina);
-  outline: none;
-}
-
-/* --- Seções em alternância esquerda/direita --- */
-.home-container section {
-  width: 50%;
-  text-align: left;
-  position: relative;
-  padding: 28px 32px;
-  box-sizing: border-box;
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-  background: var(--paper);
-}
-
-@media (max-width: 768px) {
-  .home-container section { width: 100%; }
-}
-
-.esquerda, .direita {
-  margin-top: 140px;
-}
-
-@media (max-width: 1024px) {
-  .esquerda, .direita { margin-top: 56px; }
-  .home-container h1 { font-size: 34px; margin: 32px 0 8px; }
-  .home-container > h2:first-of-type { margin-bottom: 32px; }
-  .home-container h2 { font-size: 21px; }
-}
-
-.esquerda {
-  margin-right: auto;
-  border-left: 4px solid var(--violeta-dessaturado);
-}
-
-.direita {
-  margin-left: auto;
-  background: var(--amarelo-claro);
-  border-left: 4px solid var(--violeta-escuro);
-}
-
-.direita h2, .direita p {
-  color: var(--violeta-escuro);
-}
-
-/* --- Rodapé --- */
-.home-container footer {
-  background-color: var(--violeta-escuro);
-  color: var(--amarelo-muito-claro);
-  padding: 60px 10%;
-  margin-top: 160px;
-}
-
-@media (max-width: 1024px) {
-  .home-container footer { margin-top: 72px; padding: 48px 6%; }
-}
-
-.footer-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 40px;
-  text-align: left;
-}
-
-.home-container footer section {
-  margin: 0;
-  padding: 0;
-  width: auto;
-  background: none;
-  border: none;
-  box-shadow: none;
-}
-
-.home-container footer h3 {
-  margin: 0 0 16px;
-  font-family: var(--sans);
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--amarelo-tangerina);
-}
-
-.home-container footer p, .home-container footer a {
-  margin: 10px 0;
-  font-family: var(--sans);
-}
-
-.home-container footer p {
-  color: var(--violeta-dessaturado);
-}
-
-.home-container footer a {
-  display: block;
-  color: var(--amarelo-muito-claro);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.home-container footer a:hover, .home-container footer a:focus-visible {
-  color: var(--amarelo-tangerina);
+html,
+body,
+#root {
+  height: 100%;
 }
