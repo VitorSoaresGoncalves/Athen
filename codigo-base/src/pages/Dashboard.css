@@ -21,6 +21,21 @@ body {
   min-height: 100svh;
 }
 
+.tela > .sidebarL {
+  box-shadow: 8px 0 22px #05041252;
+}
+
+.tela > .sidebarL::after {
+  position: absolute;
+  top: 0;
+  right: -100px;
+  width: 100px;
+  height: 100%;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(90deg, #0e14209e 0%, #0e14204d 42%, #0e142014 76%, transparent 100%);
+}
+
 .dashboard { position: relative; z-index: 0; display: flex; flex-direction: column; width: 100%; min-height: 100svh; overflow: hidden; color: #f4eeff; transition: background 0.8s ease; user-select: none; flex: 1; min-width: 0;}
 .dashboard__lousa-toggle {
     position: absolute;
