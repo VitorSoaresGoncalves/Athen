@@ -19,6 +19,8 @@ dist/
 !.env.example
 .vitest/
 
+test-results/
+
 # Editor directories and files
 !.vscode/extensions.json
 .idea
