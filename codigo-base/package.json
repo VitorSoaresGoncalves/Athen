@@ -14,7 +14,7 @@
     "test:check": "tsc -p tsconfig.test.json --noEmit",
     "test:e2e": "playwright test",
     "preview": "vite preview",
-    "prepare": "husky"
+    "prepare": "cd .. && husky codigo-base/.husky"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint --fix"
