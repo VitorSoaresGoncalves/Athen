@@ -1,6 +1,3 @@
-import "@fontsource/gabriela/400.css";
-import "@fontsource/roboto/400.css";
-import "@fontsource/roboto/700.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
