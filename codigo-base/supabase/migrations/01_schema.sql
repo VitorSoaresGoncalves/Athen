@@ -275,6 +275,29 @@ begin
   return new;
 end;
 $$;
+-- ============================================================
+-- FUNÇÃO PARA EXCLUSÃO DE CONTA
+-- ============================================================
+create or replace function public.excluir_minha_conta ()
+returns void
+language plpgsql security definer
+set search_path = public as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Não autenticado.';
+  end if;
+
+  if exists (select 1 from public."Curso" where "ID_Criador" = auth.uid())
+     or exists (select 1 from public."Sala" where "ID_Criador" = auth.uid()) then
+    raise exception 'Exclua ou transfira seus cursos e salas antes de excluir a conta.';
+  end if;
+
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke all on function public.excluir_minha_conta () from public, anon;
+grant execute on function public.excluir_minha_conta () to authenticated;
 
 -- ============================================================
 -- XP_DIARIO -> XP_TOTAL
@@ -315,63 +338,38 @@ $$;
 -- ============================================================
 -- AULAS_FINALIZADAS
 -- ============================================================
-create or replace function public.recalcular_aulas_finalizadas_matricula () returns trigger language plpgsql security definer
-set
-  search_path = public as $$
+create or replace function public.atualizar_aulas_finalizadas () returns trigger
+language plpgsql security definer
+set search_path = public as $$
 declare
-  curso_id uuid;
-  usuario_id uuid;
-  total_aulas integer;
+  v_usuario uuid; v_aula uuid; v_curso uuid; total_aulas integer;
 begin
-  usuario_id = coalesce(new."fk_Usuario_ID", old."fk_Usuario_ID");
-  curso_id = coalesce(new."fk_Curso_ID", old."fk_Curso_ID");
-
-  select count(*)
-    into total_aulas
-  from public."conclui" c
-  join public."Aula" a on a."ID" = c."fk_Aula_ID"
-  join public."Modulo" m on m."ID" = a."ID_Modulo"
-  where c."fk_Usuario_ID" = usuario_id
-    and m."ID_Curso" = curso_id;
-
-  if tg_op <> 'DELETE' then
-    new."Aulas_Finalizadas" = total_aulas;
-    return new;
+  if tg_op = 'DELETE' then
+    v_usuario := old."fk_Usuario_ID"; v_aula := old."fk_Aula_ID";
+  else
+    v_usuario := new."fk_Usuario_ID"; v_aula := new."fk_Aula_ID";
   end if;
 
-  return old;
-end;
-$$;
-
-create or replace function public.atualizar_aulas_finalizadas () returns trigger language plpgsql security definer
-set
-  search_path = public as $$
-declare
-  curso_id uuid;
-  total_aulas integer;
-begin
-  select m."ID_Curso"
-    into curso_id
+  select m."ID_Curso" into v_curso
   from public."Aula" a
   join public."Modulo" m on m."ID" = a."ID_Modulo"
-  where a."ID" = new."fk_Aula_ID";
+  where a."ID" = v_aula;
 
-  select count(*)
-    into total_aulas
+  select count(*)::integer into total_aulas
   from public."conclui" c
   join public."Aula" a on a."ID" = c."fk_Aula_ID"
   join public."Modulo" m on m."ID" = a."ID_Modulo"
-  where c."fk_Usuario_ID" = new."fk_Usuario_ID"
-    and m."ID_Curso" = curso_id;
+  where c."fk_Usuario_ID" = v_usuario and m."ID_Curso" = v_curso;
 
   update public."matricula"
-  set "Aulas_Finalizadas" = total_aulas
-  where "fk_Usuario_ID" = new."fk_Usuario_ID"
-    and "fk_Curso_ID" = curso_id;
+     set "Aulas_Finalizadas" = total_aulas
+   where "fk_Usuario_ID" = v_usuario and "fk_Curso_ID" = v_curso;
 
+  if tg_op = 'DELETE' then return old; end if;
   return new;
 end;
 $$;
+
 
 -- ============================================================
 -- CONTAGEM DE ESTUDANTES
@@ -520,7 +518,16 @@ $$;
 create or replace function public.lidar_novo_user () returns trigger language plpgsql security definer
 set
   search_path = public as $$
+declare
+  v_username text := nullif(new.raw_user_meta_data ->> 'username', '');
 begin
+  -- Se o username já estiver em uso, cria o perfil sem username
+  -- em vez de derrubar o cadastro.
+  if v_username is not null
+     and exists (select 1 from public."Usuario" where "Nome_Usuario" = v_username) then
+    v_username := null;
+  end if;
+
   insert into public."Usuario" (
     "ID", "Nome_Display", "Avatar_Url", "Biografia", "Cargo", "Nome_Usuario"
   )
@@ -532,7 +539,7 @@ begin
     new.raw_user_meta_data ->> 'avatar_url',
     '',
     'learner',
-    new.raw_user_meta_data ->> 'username'
+    v_username
   )
   on conflict ("ID") do nothing;
 
@@ -649,9 +656,8 @@ execute function public.atualizar_avaliacao_curso ();
 
 -- Conclusão: aulas finalizadas.
 drop trigger if exists trg_aulas_finalizadas on public."conclui";
-
 create trigger trg_aulas_finalizadas
-after insert on public."conclui" for each row
+after insert or delete on public."conclui" for each row
 execute function public.atualizar_aulas_finalizadas ();
 
 -- Usuário criado no Auth.
@@ -771,10 +777,13 @@ drop policy if exists "usuario gerencia suas anotacoes" on public."Anotacoes";
 -- ============================================================
 -- POLICIES — USUARIO
 -- ============================================================
-create policy "usuario gerencia proprio perfil" on public."Usuario" for all using ("ID" = auth.uid ())
-with
-  check ("ID" = auth.uid ());
 
+create policy "usuario le proprio perfil" on public."Usuario"
+  for select using ("ID" = auth.uid());
+
+create policy "usuario atualiza proprio perfil" on public."Usuario"
+  for update using ("ID" = auth.uid())
+  with check ("ID" = auth.uid());
 -- ============================================================
 -- POLICIES — CURSO
 -- ============================================================
@@ -1074,6 +1083,11 @@ grant insert,
 update,
 delete on public."Sala" to authenticated;
 
+grant insert on public."Usuario" to authenticated;
+grant delete on public."matricula" to authenticated;
+grant update, delete on public."conclui" to authenticated;
+grant update on public."participa" to authenticated;
+
 -- Funções auxiliares são usadas internamente por RLS/triggers.
 revoke all on function public.usuario_e_criador_curso (uuid)
 from
@@ -1088,3 +1102,77 @@ execute on function public.usuario_e_criador_curso (uuid) to authenticated;
 
 grant
 execute on function public.usuario_participa_sala (uuid) to authenticated;
+
+-- ============================================================
+-- ADMIN
+-- ============================================================
+create table if not exists public."Admin" (
+  "fk_Usuario_ID" uuid primary key references public."Usuario" ("ID") on delete cascade,
+  "Data_Criacao" timestamptz not null default now()
+);
+
+alter table public."Admin" enable row level security;
+
+-- Sem policies e sem grants: só a service_role (backend) e funções
+-- security definer enxergam essa tabela.
+revoke all on public."Admin" from anon, authenticated;
+
+-- ============================================================
+-- FUNÇÃO e_admin()
+-- ============================================================
+create or replace function public.e_admin () returns boolean
+language sql stable security definer
+set search_path = public as $$
+  select exists (
+    select 1 from public."Admin"
+    where "fk_Usuario_ID" = auth.uid()
+  );
+$$;
+
+revoke all on function public.e_admin () from public, anon;
+grant execute on function public.e_admin () to authenticated;
+
+-- ============================================================
+-- POLICIES "ADMIN ACESSO TOTAL" EM TODAS AS TABELAS
+-- ============================================================
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'Usuario','Curso','Modulo','Aula','Questao','Sala',
+    'matricula','participa','conclui','Notebook','Anotacoes'
+  ]
+  loop
+    execute format('drop policy if exists "admin acesso total" on public.%I', t);
+    execute format($p$
+      create policy "admin acesso total" on public.%I
+      for all to authenticated
+      using ((select public.e_admin()))
+      with check ((select public.e_admin()))
+    $p$, t);
+  end loop;
+end
+$$;
+
+create or replace function public.proteger_cargo_usuario () returns trigger
+language plpgsql security definer
+set search_path = public as $$
+begin
+  if new."Cargo" is distinct from old."Cargo"
+     and new."Cargo" = 'moderator'
+     and auth.uid() is not null
+     and not public.e_admin() then
+    raise exception 'Apenas administradores podem definir o cargo moderator.';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_proteger_cargo_usuario on public."Usuario";
+create trigger trg_proteger_cargo_usuario
+before update on public."Usuario"
+for each row execute function public.proteger_cargo_usuario ();
+
+grant usage on schema public to service_role;
+grant all on public."Admin" to service_role;
