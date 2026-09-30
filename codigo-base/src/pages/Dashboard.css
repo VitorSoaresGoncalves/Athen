@@ -1,16 +1,30 @@
-.dashboard { min-height: 100vh; padding: 32px; background: #100721; color: #f4eeff; font-family: sans-serif; text-align: center; }
-.dashboard__header { margin-bottom: 28px; }
-.dashboard__header h1 { margin: 12px 0 0; font-size: 28px; }
-.dashboard__header select { padding: 6px 10px; color: #f4eeff; background: #30244d; border: 1px solid #7c5bb5; border-radius: 6px; }
-.dashboard__trail { display: flex; align-items: center; justify-content: center; gap: 24px; min-height: 300px; flex-wrap: wrap; }
-.dashboard__node { display: grid; place-items: center; width: 64px; height: 64px; color: #fff; background: #30244d; border: 2px solid #7c5bb5; border-radius: 18px; cursor: pointer; font-size: 22px; }
-.dashboard__node--lesson { border-radius: 50%; }
-.dashboard__label { color: #c7a9ff; }
-.dashboard__progress { width: min(560px, 100%); height: 12px; margin: 22px auto 8px; background: #30244d; border-radius: 999px; overflow: hidden; }
-.dashboard__progress span { display: block; height: 100%; background: #22c55e; transition: width .3s ease; }
-.dashboard__state { display: grid; min-height: 100vh; place-items: center; background: #100721; color: #d8c9f2; }
-.dashboard__scroll { overflow-x: auto; cursor: grab; scrollbar-width: none; }
-.dashboard__scroll::-webkit-scrollbar { display: none; }
-.dashboard__canvas { position: relative; height: 320px; margin: 42px auto 0; }
-.dashboard__svg { position: absolute; inset: 0; overflow: visible; }
-.dashboard__node { position: absolute; z-index: 1; }
+.dashboard { position: relative; display: flex; flex-direction: column; width: 100%; min-height: 100svh; overflow: hidden; color: #f4eeff; font-family: sans-serif; transition: background 0.8s ease; user-select: none; }
+.dashboard--state { align-items: center; justify-content: center; padding: 24px; background: #100721; color: #d8c9f2; text-align: center; }
+.dashboard-header { flex: 0 0 auto; padding: 26px 24px 14px; text-align: center; }
+.dashboard-course-select { display: inline-flex; align-items: center; }
+.dashboard-course-select__field { padding: 6px 10px; color: #f4eeff; background: #30244d; border: 1px solid #7c5bb5; border-radius: 6px; cursor: pointer; }
+.dashboard-header__title { margin: 12px 0 0; color: #f4eeff; font-size: clamp(26px, 4vw, 38px); font-weight: 400; letter-spacing: 0.02em; }
+.trail-scroll { flex: 1 1 auto; width: 100%; min-height: 0; overflow-x: auto; overflow-y: hidden; cursor: grab; scrollbar-width: none; }
+.trail-scroll:active { cursor: grabbing; }
+.trail-scroll::-webkit-scrollbar { display: none; }
+.trail { position: relative; height: 320px; margin: max(24px, 8vh) auto 0; }
+.trail__path { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.trail__path path { transition: stroke 0.8s ease; }
+.trail-node { position: absolute; z-index: 1; display: block; padding: 0; background: transparent; border: 0; cursor: pointer; transition: transform 0.2s ease; }
+.trail-node:hover { transform: scale(1.1); }
+.trail-node:active { transform: scale(0.95); }
+.trail-node--module { width: 80px; height: 92px; }
+.trail-node--lesson { width: 64px; height: 72px; }
+.trail-node__face { position: absolute; display: flex; align-items: center; justify-content: center; border: 2.5px solid transparent; color: #fff; transition: all 0.3s ease; }
+.trail-node--module .trail-node__face { width: 64px; height: 64px; border-radius: 18px; font-size: 28px; }
+.trail-node--lesson .trail-node__face { width: 48px; height: 48px; margin: 8px; border-radius: 50%; font-size: 16px; font-weight: 900; }
+.trail-node__label { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; }
+.trail-node__sparkles { position: absolute; top: -16px; left: 50%; color: #fbbf24; font-size: 12px; letter-spacing: 2px; transform: translateX(-50%); animation: dashboard-bounce 1s infinite; }
+@keyframes dashboard-bounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-5px); } }
+.dashboard-footer { flex: 0 0 auto; width: min(100%, 960px); margin: 0 auto; padding: 8px 20px 20px; }
+.progress-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.progress-blocks { display: flex; align-items: center; gap: 6px; min-height: 24px; }
+.progress-block { display: block; width: 12px; height: 12px; border: 2px solid transparent; border-radius: 3px; transition: all 0.5s ease; }
+.progress-block--completed { width: 22px; height: 22px; }
+.progress-separator { font-size: 16px; font-weight: 900; }
+.progress-percent { font-size: 20px; letter-spacing: 0.08em; }
