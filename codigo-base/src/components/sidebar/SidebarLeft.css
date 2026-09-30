@@ -66,13 +66,15 @@
     border-radius: 8px;
     background: transparent;
     color: #a0a0b8;
-    font-family: inherit;
     font-size: 14px;
     text-align: left;
     cursor: pointer;
 }
 
-.menu-item span { font-size: 20px; }
+.menu-item span {
+    font-size: 20px;
+    font-family: "Roboto", system-ui, sans-serif;
+}
 
 .menu-item:hover {
     background: #22223a;

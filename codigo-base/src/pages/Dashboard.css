@@ -1,3 +1,21 @@
+:root {
+  --font-display: "Gabriela", Georgia, serif;
+  --font-body: "Roboto", system-ui, sans-serif;
+}
+
+h1, h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+h3, h4, h5, h6, button {
+  font-family: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+}
+
 .tela {
   display: flex;
   min-height: 100svh;
@@ -13,7 +31,7 @@
   border-radius: 8px;
   background: #182335;
   color: #eaf2ff;
-  font-family: inherit;
+  font-family: var(--font-display);
   font-size: 14px;
   cursor: pointer;
 }
@@ -34,9 +52,9 @@
 .dashboard-header { flex: 0 0 auto; padding: 26px 24px 14px; text-align: center; }
 .dashboard-course-select { display: inline-flex; align-items: center; gap: 7px; max-width: min(100%, 420px); padding: 4px 10px; background: rgba(87, 46, 151, 0.22); border: 1px solid rgba(193, 150, 255, 0.34); border-radius: 8px; color: var(--amarelo-tangerina); }
 .dashboard-course-select__icon { flex: 0 0 auto; font-size: 15px; }
-.dashboard-course-select__field { max-width: 360px; padding: 2px 20px 2px 0; overflow: hidden; color: var(--amarelo-tangerina); background: transparent; border: 0; outline: 0; cursor: pointer; font-family: var(--input-font); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; }
+.dashboard-course-select__field { max-width: 360px; padding: 2px 20px 2px 0; overflow: hidden; color: var(--amarelo-tangerina); background: transparent; border: 0; outline: 0; cursor: pointer; font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-overflow: ellipsis; text-transform: uppercase; }
 .dashboard-course-select__field option { color: #f4eeff; background: #1a1035; }
-.dashboard-header__title { margin: 7px 0 0; color: #f4eeff; font-family: var(--heading); font-size: clamp(26px, 4vw, 38px); font-weight: 400; letter-spacing: 0.02em; }
+.dashboard-header__title { margin: 7px 0 0; color: #f4eeff; font-family: var(--font-display); font-size: clamp(26px, 4vw, 38px); font-weight: 400; letter-spacing: 0.02em; }
 .trail-scroll { flex: 1 1 auto; width: 100%; min-height: 0; overflow-x: auto; overflow-y: hidden; cursor: grab; scrollbar-width: none; }
 .trail-scroll:active { cursor: grabbing; }
 .trail-scroll::-webkit-scrollbar { display: none; }
@@ -61,13 +79,13 @@
 .progress-block { display: block; width: 12px; height: 12px; border: 2px solid transparent; border-radius: 3px; transition: all 0.5s ease; }
 .progress-block--completed { width: 22px; height: 22px; }
 .progress-separator { font-size: 16px; font-weight: 900; }
-.progress-percent { font-family: var(--mono); font-size: 20px; letter-spacing: 0.08em; }
+.progress-percent { font-family: var(--font-body); font-size: 20px; letter-spacing: 0.08em; }
 .module-carousel { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 16px; }
 .module-carousel__viewport { width: min(100%, 330px); overflow: hidden; }
 .module-carousel__track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 0; }
 .module-carousel__item { display: flex; flex-direction: column; align-items: center; min-width: 0; opacity: 0.62; filter: brightness(0.58) saturate(0.75); transform: scale(0.88); transition: opacity 0.3s ease, filter 0.3s ease, transform 0.3s ease; }
 .module-carousel__item--current { opacity: 1; filter: none; transform: scale(1); }
-.module-carousel__name { width: calc(100% - 8px); margin-bottom: 8px; overflow: hidden; padding: 4px 6px; background: transparent; border: 1px solid currentColor; border-radius: 6px; font-family: var(--mono); font-size: 14px; font-weight: 800; line-height: 1.2; text-align: center; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.82); white-space: nowrap; }
+.module-carousel__name { width: calc(100% - 8px); margin-bottom: 8px; overflow: hidden; padding: 4px 6px; background: transparent; border: 1px solid currentColor; border-radius: 6px; font-family: var(--font-body); font-size: 14px; font-weight: 800; line-height: 1.2; text-align: center; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.82); white-space: nowrap; }
 .module-carousel__button { display: flex; align-items: center; justify-content: center; width: 52px; height: 44px; border: 2px solid transparent; border-radius: 14px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease; }
 .module-carousel__button:hover { transform: translateY(-3px); }
 .module-carousel__icon { font-size: 23px; line-height: 1; }
