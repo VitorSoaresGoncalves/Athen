@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "./Dashboard.css";
+import { SidebarLeft } from "../components/sidebar/SidebarLeft";
+import { SidebarRight } from "../components/sidebar/SidebarRight";
 import { aulaRepository, concluiRepository, cursoRepository, moduloRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
+import "./Dashboard.css";
+
 
 type Curso = Database["public"]["Tables"]["Curso"]["Row"];
 type Modulo = Database["public"]["Tables"]["Modulo"]["Row"];
@@ -100,6 +103,7 @@ function getRequestedCourseId(courseId?: string) {
 
 export default function Dashboard({ courseId }: DashboardProps) {
 
+  const [lousaAberta, setLousaAberta] = useState(false);
   const [courses, setCourses] = useState<Curso[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(() => getRequestedCourseId(courseId));
   const [course, setCourse] = useState<Curso | null>(null);
@@ -323,14 +327,12 @@ export default function Dashboard({ courseId }: DashboardProps) {
   }
 
   return (
+      <div className="tela">
+
+      <SidebarLeft />
+
     <main className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
       
-      <aside className="dashboard-sidebar" aria-label="Navegação lateral">
-        {/*
-          Base visual da sidebar esquerda.
-          Aqui vai o componente da sidebar esquerda
-        */}
-      </aside>
       <header className="dashboard-header">
         <label className="dashboard-course-select">
           <span className="dashboard-course-select__icon">{course.Icone}</span>
@@ -348,6 +350,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
           </select>
         </label>
         <h1 className="dashboard-header__title">{activeItem?.type === "lesson" ? activeItem.aula.Titulo : activeModule.Titulo}</h1>
+
+        <button
+          data-toggle-lousa='true'
+          className='dashboard__lousa-toggle'
+          onClick={() => setLousaAberta(!lousaAberta)}
+        >
+          ▼
+        </button>
       </header>
 
       <section
@@ -371,7 +381,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                 {(() => {
                   const changesModule = trail[index].module.ID !== trail[index + 1].module.ID;
                   const transitionStart = changesModule ? 78 : 0;
-
+                  
                   return (
                     <defs>
                       <linearGradient
@@ -381,7 +391,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                         y1={positions[index].y}
                         x2={positions[index + 1].x}
                         y2={positions[index + 1].y}
-                      >
+                        >
                         <stop offset="0%" stopColor={trail[index].module.theme.primary} />
                         <stop offset={`${transitionStart}%`} stopColor={trail[index].module.theme.primary} />
                         <stop offset="100%" stopColor={trail[index + 1].module.theme.primary} />
@@ -395,7 +405,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   stroke={`url(#trail-segment-gradient-${index})`}
                   strokeWidth="5"
                   strokeLinecap="round"
-                />
+                  />
               </g>
             ))}
           </svg>
@@ -405,15 +415,15 @@ export default function Dashboard({ courseId }: DashboardProps) {
             const completed = item.type === "lesson" && completedLessonIds.has(item.aula.ID);
             const theme = item.module.theme;
             const position = positions[index];
-
+            
             return (
               <button
-                key={item.type === "module" ? item.module.ID : item.aula.ID}
-                className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""}`}
-                data-trail-index={index}
-                style={{ left: position.x - getTrailNodeOffset(item.type), top: position.y - getTrailNodeOffset(item.type) }}
-                onClick={() => handleTrailItemClick(index, item)}
-                aria-label={item.type === "module" ? `Módulo ${item.module.Titulo}` : `Aula ${item.aula.Titulo}`}
+              key={item.type === "module" ? item.module.ID : item.aula.ID}
+              className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""}`}
+              data-trail-index={index}
+              style={{ left: position.x - getTrailNodeOffset(item.type), top: position.y - getTrailNodeOffset(item.type) }}
+              onClick={() => handleTrailItemClick(index, item)}
+              aria-label={item.type === "module" ? `Módulo ${item.module.Titulo}` : `Aula ${item.aula.Titulo}`}
               >
                 <span
                   className="trail-node__face"
@@ -422,7 +432,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                     borderColor: isActive || isPast || completed ? theme.primary : theme.muted,
                     boxShadow: isActive ? `0 0 28px ${theme.primary}99` : undefined,
                   }}
-                >
+                  >
                   {item.type === "module" ? item.module.Icone : completed ? "✓" : isActive ? "▶" : "○"}
                 </span>
               </button>
@@ -446,7 +456,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
             <div className="module-carousel__track">
               {carouselModules.map((module, index) => {
                 const isCurrent = index === 1;
-
+                
                 return (
                   <div key={`${module.ID}-${index}`} className={`module-carousel__item ${isCurrent ? "module-carousel__item--current" : ""}`}>
                     <span className="module-carousel__name" style={{ color: isCurrent ? module.theme.primary : module.theme.muted, borderColor: isCurrent ? module.theme.primary : module.theme.muted }}>{module.Titulo}</span>
@@ -460,7 +470,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                       }}
                       onClick={() => selectModule(module.ID)}
                       aria-label={`Selecionar módulo ${module.Titulo}`}
-                    >
+                      >
                       <span className="module-carousel__icon">{module.Icone}</span>
                     </button>
                   </div>
@@ -472,5 +482,17 @@ export default function Dashboard({ courseId }: DashboardProps) {
         </div>
       </footer>
     </main>
+
+    <SidebarRight
+        aberta={lousaAberta}
+        onFechar={() => setLousaAberta(false)}
+        titulo='Fundamentos'
+      >
+        <section className='bloco'>Bloco 1</section>
+        <section className='bloco'>Bloco 2</section>
+
+    </SidebarRight>
+    
+    </div>
   );
 }

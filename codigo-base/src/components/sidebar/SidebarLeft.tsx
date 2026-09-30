@@ -35,7 +35,7 @@ type avatarUrl = {
 
 export function SidebarLeft({avatar}: avatarUrl) {
     return (
-        <aside>
+        <aside className='sidebarL'>
             <section className='titulo'>
                 <h2>ATHEN</h2>
             </section>
