@@ -4,7 +4,7 @@ import { CrudConsole } from './pages/CrudConsole'
 import {LoginPage} from './pages/LoginPage'
 import {RegisterPage} from './pages/RegisterPage';
 import  HomePage  from './pages/home-page/HomePage';
-import  Dashboard from './pages/Dashboard'
+import Dashboard from './pages/Dashboard'
 
 export default function Hub() {
   return (
@@ -12,8 +12,8 @@ export default function Hub() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
-        <Route path="/LoginPage" element={<LoginPage />} />
-        <Route path="/RegisterPage" element={<RegisterPage />} />
+        <Route path="/login-page" element={<LoginPage />} />
+        <Route path="/register-page" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>

@@ -36,7 +36,7 @@ export function LoginPage() {
     }
 
     setLoading(false);
-    navigate("/");
+    navigate("/Dashboard");
   };
 
   return (
