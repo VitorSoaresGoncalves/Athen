@@ -53,7 +53,7 @@ export function RegisterPage() {
         <div className="register-box">
           <h1>Cadastro</h1>
           <p className="register-message">{message}</p>
-          <Link to="/LoginPage">Ir para o login</Link>
+          <Link to="/login-page">Ir para o login</Link>
         </div>
       </main>
     );
@@ -130,7 +130,7 @@ export function RegisterPage() {
         </form>
 
         <p className="register-footer">
-          Já tem conta? <Link to="/LoginPage">Entrar</Link>
+          Já tem conta? <Link to="/login-page">Entrar</Link>
         </p>
       </div>
     </main>
