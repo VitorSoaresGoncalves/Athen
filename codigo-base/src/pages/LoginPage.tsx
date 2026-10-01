@@ -36,7 +36,7 @@ export function LoginPage() {
     }
 
     setLoading(false);
-    navigate("/Dashboard");
+    navigate("/dashboard");
   };
 
   return (
@@ -85,7 +85,7 @@ export function LoginPage() {
         </form>
 
         <p className="login-footer">
-          Não tem conta? <Link to="/RegisterPage">Cadastrar</Link>
+          Não tem conta? <Link to="/register-page">Cadastrar</Link>
         </p>
       </div>
     </main>

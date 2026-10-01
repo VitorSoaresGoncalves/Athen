@@ -49,7 +49,7 @@ export default function Header() {
 
         <div className="hidden md:flex items-center gap-3">
           <button
-            onClick={() => navigate("/LoginPage")}
+            onClick={() => navigate("/login-page")}
             className="text-sm px-4 py-2 rounded-full transition-opacity hover:opacity-80"
             style={{
               fontFamily: "var(--font-ui)",
@@ -60,7 +60,7 @@ export default function Header() {
             Entrar
           </button>
           <button
-            onClick={() => navigate("/RegisterPage")}
+            onClick={() => navigate("/register-page")}
             className="text-sm px-5 py-2 rounded-full font-semibold transition-transform hover:scale-105"
             style={{
               fontFamily: "var(--font-ui)",
