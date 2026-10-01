@@ -1,0 +1,1 @@
+cd codigo-base && npx lint-staged
