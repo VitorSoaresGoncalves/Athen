@@ -106,12 +106,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [lousaAberta, setLousaAberta] = useState(false);
   const [courses, setCourses] = useState<Curso[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(() => getRequestedCourseId(courseId));
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [course, setCourse] = useState<Curso | null>(null);
   const [dashboardModules, setDashboardModules] = useState<DashboardModule[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const headerRef = useRef<HTMLElement>(null);
   const trailRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0, moved: false });
 
@@ -190,6 +192,33 @@ export default function Dashboard({ courseId }: DashboardProps) {
     void loadCourseTrail();
     return () => { cancelled = true; };
   }, [courses, selectedCourseId]);
+
+  useEffect(() => {
+    if (!coursePickerOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setCoursePickerOpen(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [coursePickerOpen]);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    const sidebar = document.querySelector<HTMLElement>(".tela > .sidebarL");
+    if (!(header && sidebar)) return;
+
+    const updateSidebarWidth = () => {
+      header.style.setProperty("--sidebar-left-width", `${sidebar.getBoundingClientRect().width}px`);
+    };
+
+    updateSidebarWidth();
+    const observer = new ResizeObserver(updateSidebarWidth);
+    observer.observe(sidebar);
+
+    return () => observer.disconnect();
+  }, []);
 
   // Junta módulos e aulas numa sequência única para o SVG e os nós.
   const trail = useMemo<TrailItem[]>(() => dashboardModules.flatMap((module) => [
@@ -273,6 +302,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
   function handleCourseChange(nextCourseId: string) {
     setSelectedCourseId(nextCourseId);
+    setCoursePickerOpen(false);
   }
 
   // ---------------------------------------------------------------------------
@@ -333,22 +363,17 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
     <main className="dashboard relative z-0 flex min-h-svh min-w-0 flex-1 flex-col overflow-hidden select-none text-[#f4eeff] transition-[background] duration-700" style={{ background: activeTheme.background, color: "#f4eeff" }}>
       
-      <header className="dashboard-header flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
-        <label className="dashboard-course-select inline-flex max-w-full items-center gap-[7px] rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-[10px] py-1 text-[#ffcc00]">
-          <span className="dashboard-course-select__icon flex-none text-[15px]">{course.Icone}</span>
-          <select
-            className="dashboard-course-select__field max-w-[360px] cursor-pointer overflow-hidden border-0 bg-transparent py-0 pl-0 pr-5 text-xs font-bold uppercase tracking-[0.08em] text-ellipsis text-[#ffcc00] outline-none"
-            value={selectedCourseId ?? course.ID}
-            onChange={(event) => handleCourseChange(event.target.value)}
-            aria-label="Selecionar curso"
-          >
-            {courses.map((availableCourse) => (
-              <option key={availableCourse.ID} value={availableCourse.ID}>
-                {availableCourse.Titulo}
-              </option>
-            ))}
-          </select>
-        </label>
+      <header ref={headerRef} className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
+        <button
+          type="button"
+          className="dashboard-course-trigger absolute left-[calc(var(--sidebar-left-width,230px)+32px)] top-[26px] z-10 inline-flex max-w-[min(36%,360px)] items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 min-[1440px]:top-[30px] min-[1920px]:top-[34px]"
+          onClick={() => setCoursePickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={coursePickerOpen}
+          aria-label="Abrir seletor de cursos"
+        >
+          <span aria-hidden="true" className="flex h-6 w-6 flex-none items-center justify-center text-xl leading-none text-[#f4eeff]" > ≡ </span>
+        </button>
         <h1 className="dashboard-header__title m-[7px_0_0] text-[clamp(26px,4vw,38px)] font-normal tracking-[0.02em] text-[#f4eeff]">{activeItem?.type === "lesson" ? activeItem.aula.Titulo : activeModule.Titulo}</h1>
 
         <button
@@ -359,6 +384,60 @@ export default function Dashboard({ courseId }: DashboardProps) {
           ▼
         </button>
       </header>
+
+      {coursePickerOpen && (
+        <div
+          className="fixed inset-0 z-30 flex items-start justify-center bg-[#090512]/70 px-5 pt-[18vh] backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setCoursePickerOpen(false);
+          }}
+        >
+          <section
+            className="w-full max-w-lg rounded-2xl border border-[rgba(193,150,255,0.38)] bg-[#1a1035] p-5 text-[#f4eeff] shadow-2xl shadow-black/50"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="course-picker-title"
+          >
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h2 id="course-picker-title" className="mt-1 text-2xl font-normal text-[#f4eeff]">Escolha um curso</h2>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-2xl leading-none text-[#cfc2e8] transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
+                onClick={() => setCoursePickerOpen(false)}
+                aria-label="Fechar seletor de cursos"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="flex max-h-[min(60vh,420px)] flex-col gap-2 overflow-y-auto pr-1">
+              {courses.map((availableCourse) => {
+                const isSelected = availableCourse.ID === selectedCourseId;
+
+                return (
+                  <button
+                    key={availableCourse.ID}
+                    type="button"
+                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${isSelected ? "border-[#A486D5]/70 bg-[#5a3b91]/55" : "border-white/10 bg-white/[0.04] hover:border-[#c19cff]/60 hover:bg-white/[0.09]"}`}
+                    onClick={() => handleCourseChange(availableCourse.ID)}
+                    aria-pressed={isSelected}
+                  >
+                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-black/20 text-xl">{availableCourse.Icone}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-base font-bold">{availableCourse.Titulo}</span>
+                      <span className="mt-0.5 block text-xs text-[#cfc2e8]">{availableCourse.Slug}</span>
+                    </span>
+                    {isSelected && <span className="text-lg text-[#ffcc00]" aria-label="Curso atual">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
 
       <section
         ref={trailRef}
