@@ -1,8 +1,10 @@
+import { NavLink } from 'react-router-dom';
 import './SidebarLeft.css';
 
 type SidebarItem = {
     text: string;
     icone: string;
+    to?: string; // rota da página; sem "to", o item continua apontando para "#"
 }
 
 
@@ -18,6 +20,7 @@ const itens: SidebarItem[] = [
     {
         text: "Salas",
         icone: "🐼 ",
+        to: "/salas",
     },
     {
         text: "Ligas",
@@ -47,12 +50,29 @@ export function SidebarLeft({avatar}: avatarUrl) {
                             : <span className='avatar-padrao'>🧑‍</span>}
                 </div>
 
-                {itens.map((item) => (
-                    <a href="#" className="menu-item" key={item.text}>
-                        <span className="menu-icon">{item.icone}</span>
-                        <span className='menu-text'>{item.text}</span>
-                    </a>
-                ))}
+                {itens.map((item) => {
+                    const conteudo = (
+                        <>
+                            <span className="menu-icon">{item.icone}</span>
+                            <span className='menu-text'>{item.text}</span>
+                        </>
+                    );
+
+                    // Itens com rota viram link de verdade e ganham destaque na página atual.
+                    return item.to ? (
+                        <NavLink
+                            to={item.to}
+                            key={item.text}
+                            className={({ isActive }) => isActive ? 'menu-item menu-item--ativo' : 'menu-item'}
+                        >
+                            {conteudo}
+                        </NavLink>
+                    ) : (
+                        <a href="#" className="menu-item" key={item.text}>
+                            {conteudo}
+                        </a>
+                    );
+                })}
             </nav>
         </aside>
     )
