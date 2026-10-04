@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
-import { aulaRepository, concluiRepository, cursoRepository, moduloRepository } from "../data/repositories";
+import { aulaRepository, concluiRepository, cursoRepository, moduloRepository, salaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
 import "./Dashboard.css";
 
 
 type Curso = Database["public"]["Tables"]["Curso"]["Row"];
+type Sala = Database["public"]["Tables"]["Sala"]["Row"];
 type Modulo = Database["public"]["Tables"]["Modulo"]["Row"];
 type Aula = Database["public"]["Tables"]["Aula"]["Row"];
 type ModuleTheme = { primary: string; background: string; muted: string; shadow: string };
@@ -107,6 +108,10 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [courses, setCourses] = useState<Curso[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(() => getRequestedCourseId(courseId));
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState<"courses" | "rooms">("courses");
+  const [salas, setSalas] = useState<Sala[]>([]);
+  const [salasLoading, setSalasLoading] = useState(false);
+  const [salasError, setSalasError] = useState("");
   const [course, setCourse] = useState<Curso | null>(null);
   const [dashboardModules, setDashboardModules] = useState<DashboardModule[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
@@ -204,6 +209,30 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [coursePickerOpen]);
 
+  // Carrega todas as salas.
+  useEffect(() => {
+    if (!coursePickerOpen || pickerTab !== "rooms" || salas.length > 0) return;
+
+    let cancelled = false;
+
+    async function loadSalas() {
+      setSalasLoading(true);
+      setSalasError("");
+
+      try {
+        const availableSalas = await salaRepository.listar();
+        if (!cancelled) setSalas(availableSalas);
+      } catch (error) {
+        if (!cancelled) setSalasError(error instanceof Error ? error.message : "Não foi possível carregar as salas.");
+      } finally {
+        if (!cancelled) setSalasLoading(false);
+      }
+    }
+
+    void loadSalas();
+    return () => { cancelled = true; };
+  }, [coursePickerOpen, pickerTab, salas.length]);
+
   useEffect(() => {
     const header = headerRef.current;
     const sidebar = document.querySelector<HTMLElement>(".tela > .sidebarL");
@@ -261,6 +290,13 @@ export default function Dashboard({ courseId }: DashboardProps) {
       ]
     : [];
 
+  // Por enquanto, o curso atual aparece primeiro. Futuramente, este ranking
+  // pode ser substituído por uma ordenação baseada na atividade mais recente.
+  const orderedCourses = useMemo(() => [
+    ...courses.filter((availableCourse) => availableCourse.ID === selectedCourseId),
+    ...courses.filter((availableCourse) => availableCourse.ID !== selectedCourseId),
+  ], [courses, selectedCourseId]);
+
 
   // Centraliza o nó ativo após a troca de aula ou módulo.
   useEffect(() => {
@@ -303,6 +339,13 @@ export default function Dashboard({ courseId }: DashboardProps) {
   function handleCourseChange(nextCourseId: string) {
     setSelectedCourseId(nextCourseId);
     setCoursePickerOpen(false);
+  }
+
+  function handleSalaClick(sala: Sala) {
+    if (!sala.fk_Curso_ID) return;
+
+    // talvez mudar, se o painel da sala for diferente chamar ent o painel da sala não o padrão do dashboard, decissao futura
+    handleCourseChange(sala.fk_Curso_ID);
   }
 
   // ---------------------------------------------------------------------------
@@ -394,46 +437,94 @@ export default function Dashboard({ courseId }: DashboardProps) {
           }}
         >
           <section
-            className="w-full max-w-lg rounded-2xl border border-[rgba(193,150,255,0.38)] bg-[#1a1035] p-5 text-[#f4eeff] shadow-2xl shadow-black/50"
+            className="w-full max-w-2xl rounded-2xl border border-[rgba(193,150,255,0.38)] bg-[#1a1035] p-5 text-[#f4eeff] shadow-2xl shadow-black/50"
             role="dialog"
             aria-modal="true"
             aria-labelledby="course-picker-title"
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 id="course-picker-title" className="mt-1 text-2xl font-normal text-[#f4eeff]">Escolha um curso</h2>
-              </div>
+
+            <div className="mb-4 grid grid-cols-2 gap-2 border-b border-white/10 pb-4">
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-2xl leading-none text-[#cfc2e8] transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
-                onClick={() => setCoursePickerOpen(false)}
-                aria-label="Fechar seletor de cursos"
+                className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${pickerTab === "courses" ? "border-[#A486D5] bg-[#5a3b91]/55 text-[#f4eeff]" : "border-white/10 bg-white/[0.04] text-[#cfc2e8] hover:border-[#A486D5]/70 hover:bg-white/[0.09]"}`}
+                onClick={() => setPickerTab("courses")}
+                aria-pressed={pickerTab === "courses"}
               >
-                ×
+                <span aria-hidden="true" className="text-lg">💼</span>
+                <span>Cursos</span>
+              </button>
+              <button
+                type="button"
+                className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${pickerTab === "rooms" ? "border-[#A486D5] bg-[#5a3b91]/55 text-[#f4eeff]" : "border-white/10 bg-white/[0.04] text-[#cfc2e8] hover:border-[#A486D5]/70 hover:bg-white/[0.09]"}`}
+                onClick={() => setPickerTab("rooms")}
+                aria-pressed={pickerTab === "rooms"}
+              >
+                <span aria-hidden="true" className="text-lg">👨‍🏫</span>
+                <span>Salas</span>
               </button>
             </div>
 
-            <div className="flex max-h-[min(60vh,420px)] flex-col gap-2 overflow-y-auto pr-1">
-              {courses.map((availableCourse) => {
-                const isSelected = availableCourse.ID === selectedCourseId;
+            <div className="grid max-h-[min(60vh,420px)] grid-cols-3 auto-rows-fr gap-3 overflow-y-auto px-1 pb-1 pt-4">
+              {pickerTab === "courses" ? (
+                orderedCourses.map((availableCourse, index) => {
+                  const isSelected = availableCourse.ID === selectedCourseId;
+                  const cardColor = normalizeColor(availableCourse.Cor_Capa, index);
 
-                return (
-                  <button
-                    key={availableCourse.ID}
-                    type="button"
-                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${isSelected ? "border-[#A486D5]/70 bg-[#5a3b91]/55" : "border-white/10 bg-white/[0.04] hover:border-[#c19cff]/60 hover:bg-white/[0.09]"}`}
-                    onClick={() => handleCourseChange(availableCourse.ID)}
-                    aria-pressed={isSelected}
-                  >
-                    <span className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-black/20 text-xl">{availableCourse.Icone}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-base font-bold">{availableCourse.Titulo}</span>
-                      <span className="mt-0.5 block text-xs text-[#cfc2e8]">{availableCourse.Slug}</span>
-                    </span>
-                    {isSelected && <span className="text-lg text-[#ffcc00]" aria-label="Curso atual">✓</span>}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={availableCourse.ID}
+                      type="button"
+                      className={`group relative flex h-[156px] w-full flex-col justify-between overflow-hidden rounded-xl p-3 text-left transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${isSelected ? "z-10 scale-[1.04] brightness-110 shadow-[0_8px_22px_rgba(0,0,0,0.42)]" : "shadow-[0_3px_8px_rgba(0,0,0,0.2)] hover:z-10 hover:scale-[1.04] hover:shadow-none"}`}
+                      style={{ background: `linear-gradient(145deg, ${hexToRgba(cardColor, isSelected ? 0.88 : 0.72)} 0%, #171027 65%, #120c22 100%)` }}
+                      onClick={() => handleCourseChange(availableCourse.ID)}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{availableCourse.Icone}</span>
+                        {isSelected && <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>}
+                      </span>
+                      <span className="mt-3 min-w-0">
+                        <span className="block truncate text-sm font-bold text-[#f4eeff] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{availableCourse.Titulo}</span>
+                        <span className="mt-1 block truncate text-[11px] text-[#e2d8f2] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{availableCourse.Categoria || availableCourse.Slug}</span>
+                      </span>
+                    </button>
+                  );
+                })
+              ) : salasLoading ? (
+                <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">Carregando salas...</p>
+              ) : salasError ? (
+                <p className="col-span-3 px-2 py-6 text-center text-sm text-red-200">{salasError}</p>
+              ) : salas.length === 0 ? (
+                <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">Nenhuma sala cadastrada.</p>
+              ) : (
+                salas.map((sala) => {
+                  const salaCurso = courses.find((availableCourse) => availableCourse.ID === sala.fk_Curso_ID);
+                  const cardColor = salaCurso ? normalizeColor(salaCurso.Cor_Capa, 0) : "#A486D5";
+                  const salaIcon = salaCurso?.Icone?.trim() || "👨‍🏫";
+
+                  return (
+                    <button
+                      type="button"
+                      key={sala.ID}
+                      className="flex h-[156px] w-full cursor-pointer flex-col justify-between overflow-hidden rounded-xl p-3 text-left shadow-[0_3px_8px_rgba(0,0,0,0.2)] transition-transform hover:z-10 hover:scale-[1.04] hover:shadow-none focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
+                      style={{ background: `linear-gradient(145deg, ${hexToRgba(cardColor, 0.65)} 0%, #171027 65%, #120c22 100%)` }}
+                      onClick={() => handleSalaClick(sala)}
+                      aria-label={`Abrir o curso associado à sala ${sala.Nome}`}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{salaIcon}</span>
+                        <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Sala</span>
+                      </span>
+                      <span className="mt-3 min-w-0">
+                        <span className="block truncate text-sm font-bold text-[#f4eeff] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{sala.Nome}</span>
+                        <span className="mt-1 block truncate text-[11px] text-[#e2d8f2] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                        <strong className="text-[#f4eeff]">{sala.Codigo}</strong>{salaCurso ? ` · ${salaCurso.Titulo}` : ""}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </section>
         </div>
