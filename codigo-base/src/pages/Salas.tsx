@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { RankingPodium, type PodiumPlayer } from "../components/ranking/RankingPodium";
 import "./Salas.css";
-import { useNavigate } from 'react-router-dom'
+ 
 
 
 
@@ -365,7 +365,6 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
 // Página
 // ---------------------------------------------------------------------------
 export default function Salas() {
-  const navigate = useNavigate()
   const [busca, setBusca] = useState("");
   const [salaEmDestaque, setSalaEmDestaque] = useState<string | null>(null);
   const [salaAberta, setSalaAberta] = useState<Sala | null>(null);
@@ -433,7 +432,7 @@ export default function Salas() {
                 expandido={salaEmDestaque === sala.slug}
                 onDestacar={() => setSalaEmDestaque(sala.slug)}
                 onRemoverDestaque={() => setSalaEmDestaque(null)}
-                onAbrir={() => navigate(`/salas/${sala.slug}`)}
+                onAbrir={() => setSalaAberta(sala)}
               />
             ))}
           </section>
