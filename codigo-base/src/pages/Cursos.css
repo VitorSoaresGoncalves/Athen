@@ -12,6 +12,7 @@
   color: var(--c-texto);
   background: var(--c-fundo);
   font-family: var(--font-body);
+  --largura-sidebar: 230px;
 }
 
 .cursos *,
@@ -26,6 +27,7 @@
   padding: 34px 40px 60px;
   overflow: hidden;
   background: radial-gradient(ellipse at 70% 0%, rgba(124, 58, 237, 0.22) 0%, transparent 60%), var(--c-fundo);
+  margin-left: var(--largura-sidebar);
 }
 .cursos__brilho { display: none; }
 
