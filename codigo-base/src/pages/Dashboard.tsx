@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
-import { aulaRepository, concluiRepository, cursoRepository, moduloRepository } from "../data/repositories";
+import { CursoNotebook } from "../components/notebook/CursoNotebook";
+import { aulaRepository, concluiRepository, cursoRepository, moduloRepository, salaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
 import "./Dashboard.css";
 
 
 type Curso = Database["public"]["Tables"]["Curso"]["Row"];
+type Sala = Database["public"]["Tables"]["Sala"]["Row"];
 type Modulo = Database["public"]["Tables"]["Modulo"]["Row"];
 type Aula = Database["public"]["Tables"]["Aula"]["Row"];
 type ModuleTheme = { primary: string; background: string; muted: string; shadow: string };
@@ -66,7 +68,7 @@ function getTrailNodeOffset(type: TrailItem["type"]) {
 
 function getTrailViewportWidth() {
   if (typeof window === "undefined") return 960;
-  return Math.max(640, window.innerWidth - 320);
+  return Math.max(640, window.innerWidth);
 }
 
 function getPosition(index: number) {
@@ -106,12 +108,18 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [lousaAberta, setLousaAberta] = useState(false);
   const [courses, setCourses] = useState<Curso[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(() => getRequestedCourseId(courseId));
+  const [coursePickerOpen, setCoursePickerOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState<"courses" | "rooms">("courses");
+  const [salas, setSalas] = useState<Sala[]>([]);
+  const [salasLoading, setSalasLoading] = useState(false);
+  const [salasError, setSalasError] = useState("");
   const [course, setCourse] = useState<Curso | null>(null);
   const [dashboardModules, setDashboardModules] = useState<DashboardModule[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const headerRef = useRef<HTMLElement>(null);
   const trailRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0, moved: false });
 
@@ -191,6 +199,57 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return () => { cancelled = true; };
   }, [courses, selectedCourseId]);
 
+  useEffect(() => {
+    if (!coursePickerOpen) return;
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setCoursePickerOpen(false);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [coursePickerOpen]);
+
+  // Carrega todas as salas.
+  useEffect(() => {
+    if (!coursePickerOpen || pickerTab !== "rooms" || salas.length > 0) return;
+
+    let cancelled = false;
+
+    async function loadSalas() {
+      setSalasLoading(true);
+      setSalasError("");
+
+      try {
+        const availableSalas = await salaRepository.listar();
+        if (!cancelled) setSalas(availableSalas);
+      } catch (error) {
+        if (!cancelled) setSalasError(error instanceof Error ? error.message : "Não foi possível carregar as salas.");
+      } finally {
+        if (!cancelled) setSalasLoading(false);
+      }
+    }
+
+    void loadSalas();
+    return () => { cancelled = true; };
+  }, [coursePickerOpen, pickerTab, salas.length]);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    const sidebar = document.querySelector<HTMLElement>(".tela > .sidebarL");
+    if (!(header && sidebar)) return;
+
+    const updateSidebarWidth = () => {
+      header.style.setProperty("--sidebar-left-width", `${sidebar.getBoundingClientRect().width}px`);
+    };
+
+    updateSidebarWidth();
+    const observer = new ResizeObserver(updateSidebarWidth);
+    observer.observe(sidebar);
+
+    return () => observer.disconnect();
+  }, []);
+
   // Junta módulos e aulas numa sequência única para o SVG e os nós.
   const trail = useMemo<TrailItem[]>(() => dashboardModules.flatMap((module) => [
     { type: "module", module } as const,
@@ -231,6 +290,13 @@ export default function Dashboard({ courseId }: DashboardProps) {
         dashboardModules[(activeModuleIndex + 1) % dashboardModules.length],
       ]
     : [];
+
+  // Por enquanto, o curso atual aparece primeiro. Futuramente, este ranking
+  // pode ser substituído por uma ordenação baseada na atividade mais recente.
+  const orderedCourses = useMemo(() => [
+    ...courses.filter((availableCourse) => availableCourse.ID === selectedCourseId),
+    ...courses.filter((availableCourse) => availableCourse.ID !== selectedCourseId),
+  ], [courses, selectedCourseId]);
 
 
   // Centraliza o nó ativo após a troca de aula ou módulo.
@@ -273,6 +339,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
   function handleCourseChange(nextCourseId: string) {
     setSelectedCourseId(nextCourseId);
+    setCoursePickerOpen(false);
+  }
+
+  function handleSalaClick(sala: Sala) {
+    if (!sala.fk_Curso_ID) return;
+
+    // talvez mudar, se o painel da sala for diferente chamar ent o painel da sala não o padrão do dashboard, decissao futura
+    handleCourseChange(sala.fk_Curso_ID);
   }
 
   // ---------------------------------------------------------------------------
@@ -327,42 +401,142 @@ export default function Dashboard({ courseId }: DashboardProps) {
   }
 
   return (
-      <div className="tela">
+      <div className="tela flex min-h-svh">
 
       <SidebarLeft />
 
-    <main className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
+    <main className="dashboard relative z-0 flex min-h-svh min-w-0 flex-1 flex-col overflow-hidden select-none text-[#f4eeff] transition-[background] duration-700" style={{ background: activeTheme.background, color: "#f4eeff" }}>
       
-      <header className="dashboard-header">
-        <label className="dashboard-course-select">
-          <span className="dashboard-course-select__icon">{course.Icone}</span>
-          <select
-            className="dashboard-course-select__field"
-            value={selectedCourseId ?? course.ID}
-            onChange={(event) => handleCourseChange(event.target.value)}
-            aria-label="Selecionar curso"
-          >
-            {courses.map((availableCourse) => (
-              <option key={availableCourse.ID} value={availableCourse.ID}>
-                {availableCourse.Titulo}
-              </option>
-            ))}
-          </select>
-        </label>
-        <h1 className="dashboard-header__title">{activeItem?.type === "lesson" ? activeItem.aula.Titulo : activeModule.Titulo}</h1>
+      <header ref={headerRef} className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
+        <button
+          type="button"
+          className="dashboard-course-trigger absolute left-[calc(var(--sidebar-left-width,230px)+32px)] top-[26px] z-10 inline-flex max-w-[min(36%,360px)] items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 min-[1440px]:top-[30px] min-[1920px]:top-[34px]"
+          onClick={() => setCoursePickerOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={coursePickerOpen}
+          aria-label="Abrir seletor de cursos"
+        >
+          <span aria-hidden="true" className="flex h-6 w-6 flex-none items-center justify-center text-xl leading-none text-[#f4eeff]" > ≡ </span>
+        </button>
+        <h1 className="dashboard-header__title m-[7px_0_0] text-[clamp(26px,4vw,38px)] font-normal tracking-[0.02em] text-[#f4eeff]">{activeItem?.type === "lesson" ? activeItem.aula.Titulo : activeModule.Titulo}</h1>
+
+        {/* chamada do notebook */}
+        <CursoNotebook course={course} />
 
         <button
           data-toggle-lousa='true'
-          className='dashboard__lousa-toggle'
+          className='dashboard__lousa-toggle absolute right-[50px] top-8 cursor-pointer rounded-lg border border-[#1e2a3d] bg-[#182335] px-[17px] py-[11px] text-sm text-[#eaf2ff]'
           onClick={() => setLousaAberta(!lousaAberta)}
         >
           ▼
         </button>
       </header>
 
+      {coursePickerOpen && (
+        <div
+          className="fixed inset-0 z-30 flex items-start justify-center bg-[#090512]/70 px-5 pt-[18vh] backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setCoursePickerOpen(false);
+          }}
+        >
+          <section
+            className="w-full max-w-2xl rounded-2xl border border-[rgba(193,150,255,0.38)] bg-[#1a1035] p-5 text-[#f4eeff] shadow-2xl shadow-black/50"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="course-picker-title"
+          >
+
+            <div className="mb-4 grid grid-cols-2 gap-2 border-b border-white/10 pb-4">
+              <button
+                type="button"
+                className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${pickerTab === "courses" ? "border-[#A486D5] bg-[#5a3b91]/55 text-[#f4eeff]" : "border-white/10 bg-white/[0.04] text-[#cfc2e8] hover:border-[#A486D5]/70 hover:bg-white/[0.09]"}`}
+                onClick={() => setPickerTab("courses")}
+                aria-pressed={pickerTab === "courses"}
+              >
+                <span aria-hidden="true" className="text-lg">💼</span>
+                <span>Cursos</span>
+              </button>
+              <button
+                type="button"
+                className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${pickerTab === "rooms" ? "border-[#A486D5] bg-[#5a3b91]/55 text-[#f4eeff]" : "border-white/10 bg-white/[0.04] text-[#cfc2e8] hover:border-[#A486D5]/70 hover:bg-white/[0.09]"}`}
+                onClick={() => setPickerTab("rooms")}
+                aria-pressed={pickerTab === "rooms"}
+              >
+                <span aria-hidden="true" className="text-lg">👨‍🏫</span>
+                <span>Salas</span>
+              </button>
+            </div>
+
+            <div className="grid max-h-[min(60vh,420px)] grid-cols-3 auto-rows-fr gap-3 overflow-y-auto px-1 pb-1 pt-4">
+              {pickerTab === "courses" ? (
+                orderedCourses.map((availableCourse, index) => {
+                  const isSelected = availableCourse.ID === selectedCourseId;
+                  const cardColor = normalizeColor(availableCourse.Cor_Capa, index);
+
+                  return (
+                    <button
+                      key={availableCourse.ID}
+                      type="button"
+                      className={`group relative flex h-[156px] w-full flex-col justify-between overflow-hidden rounded-xl p-3 text-left transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${isSelected ? "z-10 scale-[1.04] brightness-110 shadow-[0_8px_22px_rgba(0,0,0,0.42)]" : "shadow-[0_3px_8px_rgba(0,0,0,0.2)] hover:z-10 hover:scale-[1.04] hover:shadow-none"}`}
+                      style={{ background: `linear-gradient(145deg, ${hexToRgba(cardColor, isSelected ? 0.88 : 0.72)} 0%, #171027 65%, #120c22 100%)` }}
+                      onClick={() => handleCourseChange(availableCourse.ID)}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{availableCourse.Icone}</span>
+                        {isSelected && <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>}
+                      </span>
+                      <span className="mt-3 min-w-0">
+                        <span className="block truncate text-sm font-bold text-[#f4eeff] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{availableCourse.Titulo}</span>
+                        <span className="mt-1 block truncate text-[11px] text-[#e2d8f2] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{availableCourse.Categoria || availableCourse.Slug}</span>
+                      </span>
+                    </button>
+                  );
+                })
+              ) : salasLoading ? (
+                <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">Carregando salas...</p>
+              ) : salasError ? (
+                <p className="col-span-3 px-2 py-6 text-center text-sm text-red-200">{salasError}</p>
+              ) : salas.length === 0 ? (
+                <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">Nenhuma sala cadastrada.</p>
+              ) : (
+                salas.map((sala) => {
+                  const salaCurso = courses.find((availableCourse) => availableCourse.ID === sala.fk_Curso_ID);
+                  const cardColor = salaCurso ? normalizeColor(salaCurso.Cor_Capa, 0) : "#A486D5";
+                  const salaIcon = salaCurso?.Icone?.trim() || "👨‍🏫";
+
+                  return (
+                    <button
+                      type="button"
+                      key={sala.ID}
+                      className="flex h-[156px] w-full cursor-pointer flex-col justify-between overflow-hidden rounded-xl p-3 text-left shadow-[0_3px_8px_rgba(0,0,0,0.2)] transition-transform hover:z-10 hover:scale-[1.04] hover:shadow-none focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
+                      style={{ background: `linear-gradient(145deg, ${hexToRgba(cardColor, 0.65)} 0%, #171027 65%, #120c22 100%)` }}
+                      onClick={() => handleSalaClick(sala)}
+                      aria-label={`Abrir o curso associado à sala ${sala.Nome}`}
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{salaIcon}</span>
+                        <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Sala</span>
+                      </span>
+                      <span className="mt-3 min-w-0">
+                        <span className="block truncate text-sm font-bold text-[#f4eeff] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{sala.Nome}</span>
+                        <span className="mt-1 block truncate text-[11px] text-[#e2d8f2] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                        <strong className="text-[#f4eeff]">{sala.Codigo}</strong>{salaCurso ? ` · ${salaCurso.Titulo}` : ""}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
       <section
         ref={trailRef}
-        className="trail-scroll"
+        className="trail-scroll min-h-0 w-full flex-1 cursor-grab overflow-x-auto overflow-y-hidden"
         aria-label="Trilha de aprendizagem"
         onMouseDown={(event) => handlePointerDown(event.pageX)}
         onMouseMove={(event) => handlePointerMove(event.pageX)}
@@ -372,9 +546,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
         onTouchMove={(event) => handlePointerMove(event.touches[0].pageX)}
         onTouchEnd={() => { dragState.current.dragging = false; }}
       >
-        <div className="trail" style={{ width: trailWidth }}>
-          <div className="trail__glow" style={{ background: `radial-gradient(ellipse 50% 60% at 50% 50%, ${hexToRgba(activeTheme.primary, 0.12)} 0%, transparent 70%)` }} />
-          <svg className="trail__path" width={trailWidth} height="320" aria-hidden="true">
+        <div className="trail relative h-[320px] max-w-none" style={{ width: trailWidth }}>
+          <div className="trail__glow pointer-events-none absolute inset-0 transition-[background] duration-700" style={{ background: `radial-gradient(ellipse 50% 60% at 50% 50%, ${hexToRgba(activeTheme.primary, 0.12)} 0%, transparent 70%)` }} />
+          <svg className="trail__path pointer-events-none absolute left-0 top-0 overflow-visible" width={trailWidth} height="320" aria-hidden="true">
             <path d={createSmoothPath(positions)} fill="none" stroke={activeTheme.muted} strokeWidth="5" strokeDasharray="10 8" strokeLinecap="round" />
             {Array.from({ length: pathEndIndex }).map((_, index) => (
               <g key={`completed-segment-${index}`}>
@@ -442,18 +616,18 @@ export default function Dashboard({ courseId }: DashboardProps) {
       </section>
 
       {/* Rodapé: percentual do módulo ativo e atalhos para os módulos carregados. */}
-      <footer className="dashboard-footer">
-        <div className="progress-row" aria-label={`Progresso do módulo: ${progressPercent}%`}>
-          <div className="progress-blocks">
-            {Array.from({ length: progressBlockCount }).map((_, index) => <span key={index} className={`progress-block ${index < completedBlocks ? "progress-block--completed" : ""}`} style={{ borderColor: index < completedBlocks ? activeTheme.primary : activeTheme.muted, background: index < completedBlocks ? activeTheme.primary : "transparent" }} />)}
+      <footer className="dashboard-footer mx-auto flex w-full max-w-[960px] flex-none flex-col px-5 pb-5 pt-2">
+        <div className="progress-row flex items-center justify-center gap-3" aria-label={`Progresso do módulo: ${progressPercent}%`}>
+          <div className="progress-blocks flex min-h-6 items-center gap-1.5">
+            {Array.from({ length: progressBlockCount }).map((_, index) => <span key={index} className={`progress-block block h-3 w-3 rounded-[3px] border-2 border-transparent transition-all duration-500 ${index < completedBlocks ? "progress-block--completed" : ""}`} style={{ borderColor: index < completedBlocks ? activeTheme.primary : activeTheme.muted, background: index < completedBlocks ? activeTheme.primary : "transparent" }} />)}
           </div>
-          <span className="progress-separator" style={{ color: activeTheme.muted }}>|</span>
-          <strong className="progress-percent" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
+          <span className="progress-separator text-base font-black" style={{ color: activeTheme.muted }}>|</span>
+          <strong className="progress-percent text-xl tracking-[0.08em]" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
         </div>
-        <div className="module-carousel" aria-label="Navegação entre módulos">
+        <div className="module-carousel mt-4 flex items-center justify-center gap-0.5" aria-label="Navegação entre módulos">
           <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
-          <div className="module-carousel__viewport">
-            <div className="module-carousel__track">
+          <div className="module-carousel__viewport w-[min(100%,330px)] overflow-hidden">
+            <div className="module-carousel__track grid grid-cols-3 items-end gap-0">
               {carouselModules.map((module, index) => {
                 const isCurrent = index === 1;
                 
