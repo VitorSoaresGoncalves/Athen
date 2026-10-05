@@ -1,0 +1,224 @@
+.cursos {
+  --c-fundo: #140a2b;
+  --c-card: #1f1238;
+  --c-card-2: #2b1a4d;
+  --c-linha: rgba(193, 150, 255, 0.22);
+  --c-texto: #f4eeff;
+  --c-suave: #a99bc9;
+  --c-destaque: var(--amarelo-tangerina, #ffc400);
+  --c-destaque-texto: #1a1035;
+  display: flex;
+  min-height: 100svh;
+  color: var(--c-texto);
+  background: var(--c-fundo);
+  font-family: var(--font-body);
+}
+
+.cursos *,
+.cursos *::before,
+.cursos *::after { box-sizing: border-box; }
+.cursos h1, .cursos h3, .cursos p { margin: 0; }
+
+.cursos__main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 34px 40px 60px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 70% 0%, rgba(124, 58, 237, 0.22) 0%, transparent 60%), var(--c-fundo);
+}
+.cursos__brilho { display: none; }
+
+/* Cabeçalho */
+.cursos__cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+.cursos__caminho { font-size: 12px; letter-spacing: 0.14em; font-weight: 700; color: var(--c-suave); }
+.cursos__caminho span { color: var(--c-destaque); }
+.cursos__titulo { font-family: var(--font-display); font-weight: 400; font-size: clamp(38px, 4vw, 56px); line-height: 1.1; }
+.cursos__subtitulo { color: var(--c-suave); font-size: 17px; }
+
+.cursos__botao-primario {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--c-destaque);
+  color: var(--c-destaque-texto);
+  border: 0;
+  border-radius: 14px;
+  padding: 16px 26px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 196, 0, 0.25);
+}
+
+/* Busca e filtro */
+.cursos__ferramentas { display: flex; gap: 12px; }
+.cursos__busca {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--c-card);
+  border: 1px solid var(--c-linha);
+  border-radius: 16px;
+  padding: 0 18px;
+  color: var(--c-suave);
+}
+.cursos__busca:focus-within { border-color: var(--c-destaque); }
+.cursos__busca input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--c-texto);
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 18px 0;
+}
+
+.cursos__filtro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--c-card);
+  border: 1px solid var(--c-linha);
+  border-radius: 16px;
+  padding: 0 22px;
+  color: var(--c-texto);
+  font-size: 16px;
+  cursor: pointer;
+}
+.cursos__filtro-contagem {
+  background: var(--c-destaque);
+  color: var(--c-destaque-texto);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+
+.cursos__painel-filtros {
+  margin-top: 12px;
+  background: var(--c-card);
+  border: 1px solid var(--c-linha);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+.cursos__rotulo { margin-bottom: 10px; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; color: var(--c-suave); }
+.cursos__chips + .cursos__rotulo { margin-top: 16px; }
+.cursos__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cursos__chip {
+  background: transparent;
+  border: 1px solid var(--c-linha);
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: var(--c-texto);
+  font-size: 13px;
+  cursor: pointer;
+}
+.cursos__chip--ativo { background: var(--c-destaque); border-color: var(--c-destaque); color: var(--c-destaque-texto); font-weight: 700; }
+.cursos__limpar { margin-top: 14px; padding: 0; background: none; border: 0; color: var(--c-destaque); font-size: 13px; font-weight: 500; cursor: pointer; }
+
+/* Seções */
+.cursos__contador { margin: 34px 0 16px; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-suave); }
+.cursos__contador span { margin-left: 6px; color: var(--c-destaque); }
+.cursos__sem-resultado,
+.cursos__estado { padding: 8px 0; color: var(--c-suave); }
+.cursos__estado { margin-top: 34px; }
+
+.cursos__grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+
+/* Card — a cor de cada curso vem de --cor (Cor_Capa) */
+.cursos__card {
+  display: flex;
+  flex-direction: column;
+  background: var(--c-card);
+  border: 1px solid var(--c-linha);
+  border-radius: 22px;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.cursos__card:hover { transform: translateY(-3px); border-color: var(--cor); }
+
+.cursos__banner {
+  position: relative;
+  height: 104px;
+  padding: 14px 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--cor), color-mix(in srgb, var(--cor) 55%, #140a2b));
+}
+.cursos__banner-tag {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  padding: 5px 12px;
+  background: rgba(10, 8, 25, 0.55);
+  border-radius: 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.cursos__banner-orbita {
+  position: absolute;
+  top: -90px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+}
+
+.cursos__icone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  margin: -34px 0 0 20px;
+  background: var(--cor);
+  border: 4px solid var(--c-card);
+  border-radius: 18px;
+  color: #fff;
+  font-size: 26px;
+}
+
+.cursos__conteudo { display: flex; flex: 1; flex-direction: column; gap: 10px; padding: 10px 20px 20px; }
+.cursos__nome { font-family: var(--font-display); font-weight: 400; font-size: 23px; line-height: 1.2; }
+.cursos__slug { margin-top: -4px; font-size: 13px; color: var(--c-suave); }
+.cursos__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.cursos__tag { padding: 3px 9px; background: var(--c-card-2); border-radius: 8px; color: var(--c-suave); font-size: 12px; }
+
+.cursos__rodape-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 6px; }
+.cursos__nota { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.cursos__nota-estrela { color: var(--c-destaque); }
+.cursos__nota small { color: var(--c-suave); }
+.cursos__saiba-mais {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px solid var(--c-linha);
+  border-radius: 12px;
+  color: var(--c-texto);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cursos__saiba-mais:hover { background: var(--c-destaque); border-color: var(--c-destaque); color: var(--c-destaque-texto); }
+
+.cursos button:focus-visible { outline: 2px solid var(--c-destaque); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .cursos__main { padding: 24px 18px 50px; }
+  .cursos__ferramentas { flex-wrap: wrap; }
+  .cursos__busca { min-width: 100%; }
+}

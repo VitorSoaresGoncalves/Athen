@@ -5,6 +5,7 @@ import {LoginPage} from './pages/LoginPage'
 import {RegisterPage} from './pages/RegisterPage';
 import  HomePage  from './pages/home-page/HomePage';
 import Dashboard from './pages/Dashboard'
+import Cursos from './pages/Cursos'
 
 export default function Hub() {
   return (
@@ -15,6 +16,7 @@ export default function Hub() {
         <Route path="/login-page" element={<LoginPage />} />
         <Route path="/register-page" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/cursos" element={<Cursos />} />
       </Routes>
     </BrowserRouter>
   )
