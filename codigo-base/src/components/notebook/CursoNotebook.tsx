@@ -25,11 +25,23 @@ function getSavedText(content: Anotacao["Conteudo"]): string {
   return "";
 }
 
+function sortPages(pages: Anotacao[]): Anotacao[] {
+  return [...pages].sort((first, second) => {
+    const firstTitle = first.Titulo.trim() || "Sem título";
+    const secondTitle = second.Titulo.trim() || "Sem título";
+    return firstTitle.localeCompare(secondTitle, "pt-BR", { sensitivity: "base" });
+  });
+}
+
 export function CursoNotebook({ course }: CourseNotebookProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const [notebook, setNotebook] = useState<Notebook | null>(null);
+  const [pages, setPages] = useState<Anotacao[]>([]);
   const [annotation, setAnnotation] = useState<Anotacao | null>(null);
-  const [notebookName, setNotebookName] = useState("");
+  const [notebookName, setNotebookName] = useState("Anotações");
+  const [pageTitle, setPageTitle] = useState("");
+  const [savedPageTitle, setSavedPageTitle] = useState("");
+  const [editingPageTitle, setEditingPageTitle] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [savedNoteText, setSavedNoteText] = useState("");
   const [open, setOpen] = useState(false);
@@ -53,6 +65,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
 
       if (!currentUserId) {
         setNotebook(null);
+        setPages([]);
         setAnnotation(null);
         return;
       }
@@ -60,20 +73,24 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       const notebooks = await notebookRepository.listar();
       const courseNotebook = notebooks.find((item) => item.ID_Curso === course.ID && item.ID_Usuario === currentUserId) ?? null;
       setNotebook(courseNotebook);
-      setNotebookName("Anotações");
+      setNotebookName(courseNotebook?.Nome || "Anotações");
 
-      if (courseNotebook) {
-        const annotations = await anotacoesRepository.listarPorNotebook(courseNotebook.ID);
-        const firstAnnotation = annotations[0] ?? null;
-        setAnnotation(firstAnnotation);
-        const loadedText = firstAnnotation ? getSavedText(firstAnnotation.Conteudo) : "";
-        setNoteText(loadedText);
-        setSavedNoteText(loadedText);
-      } else {
+      if (!courseNotebook) {
+        setPages([]);
         setAnnotation(null);
-        setNoteText("");
-        setSavedNoteText("");
+        return;
       }
+
+      const loadedPages = sortPages(await anotacoesRepository.listarPorNotebook(courseNotebook.ID));
+      const firstPage = loadedPages[0] ?? null;
+      setPages(loadedPages);
+      setAnnotation(firstPage);
+      const loadedTitle = firstPage?.Titulo || "";
+      const loadedText = firstPage ? getSavedText(firstPage.Conteudo) : "";
+      setPageTitle(loadedTitle);
+      setSavedPageTitle(loadedTitle);
+      setNoteText(loadedText);
+      setSavedNoteText(loadedText);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar o notebook.");
     } finally {
@@ -170,6 +187,45 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     event.currentTarget.setPointerCapture?.(event.pointerId);
   }
 
+  function setPageState(nextPage: Anotacao | null) {
+    setAnnotation(nextPage);
+    setEditingPageTitle(false);
+    const nextTitle = nextPage?.Titulo || "";
+    const nextText = nextPage ? getSavedText(nextPage.Conteudo) : "";
+    setPageTitle(nextTitle);
+    setSavedPageTitle(nextTitle);
+    setNoteText(nextText);
+    setSavedNoteText(nextText);
+  }
+
+  function hasUnsavedChanges() {
+    return pageTitle !== savedPageTitle || noteText !== savedNoteText;
+  }
+
+  function selectPage(nextPage: Anotacao) {
+    if (nextPage.ID === annotation?.ID) return;
+    if (hasUnsavedChanges()) {
+      const discardChanges = window.confirm("Existem alterações não salvas. Deseja trocar de página e descartá-las?");
+      if (!discardChanges) return;
+    }
+    setPageState(nextPage);
+  }
+
+  function handlePageTabClick(page: Anotacao) {
+    if (page.ID === annotation?.ID && editingPageTitle) {
+      setEditingPageTitle(false);
+      return;
+    }
+
+    selectPage(page);
+  }
+
+  function handlePageTabDoubleClick(page: Anotacao) {
+    if (page.ID === annotation?.ID && !minimumNotebook) {
+      setEditingPageTitle(true);
+    }
+  }
+
   async function createNotebook() {
     if (!userId) {
       setError("É necessário estar autenticado para criar um notebook.");
@@ -188,6 +244,9 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       });
       setNotebook(createdNotebook);
       setNotebookName(createdNotebook.Nome);
+      setPages([]);
+      setPageState(null);
+      await createPage(createdNotebook.ID);
       openNotebook();
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Não foi possível criar o notebook.");
@@ -196,23 +255,46 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
-  async function saveNotebook() {
-    if (!notebook) return;
+  async function createPage(notebookId = notebook?.ID) {
+    if (!notebookId) return;
 
     setSaving(true);
     setError("");
     try {
-      const updatedNotebook = await notebookRepository.atualizar(notebook.ID, { Nome: "Anotações" });
-      const content: NoteContent = { text: noteText };
-      const updatedAnnotation = annotation
-        ? await anotacoesRepository.atualizar(annotation.ID, { Titulo: "Anotações", Conteudo: content })
-        : await anotacoesRepository.criar({ ID_Notebook: notebook.ID, Titulo: "Anotações", Conteudo: content });
+      const createdPage = await anotacoesRepository.criar({
+        ID_Notebook: notebookId,
+        Titulo: "Nova página",
+        Conteudo: { text: "" },
+      });
+      const nextPages = sortPages([...pages, createdPage]);
+      setPages(nextPages);
+      setPageState(createdPage);
+      if (!minimumNotebook) setEditingPageTitle(true);
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : "Não foi possível criar a página.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
+  async function saveNotebook() {
+    if (!notebook || !annotation) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      const title = pageTitle.trim() || "Sem título";
+      const updatedNotebook = await notebookRepository.atualizar(notebook.ID, { Nome: notebookName || "Anotações" });
+      const content: NoteContent = { text: noteText };
+      const updatedPage = await anotacoesRepository.atualizar(annotation.ID, { Titulo: title, Conteudo: content });
       setNotebook(updatedNotebook);
-      setAnnotation(updatedAnnotation);
-      const updatedText = getSavedText(updatedAnnotation.Conteudo);
-      setNoteText(updatedText);
-      setSavedNoteText(updatedText);
+      setPages(sortPages(pages.map((page) => page.ID === updatedPage.ID ? updatedPage : page)));
+      setAnnotation(updatedPage);
+      setPageTitle(title);
+      setSavedPageTitle(title);
+      setEditingPageTitle(false);
+      setNoteText(getSavedText(updatedPage.Conteudo));
+      setSavedNoteText(getSavedText(updatedPage.Conteudo));
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar o notebook.");
     } finally {
@@ -220,18 +302,38 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
-  async function deleteNotebook() {
-    if (!notebook) return;
+  async function deleteCurrentPage() {
+    if (!annotation) return;
+    const shouldDelete = window.confirm(`Apagar a página "${pageTitle || "Sem título"}"?`);
+    if (!shouldDelete) return;
 
     setSaving(true);
     setError("");
     try {
-      if (annotation) await anotacoesRepository.deletar(annotation.ID);
+      await anotacoesRepository.deletar(annotation.ID);
+      const remainingPages = sortPages(pages.filter((page) => page.ID !== annotation.ID));
+      setPages(remainingPages);
+      setPageState(remainingPages[0] ?? null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteNotebook() {
+    if (!notebook) return;
+    const shouldDelete = window.confirm("Apagar o notebook e todas as suas páginas?");
+    if (!shouldDelete) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.ID)));
       await notebookRepository.deletar(notebook.ID);
       setNotebook(null);
-      setAnnotation(null);
-      setNoteText("");
-      setSavedNoteText("");
+      setPages([]);
+      setPageState(null);
       setOpen(false);
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar o notebook.");
@@ -241,10 +343,10 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   }
 
   function closeNotebook() {
-    if (noteText !== savedNoteText) {
+    if (hasUnsavedChanges()) {
       const discardChanges = window.confirm("Existem alterações não salvas. Deseja fechar e descartar essas alterações?");
       if (!discardChanges) return;
-      setNoteText(savedNoteText);
+      setPageState(annotation);
     }
 
     setOpen(false);
@@ -281,29 +383,87 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
             className={`flex cursor-grab touch-none items-center border-b border-[#c29b55]/70 bg-[#edcf82] active:cursor-grabbing ${minimumNotebook ? "gap-1 px-1.5 py-1" : compactNotebook ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2"}`}
             onPointerDown={startDragging}
           >
-            <span className={`min-w-0 flex-1 truncate font-bold ${minimumNotebook ? "text-xs" : compactNotebook ? "text-sm" : "text-base"}`}>Anotações</span>
-            <button
-              type="button"
-              className={`rounded leading-none hover:bg-black/10 ${minimumNotebook ? "px-1 text-base" : compactNotebook ? "px-1.5 text-lg" : "px-2 text-xl"}`}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={closeNotebook}
-              aria-label="Fechar notebook"
-            >×</button>
+            <span id="course-notebook-title" className={`min-w-0 flex-1 truncate font-bold ${minimumNotebook ? "text-xs" : compactNotebook ? "text-sm" : "text-base"}`}>Anotações</span>
+            <button type="button" className={`rounded leading-none hover:bg-black/10 ${minimumNotebook ? "px-1 text-base" : compactNotebook ? "px-1.5 text-lg" : "px-2 text-xl"}`} onPointerDown={(event) => event.stopPropagation()} onClick={closeNotebook} aria-label="Fechar notebook">×</button>
           </header>
+
+          <div className="flex min-h-0 border-b border-[#c29b55]/45 bg-[#f0d994]">
+            <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto px-2 py-1.5">
+              {sortPages(pages).map((page) => (
+                <button
+                  key={page.ID}
+                  type="button"
+                  onClick={() => handlePageTabClick(page)}
+                  onDoubleClick={() => handlePageTabDoubleClick(page)}
+                  className={`max-w-[150px] shrink-0 truncate rounded px-2 py-1 text-[11px] transition ${page.ID === annotation?.ID ? "bg-[#80602b] font-bold text-[#fff8dc]" : "text-[#806a3d] hover:bg-[#d9bc70]/60"}`}
+                  title={page.Titulo || "Sem título"}
+                >
+                  {page.Titulo || "Sem título"}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="shrink-0 border-l border-[#c29b55]/45 px-3 text-lg font-bold text-[#80602b] hover:bg-[#d9bc70]/60" onClick={() => void createPage()} disabled={saving} aria-label="Criar nova página">+</button>
+          </div>
+
           <div className={`flex min-h-0 flex-1 flex-col ${minimumNotebook ? "p-1.5" : compactNotebook ? "p-2" : "p-3"}`}>
-            <p className={`${minimumNotebook ? "mb-0.5 h-3 text-[9px] leading-3" : compactNotebook ? "mb-1 h-3 text-[10px] leading-3" : "mb-2 h-4 text-xs leading-4"} truncate overflow-hidden text-[#806a3d]`}>{course.Titulo}</p>
-            <textarea
-              value={noteText}
-              onChange={(event) => setNoteText(event.target.value)}
-              placeholder="Escreva suas anotações aqui..."
-              className={`min-h-0 flex-1 resize-none rounded border border-[#d5b96e]/70 bg-[#fff8dc]/80 text-sm leading-6 outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432] ${minimumNotebook ? "p-1.5" : compactNotebook ? "p-2" : "p-3"}`}
-            />
+            {annotation ? (
+              <>
+                {editingPageTitle && !minimumNotebook && (
+                  <input
+                    autoFocus
+                    value={pageTitle}
+                    onChange={(event) => setPageTitle(event.target.value)}
+                    placeholder="Título da página"
+                    onBlur={() => setEditingPageTitle(false)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") event.currentTarget.blur();
+                      if (event.key === "Escape") {
+                        setPageTitle(savedPageTitle);
+                        event.currentTarget.blur();
+                      }
+                    }}
+                    title="Edite o nome da página"
+                    className={`mb-1 w-full rounded border border-[#d5b96e]/60 bg-[#fff8dc]/55 px-2 py-1 font-bold text-[#806a3d] outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432] ${compactNotebook ? "text-xs" : "text-sm"}`}
+                    aria-label="Título da página"
+                  />
+                )}
+                {minimumNotebook ? (
+                  <textarea
+                    value={noteText}
+                    onChange={(event) => setNoteText(event.target.value)}
+                    placeholder="Escreva suas anotações aqui..."
+                    className="min-h-0 flex-1 resize-none rounded border border-[#d5b96e]/70 bg-[#fff8dc]/80 p-1.5 text-sm leading-6 outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432]"
+                  />
+                ) : (
+                  <>
+                    <p className={`${compactNotebook ? "mb-1 h-3 text-[10px] leading-3" : "mb-2 h-4 text-xs leading-4"} truncate overflow-hidden text-[#806a3d]`}>{course.Titulo}</p>
+                    <textarea
+                      value={noteText}
+                      onChange={(event) => setNoteText(event.target.value)}
+                      placeholder="Escreva suas anotações aqui..."
+                      className={`min-h-0 flex-1 resize-none rounded border border-[#d5b96e]/70 bg-[#fff8dc]/80 text-sm leading-6 outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432] ${compactNotebook ? "p-2" : "p-3"}`}
+                    />
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+                <p className="font-bold text-[#806a3d]">Nenhuma página ainda</p>
+                <p className="mt-1 text-xs text-[#a38b5c]">Crie uma página para começar suas anotações.</p>
+                <button type="button" className="mt-3 rounded bg-[#80602b] px-3 py-1.5 text-xs font-bold text-[#fff8dc]" onClick={() => void createPage()} disabled={saving}>Criar página</button>
+              </div>
+            )}
+
             {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-            <footer className={`flex items-center justify-between gap-1 ${minimumNotebook ? "mt-1" : compactNotebook ? "mt-2" : "mt-3"}`}>
-              <button type="button" className={`rounded text-red-800 hover:bg-red-900/10 ${minimumNotebook ? "px-1 py-0.5 text-[10px]" : compactNotebook ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-1 text-xs"}`} onClick={() => void deleteNotebook()} disabled={saving}>Apagar</button>
-              <button type="button" className={`rounded bg-[#80602b] font-bold text-[#fff8dc] hover:bg-[#674b22] ${minimumNotebook ? "px-2 py-1 text-[10px]" : compactNotebook ? "px-2.5 py-1 text-[11px]" : "px-4 py-2 text-xs"}`} onClick={() => void saveNotebook()} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</button>
+            <footer className={`flex flex-wrap items-center justify-between gap-1 ${compactNotebook ? "mt-2" : "mt-3"}`}>
+              <div className="flex min-w-0 gap-1">
+                {annotation && <button type="button" className={`rounded text-red-800 hover:bg-red-900/10 ${minimumNotebook ? "px-1 py-1 text-[9px]" : compactNotebook ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-1 text-xs"}`} onClick={() => void deleteCurrentPage()} disabled={saving}>{minimumNotebook ? "Apagar pág." : "Apagar página"}</button>}
+                <button type="button" className={`rounded text-red-800 hover:bg-red-900/10 ${minimumNotebook ? "px-1 py-1 text-[9px]" : compactNotebook ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-1 text-xs"}`} onClick={() => void deleteNotebook()} disabled={saving}>{minimumNotebook ? "Apagar" : "Apagar notebook"}</button>
+              </div>
+              {annotation && <button type="button" className={`ml-auto rounded bg-[#80602b] font-bold text-[#fff8dc] hover:bg-[#674b22] ${minimumNotebook ? "px-2 py-1 text-[10px]" : compactNotebook ? "px-2.5 py-1 text-[11px]" : "px-4 py-2 text-xs"}`} onClick={() => void saveNotebook()} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</button>}
             </footer>
           </div>
+
           <button type="button" aria-label="Ajustar altura superior" className="absolute inset-x-2 top-0 z-10 h-2 cursor-ns-resize opacity-0" onPointerDown={(event) => startResizing(event, "n")} />
           <button type="button" aria-label="Ajustar altura inferior" className="absolute inset-x-2 bottom-0 z-10 h-2 cursor-ns-resize opacity-0" onPointerDown={(event) => startResizing(event, "s")} />
           <button type="button" aria-label="Ajustar largura esquerda" className="absolute inset-y-2 left-0 z-10 w-2 cursor-ew-resize opacity-0" onPointerDown={(event) => startResizing(event, "w")} />
