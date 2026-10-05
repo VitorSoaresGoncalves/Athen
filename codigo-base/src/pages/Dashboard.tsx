@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
+import { CursoNotebook } from "../components/notebook/CursoNotebook";
 import { aulaRepository, concluiRepository, cursoRepository, moduloRepository, salaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -418,6 +419,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
           <span aria-hidden="true" className="flex h-6 w-6 flex-none items-center justify-center text-xl leading-none text-[#f4eeff]" > ≡ </span>
         </button>
         <h1 className="dashboard-header__title m-[7px_0_0] text-[clamp(26px,4vw,38px)] font-normal tracking-[0.02em] text-[#f4eeff]">{activeItem?.type === "lesson" ? activeItem.aula.Titulo : activeModule.Titulo}</h1>
+
+        {/* chamada do notebook */}
+        <CursoNotebook course={course} />
 
         <button
           data-toggle-lousa='true'
