@@ -1,4 +1,4 @@
-import './SidebarLeft.css';
+// import './SidebarLeft.css';
 
 type SidebarItem = {
     text: string;
@@ -35,9 +35,25 @@ type avatarUrl = {
 
 export function SidebarLeft({avatar}: avatarUrl) {
     return (
-        <aside className='sidebarL'>
-            <section className='titulo'>
-                <h2>ATHEN</h2>
+        <aside className="
+            fixed
+            z-10
+            w-[230px]
+            h-screen
+            shrink-0
+            box-border
+            flex
+            flex-col
+            gap-6
+            border-r
+            border-[#b5b5eb2a]
+            bg-[#0e1420]
+            text-[#e6e6f0]"
+        >
+            <section className="border-[#b5b5eb2a] border-b">
+                <h2  className="m-0 text-[32px] tracking-[5px] text-center pt-[20px] pb-[20px]">
+                    ATHEN
+                </h2>
             </section>
 
             <nav className='nav-sidebar'>
