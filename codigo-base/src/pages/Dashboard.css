@@ -24,8 +24,6 @@
   text-align: center;
 }
 
-.dashboard-course-select__field option { color: #f4eeff; background: #1a1035; }
-
 .trail-scroll { scrollbar-width: none;}
 .trail-scroll:active { cursor: grabbing; }
 .trail-scroll::-webkit-scrollbar { display: none; }
