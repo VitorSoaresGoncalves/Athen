@@ -1,5 +1,3 @@
-// import './SidebarLeft.css';
-
 type SidebarItem = {
     text: string;
     icone: string;
