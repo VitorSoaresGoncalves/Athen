@@ -1,0 +1,59 @@
+flowchart LR
+  classDef actor fill:#F3F4F6,stroke:#4B5563,color:#111827,stroke-width:2px;
+  classDef functional fill:#DCFCE7,stroke:#15803D,color:#14532D,stroke-width:2px;
+  classDef partial fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:2px;
+  classDef pending fill:#FEE2E2,stroke:#DC2626,color:#7F1D1D,stroke-width:2px;
+  classDef external fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px;
+  classDef database fill:#EDE9FE,stroke:#7C3AED,color:#4C1D95,stroke-width:2px;
+  classDef future fill:#F3F4F6,stroke:#6B7280,color:#374151,stroke-dasharray: 6 4;
+  classDef note fill:#FFFFFF,stroke:#6B7280,color:#111827,stroke-dasharray: 5 5;
+
+  Student["Aluno / usuário\ncria cursos, estuda e interage"]:::actor
+  Educator["Educador\ncria e administra salas"]:::actor
+  Admin["Administrador\nacessa CRUD"]:::actor
+  Browser["Navegador web\ncliente do usuário"]:::external
+  Vercel["Vercel\nhospedagem/CDN da SPA"]:::external
+
+  subgraph Athen["Sistema Athen — cliente web React/TypeScript/Vite"]
+    SPA["Athen SPA\nUI, estado de sessão e navegação\nPARCIAL na sprint03"]:::partial
+    SDK["Supabase JS SDK\nbiblioteca dentro da SPA\nconfiguração via VITE_SUPABASE_URL + anon key"]:::functional
+
+    subgraph Features["Contêineres funcionais do produto"]
+      AuthUI["Autenticação\nlogin/cadastro\nPARCIAL"]:::partial
+      Catalog["Catálogo e popup de curso\nbusca, filtros e matrícula\nPENDENTE"]:::pending
+      Learning["Aprendizagem\ndashboard, aulas, questões, tentativas\nPARCIAL: dashboard; PENDENTE: aula"]:::partial
+      Rooms["Salas\nmembros, código, avisos, missões, ranking\nPENDENTE"]:::pending
+      Community["Comunidade\nperfil, amizades, notificações\nPENDENTE; amigos mockados"]:::pending
+      Notebook["Notebook e anotações\nFUNCIONAL"]:::functional
+      AdminUI["CRUD administrativo\nFUNCIONAL; autorização admin pendente"]:::partial
+    end
+  end
+
+  subgraph Supabase["Supabase — serviços gerenciados"]
+    Auth["Supabase Auth / GoTrue\nidentidade, sessão, confirmação e recuperação"]:::external
+    API["Data API / PostgREST\nREST sobre schema exposto\nrecebe JWT"]:::external
+    Security["RLS + funções de domínio\npolíticas, autorização, XP/PAC e transações\nPARCIAL/PENDENTE"]:::pending
+    DB[("PostgreSQL\nusuários, cursos, aulas, salas, execução e comunidade")]:::database
+  end
+
+  Student -->|usa| Browser
+  Educator -->|usa| Browser
+  Admin -->|usa| Browser
+  Browser -->|HTTPS| Vercel
+  Vercel -->|entrega arquivos estáticos| Browser
+  Browser -->|executa| SPA
+  SPA -->|usa internamente| SDK
+  SPA --> AuthUI
+  SPA --> Catalog
+  SPA --> Learning
+  SPA --> Rooms
+  SPA --> Community
+  SPA --> Notebook
+  SPA --> AdminUI
+
+  SDK -->|signIn, signOut, getSession| Auth
+  SDK -->|requests autenticadas com JWT| API
+  Auth -->|sessão/JWT| SDK
+  API -->|consulta/escrita autorizada| Security
+  Security -->|aplica políticas e regras| DB
+  API -->|acessa schema via RLS| DB
