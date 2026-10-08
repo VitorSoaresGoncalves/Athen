@@ -8,68 +8,140 @@ const DASHBOARD_ROUTE = '/dashboard';
 
 type SidebarItem = {
     text: string;
-    icone: string;
     to?: string; // sem "to" = ainda não tem página (mantém href="#")
 }
 
-const itens: SidebarItem[] = [
-    {
-        text: "Meus Cursos",
-        icone: "🦁 ",
-        to: DASHBOARD_ROUTE,
-    },
-    {
-        text: "Pesquisa",
-        icone: "🐘 ",
-    },
-    {
-        text: "Salas",
-        icone: "🐼 ",
-    },
-    {
-        text: "Ligas",
-        icone: "🦊 ",
-    },
-    {
-        text: "Config",
-        icone: "🐧 ",
-    }
-];
+type perfilUser = {
+    Nome_Display: string | null;
+    Nome_Usuario: string | null;
+    Avatar_Url: string | null;
+}
 
-type avatarUrl = {
+type SidebArvatarUrl = {
     /** Opcional: se não for passada, a sidebar busca a foto do usuário logado sozinha. */
     avatar?: string;
 }
+
+
+const itens: SidebarItem[] = [
+    {
+        text: "Início",
+        to: DASHBOARD_ROUTE,
+    },
+    {
+        text: "Cursos",
+    },
+    {
+        text: "Salas",
+    },
+    {
+        text: "Amigos",
+    },
+    {
+        text: "Configuração",
+    }
+];
 
 /**
  * Foto do usuário logado (user_metadata.avatar_url).
  * Atualiza sozinha quando o perfil é salvo (evento USER_UPDATED do Supabase Auth).
  */
-function useUserAvatar(override?: string) {
-    const [url, setUrl] = useState<string | undefined>();
+function useUserProfile(overrideAvatar?: string) {
+    const [profile, setProfile] = useState<perfilUser | null>(null);
+    const [carregando, setCarregando] = useState(true);
 
     useEffect(() => {
-        let cancelled = false;
+        let cancelado = false;
 
-        void supabase.auth.getUser().then(({ data }) => {
-            if (!cancelled) setUrl(data.user?.user_metadata?.avatar_url || undefined);
-        });
+        async function carregarPerfil() {
+            setCarregando(true);
 
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUrl(session?.user?.user_metadata?.avatar_url || undefined);
+            const {
+                data: { user },
+                error: erroUsuario,
+            } = await supabase.auth.getUser();
+
+            if (erroUsuario || !user) {
+                if (!cancelado) {
+                    setProfile(null);
+                    setCarregando(false);
+                }
+
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from("Usuario")
+                .select("ID, Nome_Display, Nome_Usuario, Avatar_Url")
+                .eq("ID", user.id)
+                .maybeSingle();
+
+            if (cancelado) return;
+
+            if (error) {
+                console.error("Erro ao buscar perfil:", error);
+
+                setProfile({
+                    Nome_Display:
+                        user.user_metadata?.Nome_Display ?? null,
+
+                    Nome_Usuario:
+                        user.user_metadata?.Nome_Usuario ?? null,
+
+                    Avatar_Url:
+                        user.user_metadata?.Avatar_Url ?? null,
+                });
+
+                setCarregando(false);
+                return;
+            }
+
+            setProfile({
+                Nome_Display:
+                    data?.Nome_Display ??
+                    user.user_metadata?.Nome_Display ??
+                    null,
+
+                Nome_Usuario:
+                    data?.Nome_Usuario ??
+                    user.user_metadata?.Nome_Usuario ??
+                    null,
+
+                Avatar_Url:
+                    data?.Avatar_Url ??
+                    user.user_metadata?.Avatar_Url ??
+                    null,
+            });
+
+            setCarregando(false);
+        }
+
+        void carregarPerfil();
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange(() => {
+            void carregarPerfil();
         });
 
         return () => {
-            cancelled = true;
-            listener.subscription.unsubscribe();
+            cancelado = true;
+            subscription.unsubscribe();
         };
     }, []);
 
-    return override ?? url;
+    return {
+        profile,
+        carregando,
+        avatarSrc: overrideAvatar ?? profile?.Avatar_Url ?? undefined,
+    };
 }
 
-export function SidebarLeft({avatar}: avatarUrl) {
-    const avatarSrc = useUserAvatar(avatar);
+
+
+
+export function SidebarLeft({avatar}: SidebArvatarUrl) {
+    const avatarSrc = useUserProfile(avatar);
 
     return (
         // corpo inteiro da sidebar
@@ -112,41 +184,6 @@ export function SidebarLeft({avatar}: avatarUrl) {
                 pb-[16px]
                 px-[16px]"
             >
-                {/* Link para o perfil e avatar do usuário */}
-                <Link
-                    to={PROFILE_ROUTE}
-                    aria-label="Ir para o perfil"
-                    title="Meu perfil"
-                    className="block outline-none"
-                >
-                    <div className="
-                        group
-                        mb-[3vh]
-                        mt-[2vh]
-                        flex
-                        h-[96px]
-                        items-center
-                        justify-center
-                        overflow-hidden
-                        rounded-[22px]
-                        bg-[#272742]
-                        transition-colors
-                        hover:bg-[#202036dd]"
-                    >
-                            {avatarSrc
-                                ?   <img 
-                                        src={avatarSrc} 
-                                        alt="Foto de perfil" 
-                                        className="block w-full h-full aspect-square object-contain"
-                                    />
-                                :   <span className="
-                                        text-[44px]
-                                        transition-opacity
-                                        group-hover:opacity-70"
-                                    >🧑‍</span>}
-                    </div>
-                </Link>
-
                 {/* itens do menu */}
                 {itens.map((item) => {
                     // Classes base compartilhadas entre NavLink e a (Links inativos)
@@ -175,7 +212,6 @@ export function SidebarLeft({avatar}: avatarUrl) {
                                 }`
                             }
                         >
-                            <span className="text-[30px]">{item.icone}</span>
                             <span className="text-[20px]">{item.text}</span>
                         </NavLink>
                     ) : (
@@ -190,12 +226,48 @@ export function SidebarLeft({avatar}: avatarUrl) {
                                 hover:text-white
                             `}
                         >
-                            <span className="text-[30px]">{item.icone}</span>
                             <span className="text-[20px]">{item.text}</span>
                         </a>
                     );
                 })}
             </nav>
+
+            {/* Link para o perfil e avatar do usuário */}
+            <Link
+                to={PROFILE_ROUTE}
+                aria-label="Ir para o perfil"
+                title="Meu perfil"
+                className="block outline-none"
+            >
+                <div className="
+                    group
+                    mb-[3vh]
+                    mt-[2vh]
+                    flex
+                    h-[96px]
+                    items-center
+                    justify-center
+                    overflow-hidden
+                    rounded-[22px]
+                    bg-[#272742]
+                    transition-colors
+                    hover:bg-[#202036dd]"
+                >
+                    {avatarSrc
+                        ?   <img 
+                                // src={avatarSrc} 
+                                alt="Foto de perfil" 
+                                className="block w-full h-full aspect-square object-contain"
+                            />
+                        :   <span className="
+                                text-[44px]
+                                transition-opacity
+                                group-hover:opacity-70"
+                            >
+                                🧑‍
+                            </span>}
+                </div>
+            </Link>
         </aside>
     )
 }
