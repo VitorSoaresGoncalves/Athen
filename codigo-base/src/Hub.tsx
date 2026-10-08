@@ -4,8 +4,8 @@ import { CrudConsole } from './pages/CrudConsole'
 import {LoginPage} from './pages/LoginPage'
 import {RegisterPage} from './pages/RegisterPage';
 import  HomePage  from './pages/home-page/HomePage';
-import Dashboard from './pages/Dashboard'
-import Cursos from './pages/Cursos'
+import Dashboard from './pages/Dashboard';
+import Salas from './pages/Salas'
 
 export default function Hub() {
   return (
@@ -16,7 +16,7 @@ export default function Hub() {
         <Route path="/login-page" element={<LoginPage />} />
         <Route path="/register-page" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/cursos" element={<Cursos />} />
+        <Route path="/salas" element={<Salas />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,19 +1,36 @@
+import { NavLink } from 'react-router-dom';
 import './SidebarLeft.css';
-import { NavLink } from "react-router-dom";
+
 
 type SidebarItem = {
     text: string;
     icone: string;
-    to?: string; // sem "to" = página que ainda não existe
-};
+    to?: string; // rota da página; sem "to", o item continua apontando para "#"
+}
 
 // TODO: confirmar as rotas com as do seu router
 const itens: SidebarItem[] = [
-    { text: "Meus Cursos", icone: "🦁 ", to: "/Cursos" },
-    { text: "Pesquisa", icone: "🐘 " },
-    { text: "Salas", icone: "🐼 ", to: "/salas" },
-    { text: "Ligas", icone: "🦊 " },
-    { text: "Config", icone: "🐧 " },
+    {
+        text: "Meus Cursos",
+        icone: "🦁 ",
+    },
+    {
+        text: "Pesquisa",
+        icone: "🐘 ",
+    },
+    {
+        text: "Salas",
+        icone: "🐼 ",
+        to: "/salas",
+    },
+    {
+        text: "Ligas",
+        icone: "🦊 ",
+    },
+    {
+        text: "Config",
+        icone: "🐧 ",
+    }
 ];
 
 type avatarUrl = {
@@ -42,16 +59,19 @@ export function SidebarLeft({ avatar }: avatarUrl) {
                         </>
                     );
 
+                    // Itens com rota viram link de verdade e ganham destaque na página atual.
                     return item.to ? (
                         <NavLink
                             to={item.to}
                             key={item.text}
-                            className={({ isActive }) => `menu-item${isActive ? " menu-item--ativo" : ""}`}
+                            className={({ isActive }) => isActive ? 'menu-item menu-item--ativo' : 'menu-item'}
                         >
                             {conteudo}
                         </NavLink>
                     ) : (
-                        <a href="#" className="menu-item" key={item.text}>{conteudo}</a>
+                        <a href="#" className="menu-item" key={item.text}>
+                            {conteudo}
+                        </a>
                     );
                 })}
             </nav>
