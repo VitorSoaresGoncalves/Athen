@@ -132,15 +132,15 @@ function useUserProfile(overrideAvatar?: string) {
 
     return {
         profile,
-        carregando,
-        avatarSrc: overrideAvatar ?? profile?.Avatar_Url ?? undefined,
+        carregando
     };
 }
 
 
 
 export function SidebarLeft({avatar}: SidebArvatarUrl) {
-    const userSrc = useUserProfile(avatar);
+    // objeto com informacoes do usuario
+    const userSrc = useUserProfile(avatar); 
 
     return (
         // corpo inteiro da sidebar
@@ -239,33 +239,58 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                 className="block outline-none mt-auto mx-[10px]"
             >
                 <div className="
-                    group
                     flex
-                    w-[80px]
-                    h-[80px]
                     mb-[15px]
                     items-center
-                    justify-center
+                    justify-left
+                    gap-2
                     overflow-hidden
-                    rounded-[22px]
-                    bg-[#272742]
-                    transition-colors
-                    hover:bg-[#202036dd]"
+                    p-1"
                 >
-                    {userSrc
-                        ?   <img 
-                                src={userSrc.avatarSrc} 
-                                alt="Foto de perfil" 
-                                className="block w-full h-full aspect-square object-contain"
+                    {/* Foto do usuario */}
+                    <div className="
+                        flex
+                        w-[70px]
+                        h-[70px]
+                        hover:bg-[#202036dd]
+                        shrink-0
+                        items-center
+                        justify-center
+                        overflow-hidden
+                        rounded-[22px]
+                        // border-[#54318c]
+                        border-[#ffffff]
+                        border-[1px]"
+                    >
+                        {userSrc
+                            ?   <img 
+                            src={userSrc.profile?.Avatar_Url ?? undefined} 
+                            alt="Foto de perfil" 
+                            className="w-full h-full object-cover"
                             />
-                        :   <span className="
-                                text-[44px]
-                                transition-opacity
-                                group-hover:opacity-70"
+                            :   <span className="
+                            text-[44px]
+                            transition-opacity
+                            group-hover:opacity-70"
                             >
-                                🧑‍
-                            </span>}
+                                    🧑‍
+                                </span>
+                        }
+                    </div>
+
+                    {/* Nome display e do usuario */}
+                    <div className="min-w-0">
+                            <p className="truncate text-[20px] text-[#ffcc00]">
+                                {userSrc?.profile?.Nome_Display ?? "AAAAAAI"}
+                            </p>
+
+                            <p className="truncate text-[13px] text-purple">
+                                {userSrc?.profile?.Nome_Usuario ?? "El Pepe"}
+                            </p>
+                    </div>
                 </div>
+
+
             </Link>
         </aside>
     )
