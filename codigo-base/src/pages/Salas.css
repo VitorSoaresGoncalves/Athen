@@ -1,9 +1,21 @@
+/* ==========================================================================
+   Página Salas — Tailwind v4 + tokens do projeto (src/index.css)
 
+   Cores e fontes vêm do @theme static do index.css:
+     gold · gold-light · violet-mid · violet-pale · font-display · font-body
+
+   O :root do projeto usa 18px, então as classes de escala do Tailwind (p-4,
+   rounded-xl, text-sm...) sairiam maiores que no Figma. Por isso aqui os
+   tamanhos são sempre valores em px. Bordas, sombras, transições e
+   transformações ficam em CSS normal.
+   ========================================================================== */
 @reference "../index.css";
 
 /* ---------- Base ---------- */
 .salas {
-  @apply flex min-h-screen w-full overflow-hidden font-body text-[#f4eeff];
+  @apply flex w-full overflow-hidden font-body text-[#f4eeff];
+  height: 100vh;
+  height: 100dvh;
   background: #140a2b;
   /* O :root do projeto define line-height: 150%, que seria herdado como 27px. */
   line-height: normal;
@@ -22,7 +34,28 @@
 :where(.salas) :where(button, input) { font: inherit; color: inherit; }
 
 .salas__main {
-  @apply relative isolate ml-[230px] min-h-screen min-w-0 flex-1 px-[56px] pt-[42px] pb-[48px];
+  @apply relative isolate ml-[230px] min-h-0 min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+}
+
+/* A área principal tem a própria rolagem, sem depender de html/body/#root.
+   A barra fica sempre visível (no macOS a barra padrão some até rolar). */
+.salas__main::-webkit-scrollbar { width: 12px; }
+.salas__main::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); }
+.salas__main::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-violet-mid) 45%, transparent);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 8px;
+}
+.salas__main::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-violet-mid) 70%, transparent);
+  background-clip: padding-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .salas__main {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
+  }
 }
 
 .salas__brilho {
@@ -160,7 +193,7 @@
 .salas__banner--laranja { background: linear-gradient(125deg, #854e2d, #c77639); }
 
 .salas__banner-tag {
-  @apply absolute top-[14px] left-[16px] z-1 px-[9px] py-[5px] text-[9px] tracking-[0.4px];
+  @apply absolute top-[14px] left-[16px] z-[1] px-[9px] py-[5px] text-[9px] tracking-[0.4px];
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   background: rgba(15, 7, 30, 0.32);
@@ -175,7 +208,7 @@
 }
 
 .salas__icone {
-  @apply absolute top-[66px] left-[18px] z-2 grid size-[54px] place-items-center text-[16px] leading-none text-[#fff];
+  @apply absolute top-[66px] left-[18px] z-[2] grid size-[54px] place-items-center text-[16px] leading-none text-[#fff];
   font-weight: 700;
   border: 4px solid #25153f;
   border-radius: 15px;
@@ -225,7 +258,7 @@
 .salas__vazio .salas__botao-primario { @apply h-[44px]; }
 .salas__vazio-ilustracao { @apply relative mb-[8px] h-[145px] w-[190px]; }
 .salas__vazio-cartao {
-  @apply absolute top-[24px] left-[41px] h-[84px] w-[102px] bg-gold/6;
+  @apply absolute top-[24px] left-[41px] h-[84px] w-[102px] bg-gold/[0.06];
   border: 1px solid color-mix(in srgb, var(--color-gold) 28%, transparent);
   border-radius: 16px;
   transform: rotate(-7deg);
@@ -276,7 +309,7 @@
 }
 
 /* ---------- Pop-up da sala ---------- */
-.salas__modal-camada { @apply fixed grid place-items-center p-[28px] z-30; inset: 0; }
+.salas__modal-camada { @apply fixed grid place-items-center p-[28px] z-[30]; inset: 0; }
 .salas__modal-fundo {
   @apply absolute;
   inset: 0;
@@ -355,10 +388,10 @@
 
 .salas__modal-corpo { @apply px-[32px] pb-[28px]; }
 .salas__identidade {
-  @apply relative z-2 grid min-h-[114px] grid-cols-[78px_1fr_auto] items-center gap-[18px];
+  @apply relative z-[2] grid min-h-[114px] grid-cols-[78px_1fr_auto] items-center gap-[18px];
 }
 .salas__modal-icone {
-  @apply relative z-3 mt-[-30px] grid size-[78px] place-items-center self-start bg-gold text-[28px] text-[#28132f];
+  @apply relative z-[3] mt-[-30px] grid size-[78px] place-items-center self-start bg-gold text-[28px] text-[#28132f];
   border: 5px solid #1b0f35;
   border-radius: 20px;
   box-shadow: 0 10px 26px rgba(5, 2, 15, 0.4);
@@ -408,7 +441,7 @@
   border-radius: 11px;
 }
 .salas__modulo--aberto {
-  @apply bg-gold/2.5;
+  @apply bg-gold/[0.025];
   border-color: color-mix(in srgb, var(--color-gold) 18%, transparent);
 }
 .salas__modulo-botao {
@@ -439,7 +472,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.055);
 }
 .salas__aula-play {
-  @apply grid size-[18px] place-items-center bg-gold/9 text-gold;
+  @apply grid size-[18px] place-items-center bg-gold/[0.09] text-gold;
   border-radius: 6px;
 }
 .salas__aula small { @apply flex items-center gap-[4px] text-[8px] text-violet-pale/50; }
@@ -543,3 +576,61 @@
   .salas__modal-banner { @apply h-[124px]; }
   .salas__identidade { @apply min-h-[100px]; }
 }
+
+/* ---------- Pop-up de filtros ---------- */
+.salas__filtro-modal {
+  @apply relative flex flex-col overflow-hidden bg-[#1b0f35];
+  width: min(460px, calc(100vw - 64px));
+  max-height: calc(100vh - 56px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow:
+    0 30px 100px rgba(2, 0, 10, 0.68),
+    0 0 0 1px color-mix(in srgb, var(--color-gold) 5%, transparent);
+  animation: salas-modal-entrada 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.salas__filtro-topo {
+  @apply flex flex-none items-start justify-between px-[28px] pt-[26px] pb-[20px];
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.salas__filtro-titulo { @apply font-display text-[22px] leading-[1.2]; }
+.salas__filtro-fechar {
+  @apply grid size-[36px] cursor-pointer place-items-center bg-[rgba(255,255,255,0.05)] text-violet-pale;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  transition: background-color 0.2s ease;
+}
+.salas__filtro-fechar:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+.salas__filtro-corpo { @apply flex min-h-0 flex-col gap-[22px] overflow-y-auto px-[28px] py-[22px]; }
+.salas__filtro-secao-titulo { @apply font-display mb-[4px] text-[15px] leading-[1.2]; }
+.salas__filtro-secao-texto { @apply mb-[12px] text-[11px] text-violet-pale/70; }
+
+.salas__opcoes { @apply flex flex-wrap gap-[8px]; }
+.salas__opcao {
+  @apply h-[38px] cursor-pointer bg-[rgba(255,255,255,0.035)] px-[16px] text-[12px] text-violet-pale;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.salas__opcao:hover { background-color: rgba(255, 255, 255, 0.08); }
+/* Duas classes para vencer o :hover quando a opção está marcada. */
+.salas__opcao.salas__opcao--ativa {
+  @apply bg-gold/10 text-gold;
+  font-weight: 700;
+  border-color: color-mix(in srgb, var(--color-gold) 55%, transparent);
+}
+
+.salas__filtro-dica {
+  @apply bg-[rgba(255,255,255,0.035)] px-[12px] py-[10px] text-[11px] leading-[1.5] text-violet-pale/70;
+  border-left: 2px solid var(--color-gold);
+  border-radius: 0 8px 8px 0;
+}
+
+.salas__filtro-rodape {
+  @apply flex flex-none items-center justify-between px-[28px] py-[18px];
+  background: rgba(19, 10, 39, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.salas__botao-aplicar { @apply h-[44px] min-w-[120px] text-[12px]; }

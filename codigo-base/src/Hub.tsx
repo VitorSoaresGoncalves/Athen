@@ -6,6 +6,7 @@ import {RegisterPage} from './pages/RegisterPage';
 import  HomePage  from './pages/home-page/HomePage';
 import Dashboard from './pages/Dashboard';
 import Salas from './pages/Salas'
+import Ligas from './pages/Ligas'
 
 export default function Hub() {
   return (
@@ -17,6 +18,8 @@ export default function Hub() {
         <Route path="/register-page" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/salas" element={<Salas />} />
+        <Route path="/ligas" element={<Ligas />} />
+
       </Routes>
     </BrowserRouter>
   )

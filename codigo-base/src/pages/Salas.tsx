@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { RankingPodium, type PodiumPlayer } from "../components/ranking/RankingPodium";
 import "./Salas.css";
- 
-
-
 
 // ---------------------------------------------------------------------------
 // Ícones (só os que esta página usa)
@@ -53,19 +50,20 @@ type Sala = {
   membros: number;
   tom: Tom;
   simbolo: string;
+  nota: number;       // média de estrelas, de 0 a 5
+  avaliacoes: number; // quantidade de avaliações
 };
 
 // Domínio exibido abaixo do nome da sala (vem do Figma).
 const DOMINIO = "lumina.com";
 
 const salas: Sala[] = [
-  
-  { nome: "Clube da Criatividade", slug: "clube-criatividade", assunto: "Design & criatividade", membros: 28, tom: "coral", simbolo: "✦" },
-  { nome: "Inglês sem Fronteiras", slug: "ingles-sem-fronteiras", assunto: "Idiomas", membros: 42, tom: "azul", simbolo: "A" },
-  { nome: "Código para o Futuro", slug: "codigo-para-o-futuro", assunto: "Tecnologia", membros: 34, tom: "violeta", simbolo: "</>" },
-  { nome: "Matemática Descomplicada", slug: "matematica-facil", assunto: "Matemática", membros: 19, tom: "menta", simbolo: "π" },
-  { nome: "Ciência em Movimento", slug: "ciencia-em-movimento", assunto: "Ciências", membros: 31, tom: "rosa", simbolo: "⚛" },
-  { nome: "Histórias do Mundo", slug: "historias-do-mundo", assunto: "Humanidades", membros: 25, tom: "laranja", simbolo: "◈" },
+  { nome: "Clube da Criatividade", slug: "clube-criatividade", assunto: "Design & criatividade", membros: 28, tom: "coral", simbolo: "✦", nota: 4.5, avaliacoes: 28 },
+  { nome: "Inglês sem Fronteiras", slug: "ingles-sem-fronteiras", assunto: "Idiomas", membros: 42, tom: "azul", simbolo: "A", nota: 4.8, avaliacoes: 51 },
+  { nome: "Código para o Futuro", slug: "codigo-para-o-futuro", assunto: "Tecnologia", membros: 34, tom: "violeta", simbolo: "</>", nota: 4.5, avaliacoes: 37 },
+  { nome: "Matemática Descomplicada", slug: "matematica-facil", assunto: "Matemática", membros: 19, tom: "menta", simbolo: "π", nota: 4.2, avaliacoes: 16 },
+  { nome: "Ciência em Movimento", slug: "ciencia-em-movimento", assunto: "Ciências", membros: 31, tom: "rosa", simbolo: "⚛", nota: 4.9, avaliacoes: 44 },
+  { nome: "Histórias do Mundo", slug: "historias-do-mundo", assunto: "Humanidades", membros: 25, tom: "laranja", simbolo: "◈", nota: 4.0, avaliacoes: 22 },
 ];
 
 const modulos = [
@@ -83,9 +81,61 @@ const rankingDaSala: PodiumPlayer[] = [
   { position: "5º", name: "Lia", detail: "68% · 7 aulas", tier: "silver", height: "fifth" },
 ];
 
+// ---------------------------------------------------------------------------
+// Busca, filtros e ordenação
+// ---------------------------------------------------------------------------
+type OrdemAlfabetica = "nenhuma" | "az" | "za";
+type OrdemEstrelas = "nenhuma" | "maior" | "menor";
+type Filtros = { alfabetica: OrdemAlfabetica; estrelas: OrdemEstrelas };
+
+const FILTROS_PADRAO: Filtros = { alfabetica: "nenhuma", estrelas: "nenhuma" };
+
+const contarFiltros = (filtros: Filtros) =>
+  (filtros.alfabetica !== "nenhuma" ? 1 : 0) + (filtros.estrelas !== "nenhuma" ? 1 : 0);
+
+// Estrelas vêm primeiro; a ordem alfabética desempata (ou vale sozinha).
+function ordenar(lista: Sala[], filtros: Filtros) {
+  return [...lista].sort((a, b) => {
+    if (filtros.estrelas !== "nenhuma") {
+      const diferenca = filtros.estrelas === "maior" ? b.nota - a.nota : a.nota - b.nota;
+      if (diferenca !== 0) return diferenca;
+    }
+    if (filtros.alfabetica !== "nenhuma") {
+      const comparacao = a.nome.localeCompare(b.nome, "pt-BR");
+      return filtros.alfabetica === "az" ? comparacao : -comparacao;
+    }
+    return 0;
+  });
+}
+
 // Busca sem diferenciar maiúsculas e acentos.
 const normalizar = (texto: string) =>
   texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+const descreverNota = (nota: number) => {
+  if (nota >= 4.5) return "Excelente";
+  if (nota >= 4) return "Muito boa";
+  if (nota >= 3) return "Boa";
+  return "Regular";
+};
+
+// Fecha o pop-up com Esc e trava a rolagem da página enquanto ele está aberto.
+function useTravarModal(onFechar: () => void) {
+  useEffect(() => {
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") onFechar();
+    }
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", aoTeclar);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [onFechar]);
+}
 
 // ---------------------------------------------------------------------------
 // Card da sala
@@ -142,7 +192,7 @@ function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: S
             </p>
             <div className="salas__rodape-card">
               <span className="salas__nota">
-                <strong>4.5/5</strong> <span>★</span>
+                <strong>{sala.nota.toFixed(1)}/5</strong> <span>★</span>
               </span>
               <span className="salas__saiba-mais">
                 Saiba mais <Icone nome="arrow" tamanho={17} />
@@ -190,27 +240,132 @@ function EstadoVazio() {
 }
 
 // ---------------------------------------------------------------------------
+// Pop-up de filtros
+// ---------------------------------------------------------------------------
+type OpcaoChip<T extends string> = { valor: T; rotulo: string };
+
+const OPCOES_ALFABETICA: OpcaoChip<OrdemAlfabetica>[] = [
+  { valor: "nenhuma", rotulo: "Sem ordem" },
+  { valor: "az", rotulo: "A → Z" },
+  { valor: "za", rotulo: "Z → A" },
+];
+
+const OPCOES_ESTRELAS: OpcaoChip<OrdemEstrelas>[] = [
+  { valor: "nenhuma", rotulo: "Sem ordem" },
+  { valor: "maior", rotulo: "Mais estrelas" },
+  { valor: "menor", rotulo: "Menos estrelas" },
+];
+
+function GrupoOpcoes<T extends string>({
+  rotulo,
+  opcoes,
+  valor,
+  onMudar,
+}: {
+  rotulo: string;
+  opcoes: OpcaoChip<T>[];
+  valor: T;
+  onMudar: (novoValor: T) => void;
+}) {
+  return (
+    <div className="salas__opcoes" role="radiogroup" aria-label={rotulo}>
+      {opcoes.map((opcao) => {
+        const ativa = valor === opcao.valor;
+        return (
+          <button
+            key={opcao.valor}
+            type="button"
+            role="radio"
+            aria-checked={ativa}
+            className={`salas__opcao${ativa ? " salas__opcao--ativa" : ""}`}
+            onClick={() => onMudar(opcao.valor)}
+          >
+            {opcao.rotulo}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+type FiltroModalProps = {
+  valores: Filtros;
+  onAplicar: (filtros: Filtros) => void;
+  onFechar: () => void;
+};
+
+function FiltroModal({ valores, onAplicar, onFechar }: FiltroModalProps) {
+  // As escolhas só valem quando a pessoa clica em "Aplicar".
+  const [rascunho, setRascunho] = useState<Filtros>(valores);
+  useTravarModal(onFechar);
+
+  const usandoOsDois = rascunho.alfabetica !== "nenhuma" && rascunho.estrelas !== "nenhuma";
+
+  return (
+    <div className="salas__modal-camada" role="presentation">
+      <div className="salas__modal-fundo" onClick={onFechar} />
+
+      <section className="salas__filtro-modal" role="dialog" aria-modal="true" aria-labelledby="salas-filtro-titulo">
+        <header className="salas__filtro-topo">
+          <div>
+            <p className="salas__rotulo">FILTRAR SALAS</p>
+            <h2 className="salas__filtro-titulo" id="salas-filtro-titulo">Organizar resultados</h2>
+          </div>
+          <button className="salas__filtro-fechar" type="button" onClick={onFechar} aria-label="Fechar filtros">
+            <Icone nome="close" tamanho={20} />
+          </button>
+        </header>
+
+        <div className="salas__filtro-corpo">
+          <section>
+            <h3 className="salas__filtro-secao-titulo">Ordem alfabética</h3>
+            <p className="salas__filtro-secao-texto">Organize as salas pelo nome.</p>
+            <GrupoOpcoes
+              rotulo="Ordem alfabética"
+              opcoes={OPCOES_ALFABETICA}
+              valor={rascunho.alfabetica}
+              onMudar={(alfabetica) => setRascunho({ ...rascunho, alfabetica })}
+            />
+          </section>
+
+          <section>
+            <h3 className="salas__filtro-secao-titulo">Número de estrelas</h3>
+            <p className="salas__filtro-secao-texto">Organize pela nota das avaliações, de 0 a 5.</p>
+            <GrupoOpcoes
+              rotulo="Número de estrelas"
+              opcoes={OPCOES_ESTRELAS}
+              valor={rascunho.estrelas}
+              onMudar={(estrelas) => setRascunho({ ...rascunho, estrelas })}
+            />
+          </section>
+
+          {usandoOsDois && (
+            <p className="salas__filtro-dica">
+              Usando os dois, as estrelas vêm primeiro e a ordem alfabética desempata salas com a mesma nota.
+            </p>
+          )}
+        </div>
+
+        <footer className="salas__filtro-rodape">
+          <button className="salas__botao-secundario" type="button" onClick={() => setRascunho(FILTROS_PADRAO)}>
+            Limpar
+          </button>
+          <button className="salas__botao-primario salas__botao-aplicar" type="button" onClick={() => onAplicar(rascunho)}>
+            Aplicar
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Pop-up com as informações da sala
 // ---------------------------------------------------------------------------
 function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
   const [moduloAberto, setModuloAberto] = useState(0);
   const totalAulas = modulos.reduce((soma, modulo) => soma + modulo.aulas.length, 0);
-
-  // Fecha com Esc e trava a rolagem da página enquanto o pop-up está aberto.
-  useEffect(() => {
-    function aoTeclar(evento: KeyboardEvent) {
-      if (evento.key === "Escape") onFechar();
-    }
-
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", aoTeclar);
-
-    return () => {
-      document.body.style.overflow = overflowAnterior;
-      document.removeEventListener("keydown", aoTeclar);
-    };
-  }, [onFechar]);
+  useTravarModal(onFechar);
 
   return (
     <div className="salas__modal-camada" role="presentation">
@@ -309,9 +464,12 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
               {/* Avaliações, ranking e mural */}
               <aside className="salas__painel salas__lateral">
                 <p className="salas__rotulo">AVALIAÇÕES</p>
-                <div className="salas__nota-resumo"><strong className="salas__nota-numero">4.5</strong><span className="salas__nota-estrela">★</span></div>
-                <p className="salas__nota-legenda">Excelente · 28 avaliações</p>
-                <div className="salas__nota-barra"><span /></div>
+                <div className="salas__nota-resumo">
+                  <strong className="salas__nota-numero">{sala.nota.toFixed(1)}</strong>
+                  <span className="salas__nota-estrela">★</span>
+                </div>
+                <p className="salas__nota-legenda">{descreverNota(sala.nota)} · {sala.avaliacoes} avaliações</p>
+                <div className="salas__nota-barra"><span style={{ width: `${(sala.nota / 5) * 100}%` }} /></div>
 
                 {/* Ranking logo abaixo das avaliações */}
                 <div className="salas__ranking">
@@ -366,17 +524,20 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
 // ---------------------------------------------------------------------------
 export default function Salas() {
   const [busca, setBusca] = useState("");
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_PADRAO);
+  const [filtroAberto, setFiltroAberto] = useState(false);
   const [salaEmDestaque, setSalaEmDestaque] = useState<string | null>(null);
   const [salaAberta, setSalaAberta] = useState<Sala | null>(null);
 
   const termo = normalizar(busca.trim());
-  const salasFiltradas = useMemo(
-    () =>
-      salas.filter(
-        (sala) => !termo || normalizar(sala.nome).includes(termo) || normalizar(sala.assunto).includes(termo),
-      ),
-    [termo],
-  );
+  const totalFiltros = contarFiltros(filtros);
+
+  const salasFiltradas = useMemo(() => {
+    const encontradas = salas.filter(
+      (sala) => !termo || normalizar(sala.nome).includes(termo) || normalizar(sala.assunto).includes(termo),
+    );
+    return ordenar(encontradas, filtros);
+  }, [termo, filtros]);
 
   return (
     <div className="salas">
@@ -407,11 +568,16 @@ export default function Salas() {
               onChange={(evento) => setBusca(evento.target.value)}
             />
           </label>
-          {/* O filtro ainda é só visual */}
-          <button className="salas__filtro" type="button" aria-label="Filtrar salas">
+          <button
+            className="salas__filtro"
+            type="button"
+            aria-label="Filtrar salas"
+            aria-haspopup="dialog"
+            onClick={() => setFiltroAberto(true)}
+          >
             <Icone nome="filter" />
             <span>Filtrar</span>
-            <span className="salas__filtro-contagem">2</span>
+            {totalFiltros > 0 && <span className="salas__filtro-contagem">{totalFiltros}</span>}
           </button>
         </section>
 
@@ -438,6 +604,17 @@ export default function Salas() {
           </section>
         )}
       </main>
+
+      {filtroAberto && (
+        <FiltroModal
+          valores={filtros}
+          onAplicar={(novosFiltros) => {
+            setFiltros(novosFiltros);
+            setFiltroAberto(false);
+          }}
+          onFechar={() => setFiltroAberto(false)}
+        />
+      )}
 
       {salaAberta && <SalaModal sala={salaAberta} onFechar={() => setSalaAberta(null)} />}
     </div>

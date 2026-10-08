@@ -25,6 +25,7 @@ const itens: SidebarItem[] = [
     {
         text: "Ligas",
         icone: "🦊 ",
+        to: "/ligas",
     },
     {
         text: "Config",
