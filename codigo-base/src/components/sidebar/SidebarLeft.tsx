@@ -139,9 +139,8 @@ function useUserProfile(overrideAvatar?: string) {
 
 
 
-
 export function SidebarLeft({avatar}: SidebArvatarUrl) {
-    const avatarSrc = useUserProfile(avatar);
+    const userSrc = useUserProfile(avatar);
 
     return (
         // corpo inteiro da sidebar
@@ -237,14 +236,14 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                 to={PROFILE_ROUTE}
                 aria-label="Ir para o perfil"
                 title="Meu perfil"
-                className="block outline-none"
+                className="block outline-none mt-auto mx-[10px]"
             >
                 <div className="
                     group
-                    mb-[3vh]
-                    mt-[2vh]
                     flex
-                    h-[96px]
+                    w-[80px]
+                    h-[80px]
+                    mb-[15px]
                     items-center
                     justify-center
                     overflow-hidden
@@ -253,9 +252,9 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                     transition-colors
                     hover:bg-[#202036dd]"
                 >
-                    {avatarSrc
+                    {userSrc
                         ?   <img 
-                                // src={avatarSrc} 
+                                src={userSrc.avatarSrc} 
                                 alt="Foto de perfil" 
                                 className="block w-full h-full aspect-square object-contain"
                             />
