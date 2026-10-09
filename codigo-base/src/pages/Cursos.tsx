@@ -1,22 +1,26 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
-import { cursoRepository } from "../data/repositories";
-import { supabase } from "../lib/supabase";
-import type { Database } from "../types/database";
-import "./Cursos.css";
+import { RankingPodium, type PodiumPlayer } from "../components/ranking/RankingPodium";
+import "./Salas.css";
+ 
 
-type Curso = Database["public"]["Tables"]["Curso"]["Row"];
+
 
 // ---------------------------------------------------------------------------
 // Ícones (só os que esta página usa)
 // ---------------------------------------------------------------------------
-type NomeIcone = "search" | "filter" | "plus" | "arrow";
+type NomeIcone = "search" | "filter" | "plus" | "arrow" | "people" | "close" | "chevron" | "play" | "clock";
 
 const caminhos: Record<NomeIcone, ReactNode> = {
   search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
   filter: <path d="M4 7h16M7 12h10M10 17h4" />,
   plus: <path d="M12 5v14M5 12h14" />,
   arrow: <path d="M5 12h14M14 7l5 5-5 5" />,
+  people: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5.3A3 3 0 0 1 16 11M17 14a5 5 0 0 1 4 4.9V20" /></>,
+  close: <path d="m6 6 12 12M18 6 6 18" />,
+  chevron: <path d="m8 10 4 4 4-4" />,
+  play: <path d="m9 7 8 5-8 5Z" />,
+  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
 };
 
 function Icone({ nome, tamanho = 20 }: { nome: NomeIcone; tamanho?: number }) {
@@ -38,208 +42,363 @@ function Icone({ nome, tamanho = 20 }: { nome: NomeIcone; tamanho?: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Utilidades
+// Dados de exemplo — trocar pelas consultas ao Supabase depois
 // ---------------------------------------------------------------------------
-// Domínio exibido abaixo do nome do curso (mesmo padrão de Salas).
+type Tom = "coral" | "azul" | "violeta" | "menta" | "rosa" | "laranja";
+
+type Sala = {
+  nome: string;
+  slug: string;
+  assunto: string;
+  membros: number;
+  tom: Tom;
+  simbolo: string;
+};
+
+// Domínio exibido abaixo do nome da sala (vem do Figma).
 const DOMINIO = "lumina.com";
 
-// Rota da trilha (Dashboard), que lê o curso pelo parâmetro ?curso=
-// TODO: ajustar para a rota real do Dashboard
-const ROTA_TRILHA = "/";
+const salas: Sala[] = [
+  
+  { nome: "Clube da Criatividade", slug: "clube-criatividade", assunto: "Design & criatividade", membros: 28, tom: "coral", simbolo: "✦" },
+  { nome: "Inglês sem Fronteiras", slug: "ingles-sem-fronteiras", assunto: "Idiomas", membros: 42, tom: "azul", simbolo: "A" },
+  { nome: "Código para o Futuro", slug: "codigo-para-o-futuro", assunto: "Tecnologia", membros: 34, tom: "violeta", simbolo: "</>" },
+  { nome: "Matemática Descomplicada", slug: "matematica-facil", assunto: "Matemática", membros: 19, tom: "menta", simbolo: "π" },
+  { nome: "Ciência em Movimento", slug: "ciencia-em-movimento", assunto: "Ciências", membros: 31, tom: "rosa", simbolo: "⚛" },
+  { nome: "Histórias do Mundo", slug: "historias-do-mundo", assunto: "Humanidades", membros: 25, tom: "laranja", simbolo: "◈" },
+];
 
-const COR_PADRAO = "#7c3aed";
+const modulos = [
+  { titulo: "Módulo 1", subtitulo: "Fundamentos da criatividade", aulas: ["Aula 1 · O olhar criativo", "Aula 2 · Repertório e referências", "Aula 3 · Tirando ideias do papel", "Aula 4 · Desafio de aquecimento"] },
+  { titulo: "Módulo 2", subtitulo: "Ideias que ganham forma", aulas: ["Aula 1 · Mapa de possibilidades", "Aula 2 · Criando em conjunto", "Aula 3 · Protótipos rápidos", "Aula 4 · Compartilhe seu projeto"] },
+  { titulo: "Módulo 3", subtitulo: "Projeto final em comunidade", aulas: ["Aula 1 · Escolha do desafio", "Aula 2 · Construção do projeto", "Aula 3 · Rodada de feedback", "Aula 4 · Apresentação final"] },
+];
 
-function corValida(cor: string | null | undefined) {
-  const candidata = cor?.trim();
-  return candidata && /^#[0-9a-fA-F]{3,8}$/.test(candidata) ? candidata : COR_PADRAO;
-}
+// Ordem visual do pódio (esquerda → direita): 4º, 2º, 1º, 3º, 5º.
+const rankingDaSala: PodiumPlayer[] = [
+  { position: "4º", name: "Caio", detail: "72% · 8 aulas", tier: "gold", height: "fourth" },
+  { position: "2º", name: "Beatriz", detail: "91% · 11 aulas", tier: "diamond", height: "second" },
+  { position: "1º", name: "Helena", detail: "96% · 12 aulas", tier: "master", height: "first" },
+  { position: "3º", name: "Ravi", detail: "87,5% · 10 aulas", tier: "platinum", height: "third" },
+  { position: "5º", name: "Lia", detail: "68% · 7 aulas", tier: "silver", height: "fifth" },
+];
 
 // Busca sem diferenciar maiúsculas e acentos.
 const normalizar = (texto: string) =>
   texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-// Liga/desliga um valor num array de seleção.
-const alternar = (lista: string[], valor: string) =>
-  lista.includes(valor) ? lista.filter((item) => item !== valor) : [...lista, valor];
-
-function mensagemDeErro(erro: unknown) {
-  if (erro instanceof Error) return erro.message;
-  if (typeof erro === "object" && erro && "message" in erro) return String(erro.message);
-  return "Não foi possível carregar os cursos.";
-}
-
 // ---------------------------------------------------------------------------
-// Card do curso
+// Card da sala
 // ---------------------------------------------------------------------------
-function CursoCard({ curso, onSaibaMais }: { curso: Curso; onSaibaMais: () => void }) {
+type SalaCardProps = {
+  sala: Sala;
+  expandido: boolean;
+  onDestacar: () => void;
+  onRemoverDestaque: () => void;
+  onAbrir: () => void;
+};
+
+function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: SalaCardProps) {
   return (
-    <article className="cursos__card" style={{ "--cor": corValida(curso.Cor_Capa) } as CSSProperties}>
-      <div className="cursos__banner">
-        {curso.Categoria && <span className="cursos__banner-tag">{curso.Categoria}</span>}
-        <div className="cursos__banner-orbita" />
+    <article
+      className={`salas__card${expandido ? " salas__card--expandido" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={onAbrir}
+      onKeyDown={(evento) => {
+        if (evento.key === "Enter" || evento.key === " ") {
+          evento.preventDefault();
+          onAbrir();
+        }
+      }}
+      onMouseEnter={onDestacar}
+      onMouseLeave={onRemoverDestaque}
+      onFocus={onDestacar}
+      onBlur={onRemoverDestaque}
+    >
+      <div className={`salas__banner salas__banner--${sala.tom}`}>
+        <span className="salas__banner-tag">{sala.assunto}</span>
+        <div className="salas__banner-orbita" />
       </div>
 
-      <div className="cursos__icone">{curso.Icone}</div>
+      <div className={`salas__icone salas__icone--${sala.tom}`}>{sala.simbolo}</div>
 
-      <div className="cursos__conteudo">
-        <h3 className="cursos__nome">{curso.Titulo}</h3>
-        <p className="cursos__slug">{DOMINIO}/{curso.Slug}</p>
+      <div className="salas__conteudo">
+        <div className="salas__linha-titulo">
+          <div>
+            <h2 className="salas__nome">{sala.nome}</h2>
+            <p className="salas__slug">{DOMINIO}/{sala.slug}</p>
+          </div>
+          <span className="salas__membros">
+            <Icone nome="people" tamanho={14} />
+            {sala.membros}
+          </span>
+        </div>
 
-        {curso.Tags.length > 0 && (
-          <div className="cursos__tags">
-            {curso.Tags.map((tag) => (
-              <span className="cursos__tag" key={tag}>#{tag}</span>
-            ))}
+        {expandido && (
+          <div className="salas__expandido">
+            <p className="salas__descricao-curta">
+              Um espaço para trocar ideias, aprender em conjunto e transformar curiosidade em projetos incríveis.
+            </p>
+            <div className="salas__rodape-card">
+              <span className="salas__nota">
+                <strong>4.5/5</strong> <span>★</span>
+              </span>
+              <span className="salas__saiba-mais">
+                Saiba mais <Icone nome="arrow" tamanho={17} />
+              </span>
+            </div>
           </div>
         )}
-
-        <div className="cursos__rodape-card">
-          <span className="cursos__nota">
-            <span className="cursos__nota-estrela">★</span>
-            <strong>{Number(curso.Avaliacao).toFixed(1)}</strong>
-            <small>({curso.Contagem_Avaliacao})</small>
-          </span>
-          <button className="cursos__saiba-mais" type="button" onClick={onSaibaMais}>
-            Saiba mais <Icone nome="arrow" tamanho={17} />
-          </button>
-        </div>
       </div>
     </article>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Seção (título + contador + grade)
+// Estado vazio (usuário ainda não participa de nenhuma sala)
 // ---------------------------------------------------------------------------
-type SecaoProps = {
-  titulo: string;
-  lista: Curso[];
-  vazio: string;
-  onSaibaMais: (curso: Curso) => void;
-};
-
-function Secao({ titulo, lista, vazio, onSaibaMais }: SecaoProps) {
+function EstadoVazio() {
   return (
-    <section className="cursos__secao">
-      <p className="cursos__contador">
-        {titulo} <span>{lista.length}</span>
-      </p>
-      {lista.length === 0 ? (
-        <p className="cursos__sem-resultado">{vazio}</p>
-      ) : (
-        <div className="cursos__grade">
-          {lista.map((curso) => (
-            <CursoCard key={curso.ID} curso={curso} onSaibaMais={() => onSaibaMais(curso)} />
-          ))}
+    <div className="salas__vazio">
+      <div className="salas__vazio-ilustracao" aria-hidden="true">
+        <span className="salas__vazio-brilho salas__vazio-brilho--1">✦</span>
+        <span className="salas__vazio-brilho salas__vazio-brilho--2">✦</span>
+        <div className="salas__vazio-cartao" />
+        <div className="salas__vazio-porta">
+          <div className="salas__vazio-janela">✦</div>
+          <div className="salas__vazio-linha" />
         </div>
-      )}
-    </section>
+        <div className="salas__vazio-figura">
+          <span className="salas__vazio-figura-cabeca" />
+          <span className="salas__vazio-figura-corpo" />
+        </div>
+        <div className="salas__vazio-sombra" />
+      </div>
+
+      <p className="salas__vazio-chamada">SUA JORNADA COMEÇA AQUI</p>
+      <h2 className="salas__vazio-titulo">Você ainda não participa<br />de nenhuma sala</h2>
+      <p className="salas__vazio-texto">
+        Entre em uma sala para aprender com outras pessoas,<br />cumprir desafios e evoluir todos os dias.
+      </p>
+      <button className="salas__botao-primario" type="button">
+        <Icone nome="plus" tamanho={19} />
+        Adicionar sala
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pop-up com as informações da sala
+// ---------------------------------------------------------------------------
+function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
+  const [moduloAberto, setModuloAberto] = useState(0);
+  const totalAulas = modulos.reduce((soma, modulo) => soma + modulo.aulas.length, 0);
+
+  // Fecha com Esc e trava a rolagem da página enquanto o pop-up está aberto.
+  useEffect(() => {
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") onFechar();
+    }
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", aoTeclar);
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [onFechar]);
+
+  return (
+    <div className="salas__modal-camada" role="presentation">
+      <div className="salas__modal-fundo" onClick={onFechar} />
+
+      <section className="salas__modal" role="dialog" aria-modal="true" aria-labelledby="salas-modal-titulo">
+        <div className="salas__modal-rolagem">
+          <div className="salas__modal-banner">
+            <span className="salas__modal-categoria">{sala.assunto.toUpperCase()}</span>
+            <div className="salas__modal-forma salas__modal-forma--a" />
+            <div className="salas__modal-forma salas__modal-forma--b" />
+            <div className="salas__modal-brilho">✦</div>
+            <button className="salas__modal-fechar" type="button" onClick={onFechar} aria-label="Fechar informações da sala">
+              <Icone nome="close" tamanho={22} />
+            </button>
+          </div>
+
+          <div className="salas__modal-corpo">
+            <div className="salas__identidade">
+              <div className="salas__modal-icone">{sala.simbolo}</div>
+              <div>
+                <p className="salas__rotulo">SALA DE APRENDIZAGEM</p>
+                <h2 className="salas__modal-titulo" id="salas-modal-titulo">{sala.nome}</h2>
+                <p className="salas__modal-slug">{DOMINIO}/{sala.slug}</p>
+              </div>
+              <div className="salas__meta">
+                <div><span>Categoria:</span><strong>{sala.assunto}</strong></div>
+                <div>
+                  <span>Tags:</span>
+                  <span className="salas__tag">Design</span>
+                  <span className="salas__tag">Projetos</span>
+                  <span className="salas__tag">Comunidade</span>
+                </div>
+              </div>
+            </div>
+
+            <article className="salas__sobre">
+              <div>
+                <p className="salas__rotulo">SOBRE ESTA SALA</p>
+                <h3 className="salas__sobre-titulo">Descrição completa</h3>
+              </div>
+              <p className="salas__sobre-texto">
+                Um espaço para despertar sua criatividade, trocar ideias e transformar curiosidade em projetos reais.
+                Aprenda no seu ritmo, participe de desafios semanais e evolua junto com uma comunidade que acredita no
+                poder de criar.
+              </p>
+            </article>
+
+            <div className="salas__colunas">
+              {/* Trilha de aprendizagem */}
+              <section className="salas__painel salas__modulos">
+                <div className="salas__painel-cabecalho">
+                  <div>
+                    <p className="salas__rotulo">CONTEÚDO DA SALA</p>
+                    <h3 className="salas__painel-titulo">Trilha de aprendizagem</h3>
+                  </div>
+                  <span className="salas__painel-resumo">{modulos.length} módulos · {totalAulas} aulas</span>
+                </div>
+
+                <div className="salas__acordeao">
+                  {modulos.map((modulo, indice) => (
+                    <div
+                      className={`salas__modulo${moduloAberto === indice ? " salas__modulo--aberto" : ""}`}
+                      key={modulo.titulo}
+                    >
+                      <button
+                        className="salas__modulo-botao"
+                        type="button"
+                        aria-expanded={moduloAberto === indice}
+                        onClick={() => setModuloAberto(moduloAberto === indice ? -1 : indice)}
+                      >
+                        <span className="salas__modulo-numero">0{indice + 1}</span>
+                        <span>
+                          <strong>{modulo.titulo}</strong>
+                          <small>{modulo.subtitulo}</small>
+                        </span>
+                        <Icone nome="chevron" tamanho={19} />
+                      </button>
+
+                      {moduloAberto === indice && (
+                        <div className="salas__aulas">
+                          {modulo.aulas.map((aula, indiceAula) => (
+                            <div className="salas__aula" key={aula}>
+                              <span className="salas__aula-play"><Icone nome="play" tamanho={13} /></span>
+                              <span>{aula}</span>
+                              <small><Icone nome="clock" tamanho={12} />{8 + indiceAula * 3} min</small>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Avaliações, ranking e mural */}
+              <aside className="salas__painel salas__lateral">
+                <p className="salas__rotulo">AVALIAÇÕES</p>
+                <div className="salas__nota-resumo"><strong className="salas__nota-numero">4.5</strong><span className="salas__nota-estrela">★</span></div>
+                <p className="salas__nota-legenda">Excelente · 28 avaliações</p>
+                <div className="salas__nota-barra"><span /></div>
+
+                {/* Ranking logo abaixo das avaliações */}
+                <div className="salas__ranking">
+                  <p className="salas__rotulo">RANKING DA SALA</p>
+                  <h3 className="salas__ranking-titulo">Top 5 da sala</h3>
+                  <RankingPodium players={rankingDaSala} compact width="compact" ariaLabel="Top 5 da sala" />
+                </div>
+
+                <div className="salas__mural-cabecalho">
+                  <div>
+                    <p className="salas__rotulo">MURAL DA SALA</p>
+                    <strong className="salas__mural-titulo">Avisos recentes</strong>
+                  </div>
+                  <span className="salas__mural-novos">2 novos</span>
+                </div>
+
+                <div className="salas__aviso salas__aviso--destaque">
+                  <div className="salas__aviso-topo"><span className="salas__aviso-tipo">DESTAQUE</span><small className="salas__aviso-data">Hoje, 14:30</small></div>
+                  <strong className="salas__aviso-titulo">Desafio criativo da semana</strong>
+                  <p className="salas__aviso-texto">Crie um cartaz usando apenas três cores e compartilhe no encontro de sexta-feira.</p>
+                </div>
+                <div className="salas__aviso">
+                  <div className="salas__aviso-topo"><span className="salas__aviso-tipo">ENCONTRO</span><small className="salas__aviso-data">18 jun</small></div>
+                  <strong className="salas__aviso-titulo">Roda de feedback ao vivo</strong>
+                  <p className="salas__aviso-texto">Reserve seu lugar para apresentar o projeto e trocar ideias com a turma.</p>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+
+        <footer className="salas__modal-rodape">
+          <p>
+            <Icone nome="people" tamanho={17} />
+            <strong>{sala.membros} pessoas</strong> já estão aprendendo nesta sala
+          </p>
+          <div className="salas__modal-acoes">
+            <button className="salas__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
+            {/* TODO: navegar para a sala quando a rota existir */}
+            <button className="salas__botao-primario salas__botao-entrar" type="button">
+              Entrar na sala <Icone nome="arrow" tamanho={18} />
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Página
 // ---------------------------------------------------------------------------
-export default function MeusCursos() {
-  const [cursos, setCursos] = useState<Curso[]>([]);
-  const [inscritosIds, setInscritosIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState("");
-
+export default function Salas() {
   const [busca, setBusca] = useState("");
-  const [filtroAberto, setFiltroAberto] = useState(false);
-  const [categoriasSel, setCategoriasSel] = useState<string[]>([]);
-  const [tagsSel, setTagsSel] = useState<string[]>([]);
-
-  // Busca os cursos publicados e as matrículas do usuário logado.
-  useEffect(() => {
-    let cancelado = false;
-
-    async function carregar() {
-      setLoading(true);
-      setErro("");
-
-      try {
-        const [todos, { data: userData }] = await Promise.all([
-          cursoRepository.listar(),
-          supabase.auth.getUser(),
-        ]);
-
-        let ids = new Set<string>();
-        if (userData.user) {
-          const { data, error } = await supabase
-            .from("matricula")
-            .select("fk_Curso_ID")
-            .eq("fk_Usuario_ID", userData.user.id);
-          if (error) throw error;
-          ids = new Set((data ?? []).map((linha) => linha.fk_Curso_ID));
-        }
-
-        if (cancelado) return;
-        setCursos(todos.filter((curso) => curso.Status === "published"));
-        setInscritosIds(ids);
-      } catch (e) {
-        if (!cancelado) setErro(mensagemDeErro(e));
-      } finally {
-        if (!cancelado) setLoading(false);
-      }
-    }
-
-    void carregar();
-    return () => { cancelado = true; };
-  }, []);
-
-  const categorias = useMemo(
-    () => [...new Set(cursos.map((curso) => curso.Categoria).filter(Boolean))].sort(),
-    [cursos],
-  );
-  const tags = useMemo(() => [...new Set(cursos.flatMap((curso) => curso.Tags))].sort(), [cursos]);
+  const [salaEmDestaque, setSalaEmDestaque] = useState<string | null>(null);
+  const [salaAberta, setSalaAberta] = useState<Sala | null>(null);
 
   const termo = normalizar(busca.trim());
-  const filtrados = useMemo(
+  const salasFiltradas = useMemo(
     () =>
-      cursos.filter(
-        (curso) =>
-          (!termo ||
-            normalizar(curso.Titulo).includes(termo) ||
-            normalizar(curso.Categoria).includes(termo) ||
-            curso.Tags.some((tag) => normalizar(tag).includes(termo))) &&
-          (categoriasSel.length === 0 || categoriasSel.includes(curso.Categoria)) &&
-          (tagsSel.length === 0 || curso.Tags.some((tag) => tagsSel.includes(tag))),
+      salas.filter(
+        (sala) => !termo || normalizar(sala.nome).includes(termo) || normalizar(sala.assunto).includes(termo),
       ),
-    [cursos, termo, categoriasSel, tagsSel],
+    [termo],
   );
 
-  const inscritos = filtrados.filter((curso) => inscritosIds.has(curso.ID));
-  const novos = filtrados.filter((curso) => !inscritosIds.has(curso.ID));
-  const totalFiltros = categoriasSel.length + tagsSel.length;
-
-  function abrirCurso(curso: Curso) {
-    window.location.assign(`${ROTA_TRILHA}?curso=${encodeURIComponent(curso.ID)}`);
-  }
-
   return (
-    <div className="tela cursos">
+    <div className="salas">
       <SidebarLeft />
 
-      <main className="cursos__main">
-        <div className="cursos__brilho" />
+      <main className="salas__main">
+        <div className="salas__brilho" />
 
-        <header className="cursos__cabecalho">
+        <header className="salas__cabecalho">
           <div>
-            <p className="cursos__caminho">PLATAFORMA / <span>MEUS CURSOS</span></p>
-            <h1 className="cursos__titulo">Meus Cursos</h1>
-            <p className="cursos__subtitulo">Continue aprendendo e descubra novos caminhos.</p>
+            <p className="salas__caminho">PLATAFORMA / <span>SALAS</span></p>
+            <h1 className="salas__titulo">Salas</h1>
+            <p className="salas__subtitulo">Aprenda em comunidade, compartilhe conquistas.</p>
           </div>
-          {/* TODO: abrir o fluxo de adicionar curso */}
-          <button className="cursos__botao-primario" type="button">
+          <button className="salas__botao-primario" type="button">
             <Icone nome="plus" tamanho={19} />
-            Adicionar curso
+            Adicionar sala
           </button>
         </header>
 
-        <section className="cursos__ferramentas" aria-label="Busca e filtros">
-          <label className="cursos__busca">
+        <section className="salas__ferramentas" aria-label="Busca e filtros">
+          <label className="salas__busca">
             <Icone nome="search" tamanho={21} />
             <input
               type="search"
@@ -248,87 +407,39 @@ export default function MeusCursos() {
               onChange={(evento) => setBusca(evento.target.value)}
             />
           </label>
-          <button
-            className="cursos__filtro"
-            type="button"
-            aria-expanded={filtroAberto}
-            aria-controls="cursos-painel-filtros"
-            onClick={() => setFiltroAberto((aberto) => !aberto)}
-          >
+          {/* O filtro ainda é só visual */}
+          <button className="salas__filtro" type="button" aria-label="Filtrar salas">
             <Icone nome="filter" />
             <span>Filtrar</span>
-            <span className="cursos__filtro-contagem">{totalFiltros}</span>
+            <span className="salas__filtro-contagem">2</span>
           </button>
         </section>
 
-        {filtroAberto && (
-          <section className="cursos__painel-filtros" id="cursos-painel-filtros" aria-label="Filtros">
-            <p className="cursos__rotulo">CATEGORIA</p>
-            <div className="cursos__chips">
-              {categorias.map((categoria) => (
-                <button
-                  key={categoria}
-                  type="button"
-                  className={`cursos__chip${categoriasSel.includes(categoria) ? " cursos__chip--ativo" : ""}`}
-                  aria-pressed={categoriasSel.includes(categoria)}
-                  onClick={() => setCategoriasSel((atual) => alternar(atual, categoria))}
-                >
-                  {categoria}
-                </button>
-              ))}
-            </div>
+        <p className="salas__contador">
+          Suas salas <span>{salasFiltradas.length}</span>
+        </p>
 
-            <p className="cursos__rotulo">TAGS</p>
-            <div className="cursos__chips">
-              {tags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  className={`cursos__chip${tagsSel.includes(tag) ? " cursos__chip--ativo" : ""}`}
-                  aria-pressed={tagsSel.includes(tag)}
-                  onClick={() => setTagsSel((atual) => alternar(atual, tag))}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-
-            {totalFiltros > 0 && (
-              <button
-                className="cursos__limpar"
-                type="button"
-                onClick={() => {
-                  setCategoriasSel([]);
-                  setTagsSel([]);
-                }}
-              >
-                Limpar filtros
-              </button>
-            )}
+        {salas.length === 0 ? (
+          <EstadoVazio />
+        ) : salasFiltradas.length === 0 ? (
+          <p className="salas__sem-resultado">Nenhuma sala encontrada para “{busca.trim()}”.</p>
+        ) : (
+          <section className="salas__grade">
+            {salasFiltradas.map((sala) => (
+              <SalaCard
+                key={sala.slug}
+                sala={sala}
+                expandido={salaEmDestaque === sala.slug}
+                onDestacar={() => setSalaEmDestaque(sala.slug)}
+                onRemoverDestaque={() => setSalaEmDestaque(null)}
+                onAbrir={() => setSalaAberta(sala)}
+              />
+            ))}
           </section>
         )}
-
-        {loading ? (
-          <p className="cursos__estado">Carregando seus cursos...</p>
-        ) : erro ? (
-          <p className="cursos__estado">{erro}</p>
-        ) : (
-          <>
-            <Secao
-              titulo="Cursos inscritos"
-              lista={inscritos}
-              vazio="Nenhum curso inscrito encontrado."
-              onSaibaMais={abrirCurso}
-            />
-            <Secao
-              titulo="Novos cursos"
-              lista={novos}
-              vazio="Nenhum novo curso encontrado."
-              onSaibaMais={abrirCurso}
-            />
-          </>
-        )}
       </main>
+
+      {salaAberta && <SalaModal sala={salaAberta} onFechar={() => setSalaAberta(null)} />}
     </div>
   );
 }
