@@ -1,3 +1,4 @@
+import type { User } from "@supabase/supabase-js";
 import {
   useEffect,
   useMemo,
@@ -8,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import type { User } from "@supabase/supabase-js";
+import { SidebarLeft } from "../../components/sidebar/SidebarLeft";
 import {
   aulaRepository,
   concluiRepository,
@@ -17,7 +18,6 @@ import {
 } from "../../data/repositories";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
-import { SidebarLeft } from "../../components/sidebar/SidebarLeft";
 import "./Profile.css";
 
 type Curso = Database["public"]["Tables"]["Curso"]["Row"];
@@ -343,7 +343,6 @@ function SectionTitle({ eyebrow, title, action }: { eyebrow: string; title: stri
  */
 function PageShell({
   children,
-  avatar,
   withSidebar,
 }: {
   children: ReactNode;
@@ -354,7 +353,7 @@ function PageShell({
 
   return (
     <div className="flex min-h-svh bg-canvas">
-      <SidebarLeft avatar={avatar} />
+      <SidebarLeft/>
       {children}
     </div>
   );

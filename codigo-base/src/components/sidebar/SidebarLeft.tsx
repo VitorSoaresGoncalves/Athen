@@ -17,11 +17,6 @@ type perfilUser = {
     Avatar_Url: string | null;
 }
 
-type SidebArvatarUrl = {
-    /** Opcional: se não for passada, a sidebar busca a foto do usuário logado sozinha. */
-    avatar?: string;
-}
-
 
 const itens: SidebarItem[] = [
     {
@@ -46,7 +41,7 @@ const itens: SidebarItem[] = [
  * Foto do usuário logado (user_metadata.avatar_url).
  * Atualiza sozinha quando o perfil é salvo (evento USER_UPDATED do Supabase Auth).
  */
-function useUserProfile(overrideAvatar?: string) {
+function useUserProfile() {
     const [profile, setProfile] = useState<perfilUser | null>(null);
     const [carregando, setCarregando] = useState(true);
 
@@ -121,7 +116,7 @@ function useUserProfile(overrideAvatar?: string) {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(() => {
-            void carregarPerfil();
+            setTimeout(() => { void carregarPerfil(); }, 0);
         });
 
         return () => {
@@ -138,9 +133,10 @@ function useUserProfile(overrideAvatar?: string) {
 
 
 
-export function SidebarLeft({avatar}: SidebArvatarUrl) {
+export function SidebarLeft() {
     // objeto com informacoes do usuario
-    const userSrc = useUserProfile(avatar); 
+    const userSrc = useUserProfile(); 
+    const picture: string | null = userSrc.profile?.Avatar_Url ?? null;
 
     return (
         // corpo inteiro da sidebar
@@ -242,7 +238,7 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                     flex
                     mb-[15px]
                     items-center
-                    justify-left
+                    justify-start
                     gap-2
                     p-1"
                 >
@@ -261,18 +257,21 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                         boxShadow: "0 0px 30px rgba(84, 49, 140, 0.6)"
                     }}
                     >
-                        {userSrc
+                        {picture
                             ?   <img 
                             src={userSrc.profile?.Avatar_Url ?? undefined} 
                             alt="Foto de perfil" 
                             className="w-full h-full object-cover"
                             />
                             :   <span className="
+                            flex
+                            w-full
+                            h-full
                             text-[44px]
-                            transition-opacity
-                            group-hover:opacity-70"
+                            items-center
+                            justify-center"
                             >
-                                    🧑‍
+                                    🙈
                                 </span>
                         }
                     </div>
