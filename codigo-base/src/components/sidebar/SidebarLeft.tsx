@@ -244,7 +244,6 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                     items-center
                     justify-left
                     gap-2
-                    overflow-hidden
                     p-1"
                 >
                     {/* Foto do usuario */}
@@ -252,15 +251,15 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                         flex
                         w-[70px]
                         h-[70px]
-                        hover:bg-[#202036dd]
                         shrink-0
                         items-center
-                        justify-center
                         overflow-hidden
                         rounded-[22px]
-                        // border-[#54318c]
-                        border-[#ffffff]
-                        border-[1px]"
+                        border
+                        border-[#54318c]"
+                    style={{
+                        boxShadow: "0 0px 30px rgba(84, 49, 140, 0.6)"
+                    }}
                     >
                         {userSrc
                             ?   <img 
@@ -279,18 +278,18 @@ export function SidebarLeft({avatar}: SidebArvatarUrl) {
                     </div>
 
                     {/* Nome display e do usuario */}
-                    <div className="min-w-0">
-                            <p className="truncate text-[20px] text-[#ffcc00]">
+                    <div className="min-w-0 flex flex-col gap-[7px]">
+                            <span className="block truncate text-[22px] leading-none text-[#ffcc00]">
                                 {userSrc?.profile?.Nome_Display ?? "AAAAAAI"}
-                            </p>
+                            </span>
 
-                            <p className="truncate text-[13px] text-purple">
+                            <span className="block truncate text-[13px] leading-none text-purple-400">
                                 {userSrc?.profile?.Nome_Usuario ?? "El Pepe"}
-                            </p>
+                            </span>
                     </div>
                 </div>
 
-
+                
             </Link>
         </aside>
     )
