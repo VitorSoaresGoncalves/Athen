@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { RankingPodium, type PodiumPlayer } from "../components/ranking/RankingPodium";
-import "./Salas.css";
+import "./Cursos.css";
  
 
 
@@ -46,7 +46,7 @@ function Icone({ nome, tamanho = 20 }: { nome: NomeIcone; tamanho?: number }) {
 // ---------------------------------------------------------------------------
 type Tom = "coral" | "azul" | "violeta" | "menta" | "rosa" | "laranja";
 
-type Sala = {
+type Curso = {
   nome: string;
   slug: string;
   assunto: string;
@@ -62,10 +62,10 @@ type Sala = {
   simbolo: string;
 };
 
-// Domínio exibido abaixo do nome da sala (vem do Figma).
+// Domínio exibido abaixo do nome da curso (vem do Figma).
 const DOMINIO = "lumina.com";
 
-const salas: Sala[] = [
+const cursos: Curso[] = [
   
   { nome: "Clube da Criatividade", slug: "clube-criatividade", assunto: "Design & criatividade", membros: 28, participantes: ["Helena", "Caio", "Beatriz"], curso: "Fundamentos de Design", educador: "Marina Costa", aulasConcluidas: 8, totalAulas: 12, competitivo: true, missao: "Criar um cartaz com três cores", tom: "coral", simbolo: "✦" },
   { nome: "Inglês sem Fronteiras", slug: "ingles-sem-fronteiras", assunto: "Idiomas", membros: 42, participantes: ["Ravi", "Lia", "Caio"], curso: "Inglês para conversação", educador: "Lucas Almeida", aulasConcluidas: 5, totalAulas: 10, competitivo: false, missao: "", tom: "azul", simbolo: "A" },
@@ -82,7 +82,7 @@ const modulos = [
 ];
 
 // Ordem visual do pódio (esquerda → direita): 4º, 2º, 1º, 3º, 5º.
-const rankingDaSala: PodiumPlayer[] = [
+const rankingDaCurso: PodiumPlayer[] = [
   { position: "4º", name: "Caio", detail: "72% · 8 aulas", tier: "gold", height: "fourth" },
   { position: "2º", name: "Beatriz", detail: "91% · 11 aulas", tier: "diamond", height: "second" },
   { position: "1º", name: "Helena", detail: "96% · 12 aulas", tier: "master", height: "first" },
@@ -95,20 +95,20 @@ const normalizar = (texto: string) =>
   texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 // ---------------------------------------------------------------------------
-// Card da sala
+// Card da curso
 // ---------------------------------------------------------------------------
-type SalaCardProps = {
-  sala: Sala;
+type CursoCardProps = {
+  curso: Curso;
   expandido: boolean;
   onDestacar: () => void;
   onRemoverDestaque: () => void;
   onAbrir: () => void;
 };
 
-function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: SalaCardProps) {
+function CursoCard({ curso, expandido, onDestacar, onRemoverDestaque, onAbrir }: CursoCardProps) {
   return (
     <article
-      className={`salas__card${expandido ? " salas__card--expandido" : ""}`}
+      className={`cursos__card${expandido ? " cursos__card--expandido" : ""}`}
       role="button"
       tabIndex={0}
       onClick={onAbrir}
@@ -123,43 +123,43 @@ function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: S
       onFocus={onDestacar}
       onBlur={onRemoverDestaque}
     >
-      <div className={`salas__banner salas__banner--${sala.tom}`}>
-        <span className="salas__banner-tag">{sala.assunto}</span>
-        <div className="salas__banner-orbita" />
+      <div className={`cursos__banner cursos__banner--${curso.tom}`}>
+        <span className="cursos__banner-tag">{curso.assunto}</span>
+        <div className="cursos__banner-orbita" />
       </div>
 
-      <div className={`salas__icone salas__icone--${sala.tom}`}>{sala.simbolo}</div>
+      <div className={`cursos__icone cursos__icone--${curso.tom}`}>{curso.simbolo}</div>
 
-      <div className="salas__conteudo">
-        <div className="salas__linha-titulo">
+      <div className="cursos__conteudo">
+        <div className="cursos__linha-titulo">
           <div>
-            <h2 className="salas__nome">{sala.nome}</h2>
-            <p className="salas__slug">{DOMINIO}/{sala.slug}</p>
-            <p>Curso: <strong>{sala.curso}</strong></p>
-            <p>Educador: {sala.educador}</p>
+            <h2 className="cursos__nome">{curso.nome}</h2>
+            <p className="cursos__slug">{DOMINIO}/{curso.slug}</p>
+            <p>Curso: <strong>{curso.curso}</strong></p>
+            <p>Educador: {curso.educador}</p>
           </div>
-          <span className="salas__membros">
+          <span className="cursos__membros">
             <Icone nome="people" tamanho={14} />
-            {sala.membros}
+            {curso.membros}
           </span>
         </div>
 
-        <div className="salas__dados-sala">
-          <p><strong>Participantes:</strong> {sala.participantes.join(", ")}{sala.membros > sala.participantes.length ? ` e mais ${sala.membros - sala.participantes.length}` : ""}</p>
-          <p><strong>Progresso:</strong> {sala.aulasConcluidas}/{sala.totalAulas} aulas concluídas</p>
-          {sala.competitivo && <p><strong>Missão:</strong> {sala.missao}</p>}
+        <div className="cursos__dados-curso">
+          <p><strong>Participantes:</strong> {curso.participantes.join(", ")}{curso.membros > curso.participantes.length ? ` e mais ${curso.membros - curso.participantes.length}` : ""}</p>
+          <p><strong>Progresso:</strong> {curso.aulasConcluidas}/{curso.totalAulas} aulas concluídas</p>
+          {curso.competitivo && <p><strong>Missão:</strong> {curso.missao}</p>}
         </div>
 
         {expandido && (
-          <div className="salas__expandido">
-            <p className="salas__descricao-curta">
+          <div className="cursos__expandido">
+            <p className="cursos__descricao-curta">
               Um espaço para trocar ideias, aprender em conjunto e transformar curiosidade em projetos incríveis.
             </p>
-            <div className="salas__rodape-card">
-              <span className="salas__nota">
+            <div className="cursos__rodape-card">
+              <span className="cursos__nota">
                 <strong>4.5/5</strong> <span>★</span>
               </span>
-              <span className="salas__saiba-mais">
+              <span className="cursos__saiba-mais">
                 Saiba mais <Icone nome="arrow" tamanho={17} />
               </span>
             </div>
@@ -171,43 +171,43 @@ function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: S
 }
 
 // ---------------------------------------------------------------------------
-// Estado vazio (usuário ainda não participa de nenhuma sala)
+// Estado vazio (usuário ainda não participa de nenhuma curso)
 // ---------------------------------------------------------------------------
 function EstadoVazio({ onCriar }: { onCriar: () => void }) {
   return (
-    <div className="salas__vazio">
-      <div className="salas__vazio-ilustracao" aria-hidden="true">
-        <span className="salas__vazio-brilho salas__vazio-brilho--1">✦</span>
-        <span className="salas__vazio-brilho salas__vazio-brilho--2">✦</span>
-        <div className="salas__vazio-cartao" />
-        <div className="salas__vazio-porta">
-          <div className="salas__vazio-janela">✦</div>
-          <div className="salas__vazio-linha" />
+    <div className="cursos__vazio">
+      <div className="cursos__vazio-ilustracao" aria-hidden="true">
+        <span className="cursos__vazio-brilho cursos__vazio-brilho--1">✦</span>
+        <span className="cursos__vazio-brilho cursos__vazio-brilho--2">✦</span>
+        <div className="cursos__vazio-cartao" />
+        <div className="cursos__vazio-porta">
+          <div className="cursos__vazio-janela">✦</div>
+          <div className="cursos__vazio-linha" />
         </div>
-        <div className="salas__vazio-figura">
-          <span className="salas__vazio-figura-cabeca" />
-          <span className="salas__vazio-figura-corpo" />
+        <div className="cursos__vazio-figura">
+          <span className="cursos__vazio-figura-cabeca" />
+          <span className="cursos__vazio-figura-corpo" />
         </div>
-        <div className="salas__vazio-sombra" />
+        <div className="cursos__vazio-sombra" />
       </div>
 
-      <p className="salas__vazio-chamada">SUA JORNADA COMEÇA AQUI</p>
-      <h2 className="salas__vazio-titulo">Você ainda não participa<br />de nenhuma sala</h2>
-      <p className="salas__vazio-texto">
-        Entre em uma sala para aprender com outras pessoas,<br />cumprir desafios e evoluir todos os dias.
+      <p className="cursos__vazio-chamada">SUA JORNADA COMEÇA AQUI</p>
+      <h2 className="cursos__vazio-titulo">Você ainda não participa<br />de nenhuma curso</h2>
+      <p className="cursos__vazio-texto">
+        Entre em uma curso para aprender com outras pessoas,<br />cumprir desafios e evoluir todos os dias.
       </p>
-      <button className="salas__botao-primario" type="button" onClick={onCriar}>
+      <button className="cursos__botao-primario" type="button" onClick={onCriar}>
         <Icone nome="plus" tamanho={19} />
-        Adicionar sala
+        Adicionar curso
       </button>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Pop-up com as informações da sala
+// Pop-up com as informações da curso
 // ---------------------------------------------------------------------------
-function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
+function CursoModal({ curso, onFechar }: { curso: Curso; onFechar: () => void }) {
   const [moduloAberto, setModuloAberto] = useState(0);
   const totalAulas = modulos.reduce((soma, modulo) => soma + modulo.aulas.length, 0);
 
@@ -228,76 +228,76 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
   }, [onFechar]);
 
   return (
-    <div className="salas__modal-camada" role="presentation">
-      <div className="salas__modal-fundo" onClick={onFechar} />
+    <div className="cursos__modal-camada" role="presentation">
+      <div className="cursos__modal-fundo" onClick={onFechar} />
 
-      <section className="salas__modal" role="dialog" aria-modal="true" aria-labelledby="salas-modal-titulo">
-        <div className="salas__modal-rolagem">
-          <div className="salas__modal-banner">
-            <span className="salas__modal-categoria">{sala.assunto.toUpperCase()}</span>
-            <div className="salas__modal-forma salas__modal-forma--a" />
-            <div className="salas__modal-forma salas__modal-forma--b" />
-            <div className="salas__modal-brilho">✦</div>
-            <button className="salas__modal-fechar" type="button" onClick={onFechar} aria-label="Fechar informações da sala">
+      <section className="cursos__modal" role="dialog" aria-modal="true" aria-labelledby="cursos-modal-titulo">
+        <div className="cursos__modal-rolagem">
+          <div className="cursos__modal-banner">
+            <span className="cursos__modal-categoria">{curso.assunto.toUpperCase()}</span>
+            <div className="cursos__modal-forma cursos__modal-forma--a" />
+            <div className="cursos__modal-forma cursos__modal-forma--b" />
+            <div className="cursos__modal-brilho">✦</div>
+            <button className="cursos__modal-fechar" type="button" onClick={onFechar} aria-label="Fechar informações da curso">
               <Icone nome="close" tamanho={22} />
             </button>
           </div>
 
-          <div className="salas__modal-corpo">
-            <div className="salas__identidade">
-              <div className="salas__modal-icone">{sala.simbolo}</div>
+          <div className="cursos__modal-corpo">
+            <div className="cursos__identidade">
+              <div className="cursos__modal-icone">{curso.simbolo}</div>
               <div>
-                <p className="salas__rotulo">SALA DE APRENDIZAGEM</p>
-                <h2 className="salas__modal-titulo" id="salas-modal-titulo">{sala.nome}</h2>
-                <p className="salas__modal-slug">{DOMINIO}/{sala.slug}</p>
+                <p className="cursos__rotulo">CURSO DE APRENDIZAGEM</p>
+                <h2 className="cursos__modal-titulo" id="cursos-modal-titulo">{curso.nome}</h2>
+                <p className="cursos__modal-slug">{DOMINIO}/{curso.slug}</p>
               </div>
-              <div className="salas__meta">
-                <div><span>Categoria:</span><strong>{sala.assunto}</strong></div>
+              <div className="cursos__meta">
+                <div><span>Categoria:</span><strong>{curso.assunto}</strong></div>
                 <div>
                   <span>Tags:</span>
-                  <span className="salas__tag">Design</span>
-                  <span className="salas__tag">Projetos</span>
-                  <span className="salas__tag">Comunidade</span>
+                  <span className="cursos__tag">Design</span>
+                  <span className="cursos__tag">Projetos</span>
+                  <span className="cursos__tag">Comunidade</span>
                 </div>
               </div>
             </div>
 
-            <article className="salas__sobre">
+            <article className="cursos__sobre">
               <div>
-                <p className="salas__rotulo">SOBRE ESTA SALA</p>
-                <h3 className="salas__sobre-titulo">Descrição completa</h3>
+                <p className="cursos__rotulo">SOBRE ESTE CURSO</p>
+                <h3 className="cursos__sobre-titulo">Descrição completa</h3>
               </div>
-              <p className="salas__sobre-texto">
+              <p className="cursos__sobre-texto">
                 Um espaço para despertar sua criatividade, trocar ideias e transformar curiosidade em projetos reais.
                 Aprenda no seu ritmo, participe de desafios semanais e evolua junto com uma comunidade que acredita no
                 poder de criar.
               </p>
             </article>
 
-            <div className="salas__colunas">
+            <div className="cursos__colunas">
               {/* Trilha de aprendizagem */}
-              <section className="salas__painel salas__modulos">
-                <div className="salas__painel-cabecalho">
+              <section className="cursos__painel cursos__modulos">
+                <div className="cursos__painel-cabecalho">
                   <div>
-                    <p className="salas__rotulo">CONTEÚDO DA SALA</p>
-                    <h3 className="salas__painel-titulo">Trilha de aprendizagem</h3>
+                    <p className="cursos__rotulo">CONTEÚDO DO CURSO</p>
+                    <h3 className="cursos__painel-titulo">Trilha de aprendizagem</h3>
                   </div>
-                  <span className="salas__painel-resumo">{modulos.length} módulos · {totalAulas} aulas</span>
+                  <span className="cursos__painel-resumo">{modulos.length} módulos · {totalAulas} aulas</span>
                 </div>
 
-                <div className="salas__acordeao">
+                <div className="cursos__acordeao">
                   {modulos.map((modulo, indice) => (
                     <div
-                      className={`salas__modulo${moduloAberto === indice ? " salas__modulo--aberto" : ""}`}
+                      className={`cursos__modulo${moduloAberto === indice ? " cursos__modulo--aberto" : ""}`}
                       key={modulo.titulo}
                     >
                       <button
-                        className="salas__modulo-botao"
+                        className="cursos__modulo-botao"
                         type="button"
                         aria-expanded={moduloAberto === indice}
                         onClick={() => setModuloAberto(moduloAberto === indice ? -1 : indice)}
                       >
-                        <span className="salas__modulo-numero">0{indice + 1}</span>
+                        <span className="cursos__modulo-numero">0{indice + 1}</span>
                         <span>
                           <strong>{modulo.titulo}</strong>
                           <small>{modulo.subtitulo}</small>
@@ -306,10 +306,10 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
                       </button>
 
                       {moduloAberto === indice && (
-                        <div className="salas__aulas">
+                        <div className="cursos__aulas">
                           {modulo.aulas.map((aula, indiceAula) => (
-                            <div className="salas__aula" key={aula}>
-                              <span className="salas__aula-play"><Icone nome="play" tamanho={13} /></span>
+                            <div className="cursos__aula" key={aula}>
+                              <span className="cursos__aula-play"><Icone nome="play" tamanho={13} /></span>
                               <span>{aula}</span>
                               <small><Icone nome="clock" tamanho={12} />{8 + indiceAula * 3} min</small>
                             </div>
@@ -322,52 +322,52 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
               </section>
 
               {/* Avaliações, ranking e mural */}
-              <aside className="salas__painel salas__lateral">
-                <p className="salas__rotulo">AVALIAÇÕES</p>
-                <div className="salas__nota-resumo"><strong className="salas__nota-numero">4.5</strong><span className="salas__nota-estrela">★</span></div>
-                <p className="salas__nota-legenda">Excelente · 28 avaliações</p>
-                <div className="salas__nota-barra"><span /></div>
+              <aside className="cursos__painel cursos__lateral">
+                <p className="cursos__rotulo">AVALIAÇÕES</p>
+                <div className="cursos__nota-resumo"><strong className="cursos__nota-numero">4.5</strong><span className="cursos__nota-estrela">★</span></div>
+                <p className="cursos__nota-legenda">Excelente · 28 avaliações</p>
+                <div className="cursos__nota-barra"><span /></div>
 
                 {/* Ranking logo abaixo das avaliações */}
-                <div className="salas__ranking">
-                  <p className="salas__rotulo">RANKING DA SALA</p>
-                  <h3 className="salas__ranking-titulo">Top 5 da sala</h3>
-                  <RankingPodium players={rankingDaSala} compact width="compact" ariaLabel="Top 5 da sala" />
+                <div className="cursos__ranking">
+                  <p className="cursos__rotulo">RANKING DO CURSO</p>
+                  <h3 className="cursos__ranking-titulo">Top 5 da curso</h3>
+                  <RankingPodium players={rankingDaCurso} compact width="compact" ariaLabel="Top 5 da curso" />
                 </div>
 
-                <div className="salas__mural-cabecalho">
+                <div className="cursos__mural-cabecalho">
                   <div>
-                    <p className="salas__rotulo">MURAL DA SALA</p>
-                    <strong className="salas__mural-titulo">Avisos recentes</strong>
+                    <p className="cursos__rotulo">MURAL DO CURSO</p>
+                    <strong className="cursos__mural-titulo">Avisos recentes</strong>
                   </div>
-                  <span className="salas__mural-novos">2 novos</span>
+                  <span className="cursos__mural-novos">2 novos</span>
                 </div>
 
-                <div className="salas__aviso salas__aviso--destaque">
-                  <div className="salas__aviso-topo"><span className="salas__aviso-tipo">DESTAQUE</span><small className="salas__aviso-data">Hoje, 14:30</small></div>
-                  <strong className="salas__aviso-titulo">Desafio criativo da semana</strong>
-                  <p className="salas__aviso-texto">Crie um cartaz usando apenas três cores e compartilhe no encontro de sexta-feira.</p>
+                <div className="cursos__aviso cursos__aviso--destaque">
+                  <div className="cursos__aviso-topo"><span className="cursos__aviso-tipo">DESTAQUE</span><small className="cursos__aviso-data">Hoje, 14:30</small></div>
+                  <strong className="cursos__aviso-titulo">Desafio criativo da semana</strong>
+                  <p className="cursos__aviso-texto">Crie um cartaz usando apenas três cores e compartilhe no encontro de sexta-feira.</p>
                 </div>
-                <div className="salas__aviso">
-                  <div className="salas__aviso-topo"><span className="salas__aviso-tipo">ENCONTRO</span><small className="salas__aviso-data">18 jun</small></div>
-                  <strong className="salas__aviso-titulo">Roda de feedback ao vivo</strong>
-                  <p className="salas__aviso-texto">Reserve seu lugar para apresentar o projeto e trocar ideias com a turma.</p>
+                <div className="cursos__aviso">
+                  <div className="cursos__aviso-topo"><span className="cursos__aviso-tipo">ENCONTRO</span><small className="cursos__aviso-data">18 jun</small></div>
+                  <strong className="cursos__aviso-titulo">Roda de feedback ao vivo</strong>
+                  <p className="cursos__aviso-texto">Reserve seu lugar para apresentar o projeto e trocar ideias com a turma.</p>
                 </div>
               </aside>
             </div>
           </div>
         </div>
 
-        <footer className="salas__modal-rodape">
+        <footer className="cursos__modal-rodape">
           <p>
             <Icone nome="people" tamanho={17} />
-            <strong>{sala.membros} pessoas</strong> já estão aprendendo nesta sala
+            <strong>{curso.membros} pessoas</strong> já estão aprendendo nesta curso
           </p>
-          <div className="salas__modal-acoes">
-            <button className="salas__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
-            {/* TODO: navegar para a sala quando a rota existir */}
-            <button className="salas__botao-primario salas__botao-entrar" type="button">
-              Entrar na sala <Icone nome="arrow" tamanho={18} />
+          <div className="cursos__modal-acoes">
+            <button className="cursos__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
+            {/* TODO: navegar para a curso quando a rota existir */}
+            <button className="cursos__botao-primario cursos__botao-entrar" type="button">
+              Entrar na curso <Icone nome="arrow" tamanho={18} />
             </button>
           </div>
         </footer>
@@ -379,72 +379,72 @@ function SalaModal({ sala, onFechar }: { sala: Sala; onFechar: () => void }) {
 // ---------------------------------------------------------------------------
 // Página
 // ---------------------------------------------------------------------------
-export default function Salas() {
+export default function Cursos() {
   const [busca, setBusca] = useState("");
-  const [salaEmDestaque, setSalaEmDestaque] = useState<string | null>(null);
-  const [salaAberta, setSalaAberta] = useState<Sala | null>(null);
+  const [cursoEmDestaque, setCursoEmDestaque] = useState<string | null>(null);
+  const [cursoAberta, setCursoAberta] = useState<Curso | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [somenteCompetitivas, setSomenteCompetitivas] = useState(false);
-  const [novaSala, setNovaSala] = useState({ nome: "", curso: "", educador: "", assunto: "", missao: "", competitivo: false });
-  const [salasLocais, setSalasLocais] = useState<Sala[]>(salas);
+  const [novaCurso, setNovaCurso] = useState({ nome: "", curso: "", educador: "", assunto: "", missao: "", competitivo: false });
+  const [cursosLocais, setCursosLocais] = useState<Curso[]>(cursos);
 
   const termo = normalizar(busca.trim());
-  const salasFiltradas = useMemo(
+  const cursosFiltradas = useMemo(
     () =>
-      salasLocais.filter(
-        (sala) => (!termo || normalizar(sala.nome).includes(termo) || normalizar(sala.assunto).includes(termo) || normalizar(sala.curso).includes(termo))
-          && (!filtroCategoria || sala.assunto === filtroCategoria)
-          && (!somenteCompetitivas || sala.competitivo),
+      cursosLocais.filter(
+        (curso) => (!termo || normalizar(curso.nome).includes(termo) || normalizar(curso.assunto).includes(termo) || normalizar(curso.curso).includes(termo))
+          && (!filtroCategoria || curso.assunto === filtroCategoria)
+          && (!somenteCompetitivas || curso.competitivo),
       ),
-    [termo, salasLocais, filtroCategoria, somenteCompetitivas],
+    [termo, cursosLocais, filtroCategoria, somenteCompetitivas],
   );
 
   return (
-    <div className="salas">
+    <div className="cursos">
       <SidebarLeft />
 
-      <main className="salas__main">
-        <div className="salas__brilho" />
+      <main className="cursos__main">
+        <div className="cursos__brilho" />
 
-        <header className="salas__cabecalho">
+        <header className="cursos__cabecalho">
           <div>
-            <p className="salas__caminho">PLATAFORMA / <span>Cursos</span></p>
-            <h1 className="salas__titulo">Cursos</h1>
-            <p className="salas__subtitulo">Aprenda em comunidade, compartilhe conquistas.</p>
+            <p className="cursos__caminho">PLATAFORMA / <span>CURSOS</span></p>
+            <h1 className="cursos__titulo">Cursos</h1>
+            <p className="cursos__subtitulo">Aprenda em comunidade, compartilhe conquistas.</p>
           </div>
-          <button className="salas__botao-primario" type="button" onClick={() => setMostrarFormulario((aberto) => !aberto)}>
+          <button className="cursos__botao-primario" type="button" onClick={() => setMostrarFormulario((aberto) => !aberto)}>
             <Icone nome="plus" tamanho={19} />
-            Criar sala
+            Criar curso
           </button>
         </header>
 
         {mostrarFormulario && (
-          <form className="salas__form-criar" onSubmit={(evento) => {
+          <form className="cursos__form-criar" onSubmit={(evento) => {
             evento.preventDefault();
-            const slug = normalizar(novaSala.nome).trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-            if (!slug || salasLocais.some((s) => s.slug === slug)) return;
-            setSalasLocais((atuais) => [{ nome: novaSala.nome.trim(), slug, assunto: novaSala.assunto.trim() || "Geral", membros: 1,
-              participantes: ["Você"], curso: novaSala.curso.trim(), educador: novaSala.educador.trim(), aulasConcluidas: 0,
-              totalAulas: 0, competitivo: novaSala.competitivo, missao: novaSala.competitivo ? novaSala.missao.trim() : "",
+            const slug = normalizar(novaCurso.nome).trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+            if (!slug || cursosLocais.some((s) => s.slug === slug)) return;
+            setCursosLocais((atuais) => [{ nome: novaCurso.nome.trim(), slug, assunto: novaCurso.assunto.trim() || "Geral", membros: 1,
+              participantes: ["Você"], curso: novaCurso.curso.trim(), educador: novaCurso.educador.trim(), aulasConcluidas: 0,
+              totalAulas: 0, competitivo: novaCurso.competitivo, missao: novaCurso.competitivo ? novaCurso.missao.trim() : "",
               tom: "azul", simbolo: "✦" }, ...atuais]);
-            setNovaSala({ nome: "", curso: "", educador: "", assunto: "", missao: "", competitivo: false });
+            setNovaCurso({ nome: "", curso: "", educador: "", assunto: "", missao: "", competitivo: false });
             setMostrarFormulario(false);
           }}>
-            <h2>Criar sala</h2>
-            <input required placeholder="Nome da sala" value={novaSala.nome} onChange={(e) => setNovaSala({ ...novaSala, nome: e.target.value })} />
-            <input required placeholder="Curso relacionado" value={novaSala.curso} onChange={(e) => setNovaSala({ ...novaSala, curso: e.target.value })} />
-            <input required placeholder="Nome do educador" value={novaSala.educador} onChange={(e) => setNovaSala({ ...novaSala, educador: e.target.value })} />
-            <input placeholder="Categoria/assunto" value={novaSala.assunto} onChange={(e) => setNovaSala({ ...novaSala, assunto: e.target.value })} />
-            <label><input type="checkbox" checked={novaSala.competitivo} onChange={(e) => setNovaSala({ ...novaSala, competitivo: e.target.checked })} /> Habilitar modo competitivo</label>
-            {novaSala.competitivo && <input required placeholder="Missão ou tarefa" value={novaSala.missao} onChange={(e) => setNovaSala({ ...novaSala, missao: e.target.value })} />}
-            <button className="salas__botao-primario" type="submit">Salvar sala</button>
+            <h2>Criar curso</h2>
+            <input required placeholder="Nome da curso" value={novaCurso.nome} onChange={(e) => setNovaCurso({ ...novaCurso, nome: e.target.value })} />
+            <input required placeholder="Curso relacionado" value={novaCurso.curso} onChange={(e) => setNovaCurso({ ...novaCurso, curso: e.target.value })} />
+            <input required placeholder="Nome do educador" value={novaCurso.educador} onChange={(e) => setNovaCurso({ ...novaCurso, educador: e.target.value })} />
+            <input placeholder="Categoria/assunto" value={novaCurso.assunto} onChange={(e) => setNovaCurso({ ...novaCurso, assunto: e.target.value })} />
+            <label><input type="checkbox" checked={novaCurso.competitivo} onChange={(e) => setNovaCurso({ ...novaCurso, competitivo: e.target.checked })} /> Habilitar modo competitivo</label>
+            {novaCurso.competitivo && <input required placeholder="Missão ou tarefa" value={novaCurso.missao} onChange={(e) => setNovaCurso({ ...novaCurso, missao: e.target.value })} />}
+            <button className="cursos__botao-primario" type="submit">Salvar curso</button>
             <button type="button" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
           </form>
         )}
 
-        <section className="salas__ferramentas" aria-label="Busca e filtros">
-          <label className="salas__busca">
+        <section className="cursos__ferramentas" aria-label="Busca e filtros">
+          <label className="cursos__busca">
             <Icone nome="search" tamanho={21} />
             <input
               type="search"
@@ -453,42 +453,42 @@ export default function Salas() {
               onChange={(evento) => setBusca(evento.target.value)}
             />
           </label>
-          <label className="salas__filtro">
+          <label className="cursos__filtro">
             <Icone nome="filter" />
             <span className="sr-only">Filtrar por categoria</span>
             <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
               <option value="">Todas as categorias</option>
-              {[...new Set(salasLocais.map((sala) => sala.assunto))].map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
+              {[...new Set(cursosLocais.map((curso) => curso.assunto))].map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
             </select>
           </label>
           <label><input type="checkbox" checked={somenteCompetitivas} onChange={(e) => setSomenteCompetitivas(e.target.checked)} /> Competitivas</label>
         </section>
 
-        <p className="salas__contador">
-          Suas salas <span>{salasFiltradas.length}</span>
+        <p className="cursos__contador">
+          Suas cursos <span>{cursosFiltradas.length}</span>
         </p>
 
-        {salasLocais.length === 0 ? (
+        {cursosLocais.length === 0 ? (
           <EstadoVazio onCriar={() => setMostrarFormulario(true)} />
-        ) : salasFiltradas.length === 0 ? (
-          <p className="salas__sem-resultado">Nenhuma sala encontrada para “{busca.trim()}”.</p>
+        ) : cursosFiltradas.length === 0 ? (
+          <p className="cursos__sem-resultado">Nenhuma curso encontrada para “{busca.trim()}”.</p>
         ) : (
-          <section className="salas__grade">
-            {salasFiltradas.map((sala) => (
-              <SalaCard
-                key={sala.slug}
-                sala={sala}
-                expandido={salaEmDestaque === sala.slug}
-                onDestacar={() => setSalaEmDestaque(sala.slug)}
-                onRemoverDestaque={() => setSalaEmDestaque(null)}
-                onAbrir={() => setSalaAberta(sala)}
+          <section className="cursos__grade">
+            {cursosFiltradas.map((curso) => (
+              <CursoCard
+                key={curso.slug}
+                curso={curso}
+                expandido={cursoEmDestaque === curso.slug}
+                onDestacar={() => setCursoEmDestaque(curso.slug)}
+                onRemoverDestaque={() => setCursoEmDestaque(null)}
+                onAbrir={() => setCursoAberta(curso)}
               />
             ))}
           </section>
         )}
       </main>
 
-      {salaAberta && <SalaModal sala={salaAberta} onFechar={() => setSalaAberta(null)} />}
+      {cursoAberta && <CursoModal curso={cursoAberta} onFechar={() => setCursoAberta(null)} />}
     </div>
   );
 }
