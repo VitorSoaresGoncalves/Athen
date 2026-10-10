@@ -51,6 +51,13 @@ type Sala = {
   slug: string;
   assunto: string;
   membros: number;
+  participantes: string[];
+  curso: string;
+  educador: string;
+  aulasConcluidas: number;
+  totalAulas: number;
+  competitivo: boolean;
+  missao: string;
   tom: Tom;
   simbolo: string;
 };
@@ -60,12 +67,12 @@ const DOMINIO = "lumina.com";
 
 const salas: Sala[] = [
   
-  { nome: "Clube da Criatividade", slug: "clube-criatividade", assunto: "Design & criatividade", membros: 28, tom: "coral", simbolo: "✦" },
-  { nome: "Inglês sem Fronteiras", slug: "ingles-sem-fronteiras", assunto: "Idiomas", membros: 42, tom: "azul", simbolo: "A" },
-  { nome: "Código para o Futuro", slug: "codigo-para-o-futuro", assunto: "Tecnologia", membros: 34, tom: "violeta", simbolo: "</>" },
-  { nome: "Matemática Descomplicada", slug: "matematica-facil", assunto: "Matemática", membros: 19, tom: "menta", simbolo: "π" },
-  { nome: "Ciência em Movimento", slug: "ciencia-em-movimento", assunto: "Ciências", membros: 31, tom: "rosa", simbolo: "⚛" },
-  { nome: "Histórias do Mundo", slug: "historias-do-mundo", assunto: "Humanidades", membros: 25, tom: "laranja", simbolo: "◈" },
+  { nome: "Clube da Criatividade", slug: "clube-criatividade", assunto: "Design & criatividade", membros: 28, participantes: ["Helena", "Caio", "Beatriz"], curso: "Fundamentos de Design", educador: "Marina Costa", aulasConcluidas: 8, totalAulas: 12, competitivo: true, missao: "Criar um cartaz com três cores", tom: "coral", simbolo: "✦" },
+  { nome: "Inglês sem Fronteiras", slug: "ingles-sem-fronteiras", assunto: "Idiomas", membros: 42, participantes: ["Ravi", "Lia", "Caio"], curso: "Inglês para conversação", educador: "Lucas Almeida", aulasConcluidas: 5, totalAulas: 10, competitivo: false, missao: "", tom: "azul", simbolo: "A" },
+  { nome: "Código para o Futuro", slug: "codigo-para-o-futuro", assunto: "Tecnologia", membros: 34, participantes: ["Beatriz", "Helena", "Ravi"], curso: "Lógica de programação", educador: "Pedro Santos", aulasConcluidas: 6, totalAulas: 9, competitivo: true, missao: "Construir uma calculadora simples", tom: "violeta", simbolo: "</>" },
+  { nome: "Matemática Descomplicada", slug: "matematica-facil", assunto: "Matemática", membros: 19, participantes: ["Lia", "Caio", "Ravi"], curso: "Matemática essencial", educador: "Ana Ribeiro", aulasConcluidas: 3, totalAulas: 8, competitivo: false, missao: "", tom: "menta", simbolo: "π" },
+  { nome: "Ciência em Movimento", slug: "ciencia-em-movimento", assunto: "Ciências", membros: 31, participantes: ["Helena", "Lia", "Beatriz"], curso: "Ciências na prática", educador: "João Martins", aulasConcluidas: 7, totalAulas: 10, competitivo: true, missao: "Registrar uma observação científica", tom: "rosa", simbolo: "⚛" },
+  { nome: "Histórias do Mundo", slug: "historias-do-mundo", assunto: "Humanidades", membros: 25, participantes: ["Ravi", "Caio", "Lia"], curso: "História e sociedade", educador: "Carla Souza", aulasConcluidas: 4, totalAulas: 8, competitivo: false, missao: "", tom: "laranja", simbolo: "◈" },
 ];
 
 const modulos = [
@@ -128,11 +135,19 @@ function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: S
           <div>
             <h2 className="salas__nome">{sala.nome}</h2>
             <p className="salas__slug">{DOMINIO}/{sala.slug}</p>
+            <p>Curso: <strong>{sala.curso}</strong></p>
+            <p>Educador: {sala.educador}</p>
           </div>
           <span className="salas__membros">
             <Icone nome="people" tamanho={14} />
             {sala.membros}
           </span>
+        </div>
+
+        <div className="salas__dados-sala">
+          <p><strong>Participantes:</strong> {sala.participantes.join(", ")}{sala.membros > sala.participantes.length ? ` e mais ${sala.membros - sala.participantes.length}` : ""}</p>
+          <p><strong>Progresso:</strong> {sala.aulasConcluidas}/{sala.totalAulas} aulas concluídas</p>
+          {sala.competitivo && <p><strong>Missão:</strong> {sala.missao}</p>}
         </div>
 
         {expandido && (
@@ -158,7 +173,7 @@ function SalaCard({ sala, expandido, onDestacar, onRemoverDestaque, onAbrir }: S
 // ---------------------------------------------------------------------------
 // Estado vazio (usuário ainda não participa de nenhuma sala)
 // ---------------------------------------------------------------------------
-function EstadoVazio() {
+function EstadoVazio({ onCriar }: { onCriar: () => void }) {
   return (
     <div className="salas__vazio">
       <div className="salas__vazio-ilustracao" aria-hidden="true">
@@ -181,7 +196,7 @@ function EstadoVazio() {
       <p className="salas__vazio-texto">
         Entre em uma sala para aprender com outras pessoas,<br />cumprir desafios e evoluir todos os dias.
       </p>
-      <button className="salas__botao-primario" type="button">
+      <button className="salas__botao-primario" type="button" onClick={onCriar}>
         <Icone nome="plus" tamanho={19} />
         Adicionar sala
       </button>
@@ -368,14 +383,21 @@ export default function Salas() {
   const [busca, setBusca] = useState("");
   const [salaEmDestaque, setSalaEmDestaque] = useState<string | null>(null);
   const [salaAberta, setSalaAberta] = useState<Sala | null>(null);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [somenteCompetitivas, setSomenteCompetitivas] = useState(false);
+  const [novaSala, setNovaSala] = useState({ nome: "", curso: "", educador: "", assunto: "", missao: "", competitivo: false });
+  const [salasLocais, setSalasLocais] = useState<Sala[]>(salas);
 
   const termo = normalizar(busca.trim());
   const salasFiltradas = useMemo(
     () =>
-      salas.filter(
-        (sala) => !termo || normalizar(sala.nome).includes(termo) || normalizar(sala.assunto).includes(termo),
+      salasLocais.filter(
+        (sala) => (!termo || normalizar(sala.nome).includes(termo) || normalizar(sala.assunto).includes(termo) || normalizar(sala.curso).includes(termo))
+          && (!filtroCategoria || sala.assunto === filtroCategoria)
+          && (!somenteCompetitivas || sala.competitivo),
       ),
-    [termo],
+    [termo, salasLocais, filtroCategoria, somenteCompetitivas],
   );
 
   return (
@@ -387,15 +409,39 @@ export default function Salas() {
 
         <header className="salas__cabecalho">
           <div>
-            <p className="salas__caminho">PLATAFORMA / <span>SALAS</span></p>
-            <h1 className="salas__titulo">Salas</h1>
+            <p className="salas__caminho">PLATAFORMA / <span>Cursos</span></p>
+            <h1 className="salas__titulo">Cursos</h1>
             <p className="salas__subtitulo">Aprenda em comunidade, compartilhe conquistas.</p>
           </div>
-          <button className="salas__botao-primario" type="button">
+          <button className="salas__botao-primario" type="button" onClick={() => setMostrarFormulario((aberto) => !aberto)}>
             <Icone nome="plus" tamanho={19} />
-            Adicionar sala
+            Criar sala
           </button>
         </header>
+
+        {mostrarFormulario && (
+          <form className="salas__form-criar" onSubmit={(evento) => {
+            evento.preventDefault();
+            const slug = normalizar(novaSala.nome).trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+            if (!slug || salasLocais.some((s) => s.slug === slug)) return;
+            setSalasLocais((atuais) => [{ nome: novaSala.nome.trim(), slug, assunto: novaSala.assunto.trim() || "Geral", membros: 1,
+              participantes: ["Você"], curso: novaSala.curso.trim(), educador: novaSala.educador.trim(), aulasConcluidas: 0,
+              totalAulas: 0, competitivo: novaSala.competitivo, missao: novaSala.competitivo ? novaSala.missao.trim() : "",
+              tom: "azul", simbolo: "✦" }, ...atuais]);
+            setNovaSala({ nome: "", curso: "", educador: "", assunto: "", missao: "", competitivo: false });
+            setMostrarFormulario(false);
+          }}>
+            <h2>Criar sala</h2>
+            <input required placeholder="Nome da sala" value={novaSala.nome} onChange={(e) => setNovaSala({ ...novaSala, nome: e.target.value })} />
+            <input required placeholder="Curso relacionado" value={novaSala.curso} onChange={(e) => setNovaSala({ ...novaSala, curso: e.target.value })} />
+            <input required placeholder="Nome do educador" value={novaSala.educador} onChange={(e) => setNovaSala({ ...novaSala, educador: e.target.value })} />
+            <input placeholder="Categoria/assunto" value={novaSala.assunto} onChange={(e) => setNovaSala({ ...novaSala, assunto: e.target.value })} />
+            <label><input type="checkbox" checked={novaSala.competitivo} onChange={(e) => setNovaSala({ ...novaSala, competitivo: e.target.checked })} /> Habilitar modo competitivo</label>
+            {novaSala.competitivo && <input required placeholder="Missão ou tarefa" value={novaSala.missao} onChange={(e) => setNovaSala({ ...novaSala, missao: e.target.value })} />}
+            <button className="salas__botao-primario" type="submit">Salvar sala</button>
+            <button type="button" onClick={() => setMostrarFormulario(false)}>Cancelar</button>
+          </form>
+        )}
 
         <section className="salas__ferramentas" aria-label="Busca e filtros">
           <label className="salas__busca">
@@ -407,20 +453,23 @@ export default function Salas() {
               onChange={(evento) => setBusca(evento.target.value)}
             />
           </label>
-          {/* O filtro ainda é só visual */}
-          <button className="salas__filtro" type="button" aria-label="Filtrar salas">
+          <label className="salas__filtro">
             <Icone nome="filter" />
-            <span>Filtrar</span>
-            <span className="salas__filtro-contagem">2</span>
-          </button>
+            <span className="sr-only">Filtrar por categoria</span>
+            <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
+              <option value="">Todas as categorias</option>
+              {[...new Set(salasLocais.map((sala) => sala.assunto))].map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
+            </select>
+          </label>
+          <label><input type="checkbox" checked={somenteCompetitivas} onChange={(e) => setSomenteCompetitivas(e.target.checked)} /> Competitivas</label>
         </section>
 
         <p className="salas__contador">
           Suas salas <span>{salasFiltradas.length}</span>
         </p>
 
-        {salas.length === 0 ? (
-          <EstadoVazio />
+        {salasLocais.length === 0 ? (
+          <EstadoVazio onCriar={() => setMostrarFormulario(true)} />
         ) : salasFiltradas.length === 0 ? (
           <p className="salas__sem-resultado">Nenhuma sala encontrada para “{busca.trim()}”.</p>
         ) : (

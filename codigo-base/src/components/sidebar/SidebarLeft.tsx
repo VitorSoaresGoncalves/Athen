@@ -13,6 +13,7 @@ const itens: SidebarItem[] = [
     {
         text: "Meus Cursos",
         icone: "🦁 ",
+        to: "/cursos"
     },
     {
         text: "Pesquisa",
