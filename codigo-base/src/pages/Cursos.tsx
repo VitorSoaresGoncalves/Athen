@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
-import { RankingPodium, type PodiumPlayer } from "../components/ranking/RankingPodium";
 import "./Cursos.css";
  
 
@@ -79,15 +78,6 @@ const modulos = [
   { titulo: "Módulo 1", subtitulo: "Fundamentos da criatividade", aulas: ["Aula 1 · O olhar criativo", "Aula 2 · Repertório e referências", "Aula 3 · Tirando ideias do papel", "Aula 4 · Desafio de aquecimento"] },
   { titulo: "Módulo 2", subtitulo: "Ideias que ganham forma", aulas: ["Aula 1 · Mapa de possibilidades", "Aula 2 · Criando em conjunto", "Aula 3 · Protótipos rápidos", "Aula 4 · Compartilhe seu projeto"] },
   { titulo: "Módulo 3", subtitulo: "Projeto final em comunidade", aulas: ["Aula 1 · Escolha do desafio", "Aula 2 · Construção do projeto", "Aula 3 · Rodada de feedback", "Aula 4 · Apresentação final"] },
-];
-
-// Ordem visual do pódio (esquerda → direita): 4º, 2º, 1º, 3º, 5º.
-const rankingDaCurso: PodiumPlayer[] = [
-  { position: "4º", name: "Caio", detail: "72% · 8 aulas", tier: "gold", height: "fourth" },
-  { position: "2º", name: "Beatriz", detail: "91% · 11 aulas", tier: "diamond", height: "second" },
-  { position: "1º", name: "Helena", detail: "96% · 12 aulas", tier: "master", height: "first" },
-  { position: "3º", name: "Ravi", detail: "87,5% · 10 aulas", tier: "platinum", height: "third" },
-  { position: "5º", name: "Lia", detail: "68% · 7 aulas", tier: "silver", height: "fifth" },
 ];
 
 // Busca sem diferenciar maiúsculas e acentos.
@@ -328,11 +318,18 @@ function CursoModal({ curso, onFechar }: { curso: Curso; onFechar: () => void })
                 <p className="cursos__nota-legenda">Excelente · 28 avaliações</p>
                 <div className="cursos__nota-barra"><span /></div>
 
-                {/* Ranking logo abaixo das avaliações */}
-                <div className="cursos__ranking">
-                  <p className="cursos__rotulo">RANKING DO CURSO</p>
-                  <h3 className="cursos__ranking-titulo">Top 5 da curso</h3>
-                  <RankingPodium players={rankingDaCurso} compact width="compact" ariaLabel="Top 5 da curso" />
+                {/* Indicador de taxa de acerto — valor ilustrativo até conectar os dados reais */}
+                <div className="cursos__taxa-acerto">
+                  <p className="cursos__rotulo">SEU DESEMPENHO</p>
+                  <h3 className="cursos__taxa-titulo">Sua taxa de acerto atual</h3>
+                  <div className="cursos__taxa-resumo">
+                    <strong>87%</strong>
+                    <span>das respostas corretas</span>
+                  </div>
+                  <div className="cursos__taxa-barra" role="progressbar" aria-label="Taxa de acerto atual" aria-valuemin={0} aria-valuemax={100} aria-valuenow={87}>
+                    <span style={{ width: "87%" }} />
+                  </div>
+                  <p className="cursos__taxa-legenda">Com base nas atividades concluídas</p>
                 </div>
 
                 <div className="cursos__mural-cabecalho">
