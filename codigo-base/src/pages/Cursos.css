@@ -444,7 +444,7 @@
 }
 .cursos__aula small { @apply flex items-center gap-[4px] text-[8px] text-violet-pale/50; }
 
-/* Avaliações, ranking e mural */
+/* Avaliações, taxa de acerto e mural */
 .cursos__lateral { @apply p-[18px]; }
 .cursos__nota-resumo { @apply flex items-center gap-[7px]; }
 .cursos__nota-numero { @apply font-display text-[37px] leading-none; font-weight: 400; }
@@ -459,11 +459,23 @@
   border-radius: inherit;
 }
 
-.cursos__ranking {
+.cursos__taxa-acerto {
   @apply mb-[16px] pt-[16px];
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
-.cursos__ranking-titulo { @apply font-display mb-[12px] text-[13px] leading-[1.2]; }
+.cursos__taxa-titulo { @apply mb-[10px] font-display text-[13px] leading-[1.25]; }
+.cursos__taxa-resumo { @apply mb-[9px] flex items-baseline gap-[8px]; }
+.cursos__taxa-resumo strong { @apply font-display text-[30px] leading-none text-gold; font-weight: 400; }
+.cursos__taxa-resumo span { @apply text-[9px] text-violet-pale/60; }
+.cursos__taxa-barra {
+  @apply mb-[7px] h-[5px] overflow-hidden bg-[rgba(255,255,255,0.08)];
+  border-radius: 5px;
+}
+.cursos__taxa-barra span {
+  @apply block h-full bg-gold;
+  border-radius: inherit;
+}
+.cursos__taxa-legenda { @apply text-[8px] text-violet-pale/50; }
 
 .cursos__mural-cabecalho { @apply mb-[9px] flex items-end justify-between pt-[2px]; }
 .cursos__mural-cabecalho .cursos__rotulo { @apply mb-[3px]; }
