@@ -141,15 +141,16 @@ export function SidebarLeft() {
     return (
         // corpo inteiro da sidebar
         <aside className="
+            sidebarL
             fixed
             z-10
-            w-[230px]
+            w-57.5
             h-screen
             shrink-0
             box-border
             flex
             flex-col
-            gap-[24px]
+            gap-6
             border-r
             border-[#b5b5eb2a]
             bg-[#0e1420]
@@ -165,7 +166,7 @@ export function SidebarLeft() {
                     text-[32px]
                     tracking-[5px]
                     text-center
-                    py-[20px]"
+                    py-5"
                 >
                     ATHEN
                 </h2>
@@ -175,9 +176,9 @@ export function SidebarLeft() {
             <nav className="
                 flex
                 flex-col
-                gap-[4px]
-                pb-[16px]
-                px-[16px]"
+                gap-1
+                pb-4
+                px-4"
             >
                 {/* itens do menu */}
                 {itens.map((item) => {
@@ -232,11 +233,11 @@ export function SidebarLeft() {
                 to={PROFILE_ROUTE}
                 aria-label="Ir para o perfil"
                 title="Meu perfil"
-                className="block outline-none mt-auto mx-[10px]"
+                className="block outline-none mt-auto mx-2.5"
             >
                 <div className="
                     flex
-                    mb-[15px]
+                    mb-3.75
                     items-center
                     justify-start
                     gap-2
@@ -245,14 +246,14 @@ export function SidebarLeft() {
                     {/* Foto do usuario */}
                     <div className="
                         flex
-                        w-[70px]
-                        h-[70px]
+                        w-17.5
+                        h-17.5
                         shrink-0
                         items-center
                         overflow-hidden
                         rounded-[22px]
                         border
-                        border-[#54318c]"
+                        border-violet"
                     style={{
                         boxShadow: "0 0px 30px rgba(84, 49, 140, 0.6)"
                     }}
@@ -277,8 +278,8 @@ export function SidebarLeft() {
                     </div>
 
                     {/* Nome display e do usuario */}
-                    <div className="min-w-0 flex flex-col gap-[7px]">
-                            <span className="block truncate text-[22px] leading-none text-[#ffcc00]">
+                    <div className="min-w-0 flex flex-col gap-1.75">
+                            <span className="block truncate text-[22px] leading-none text-gold">
                                 {userSrc?.profile?.Nome_Display ?? "AAAAAAI"}
                             </span>
 

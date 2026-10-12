@@ -18,7 +18,7 @@ import {
 } from "../../data/repositories";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
-import "./Profile.css";
+import "./profile.css";
 
 type Curso = Database["public"]["Tables"]["Curso"]["Row"];
 
@@ -352,9 +352,11 @@ function PageShell({
   if (!withSidebar) return <>{children}</>;
 
   return (
-    <div className="flex min-h-svh bg-canvas">
-      <SidebarLeft/>
-      {children}
+    <div className="min-h-svh bg-canvas">
+      <SidebarLeft />
+      <div className="ml-57.5 min-w-0">
+        {children}
+      </div>
     </div>
   );
 }

@@ -410,7 +410,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
       <header ref={headerRef} className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
         <button
           type="button"
-          className="dashboard-course-trigger absolute left-[calc(var(--sidebar-left-width,230px)+32px)] top-[26px] z-10 inline-flex max-w-[min(36%,360px)] items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 min-[1440px]:top-[30px] min-[1920px]:top-[34px]"
+          className="dashboard-course-trigger absolute left-[calc(var(--sidebar-left-width,230px)+64px)] top-[26px] z-10 inline-flex max-w-[min(36%,360px)] items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 min-[1440px]:top-[30px] min-[1920px]:top-[34px]"
           onClick={() => setCoursePickerOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={coursePickerOpen}
