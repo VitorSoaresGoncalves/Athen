@@ -3,9 +3,11 @@ import { ProtectedRoute } from './components/SupabaseConnect'
 import { CrudConsole } from './pages/CrudConsole'
 import {LoginPage} from './pages/LoginPage'
 import {RegisterPage} from './pages/RegisterPage';
-import  HomePage  from './pages/home-page/HomePage';
-import  Profile  from './pages/profile/Profile';
-import Dashboard from './pages/Dashboard'
+import HomePage  from './pages/home-page/HomePage';
+import Dashboard from './pages/Dashboard';
+import Salas from './pages/Salas'
+import Ligas from './pages/Ligas'
+import Profile  from './pages/profile/Profile';
 import ConfigPage from './pages/ConfigPage'
 
 export default function Hub() {
@@ -17,6 +19,8 @@ export default function Hub() {
         <Route path="/login-page" element={<LoginPage />} />
         <Route path="/register-page" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/salas" element={<Salas />} />
+        <Route path="/ligas" element={<Ligas />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/configuracoes" element={<ConfigPage />} />
       </Routes>

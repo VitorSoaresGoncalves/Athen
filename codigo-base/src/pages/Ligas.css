@@ -1,0 +1,226 @@
+/* ==========================================================================
+   Página Ligas — Tailwind v4 + tokens do projeto (src/index.css)
+   Mesmo padrão do Salas.css: tokens do @theme, tamanhos em px e bordas,
+   sombras, transições e transformações em CSS normal.
+   Todas as classes começam com "ligas".
+   ========================================================================== */
+@reference "../index.css";
+
+/* ---------- Base ---------- */
+.ligas {
+  @apply flex w-full overflow-hidden font-body text-[#f4eeff];
+  height: 100vh;
+  height: 100dvh;
+  background: #140a2b;
+  line-height: normal;
+}
+
+.ligas,
+.ligas *,
+.ligas *::before,
+.ligas *::after {
+  box-sizing: border-box;
+}
+
+:where(.ligas) :where(h1, h2, h3, p, ol) { margin: 0; }
+:where(.ligas) :where(h1, h2, h3) { font-weight: 400; }
+:where(.ligas) :where(button) { font: inherit; color: inherit; }
+
+.ligas__main {
+  @apply relative isolate ml-[230px] min-h-0 min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+}
+
+/* A área principal tem a própria rolagem, sem depender de html/body/#root.
+   A barra fica sempre visível (no macOS a barra padrão some até rolar). */
+.ligas__main::-webkit-scrollbar { width: 12px; }
+.ligas__main::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); }
+.ligas__main::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-violet-mid) 45%, transparent);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 8px;
+}
+.ligas__main::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--color-violet-mid) 70%, transparent);
+  background-clip: padding-box;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .ligas__main {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
+  }
+}
+
+.ligas__brilho {
+  @apply pointer-events-none fixed top-[-200px] right-[-120px] h-[560px] w-[700px];
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(120, 63, 220, 0.2), rgba(20, 10, 43, 0) 68%);
+}
+
+/* ---------- Cabeçalho ---------- */
+.ligas__cabecalho { @apply mb-[32px] flex items-end justify-between; }
+.ligas__caminho {
+  @apply mb-[10px] text-[10px] tracking-[1.4px] text-violet-pale/50;
+  font-weight: 700;
+}
+.ligas__caminho span { @apply text-gold; }
+.ligas__titulo { @apply font-display text-[46px] leading-[1.05] tracking-[-0.8px]; }
+.ligas__subtitulo { @apply mt-[9px] text-[14px] text-violet-pale/70; }
+
+
+/* ---------- Seletor de ligas ---------- */
+.ligas__seletor { @apply mb-[24px] grid grid-cols-7 gap-[12px]; }
+
+.ligas__liga {
+  @apply relative flex cursor-pointer flex-col items-center gap-[10px] bg-[rgba(49,31,82,0.42)] px-[8px] pt-[20px] pb-[14px];
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.ligas__liga:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background-color: rgba(62, 40, 102, 0.6);
+  transform: translateY(-2px);
+}
+/* Duas classes para vencer o :hover quando a liga está selecionada. */
+.ligas__liga.ligas__liga--ativa {
+  @apply bg-gold/[0.08];
+  border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-gold) 12%, transparent);
+}
+.ligas__liga-nome {
+  @apply text-[11px] tracking-[0.8px] text-violet-pale uppercase;
+  font-weight: 700;
+}
+.ligas__liga--ativa .ligas__liga-nome { @apply text-gold; }
+.ligas__liga-tag {
+  @apply absolute top-[-9px] left-1/2 bg-gold px-[8px] py-[3px] text-[7px] tracking-[1px] whitespace-nowrap text-[#211029];
+  font-weight: 900;
+  border-radius: 20px;
+  transform: translateX(-50%);
+}
+
+/* ---------- Painéis ---------- */
+.ligas__colunas {
+  @apply mb-[20px] grid grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)] items-stretch gap-[20px];
+}
+.ligas__painel {
+  @apply bg-[rgba(46,27,76,0.46)] p-[22px];
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 16px;
+}
+.ligas__painel-cabecalho { @apply mb-[18px] flex items-start justify-between; }
+.ligas__rotulo {
+  @apply mb-[5px] text-[8px] tracking-[1.4px] text-gold;
+  font-weight: 700;
+}
+.ligas__painel-titulo { @apply font-display text-[20px] leading-[1.2]; }
+.ligas__painel-resumo { @apply text-[10px] text-violet-pale/50; }
+
+/* ---------- Resumo do usuário ---------- */
+.ligas__resumo-liga { @apply mt-[6px] mb-[22px] flex items-center gap-[14px]; }
+.ligas__resumo-proxima { @apply mt-[4px] text-[11px] text-violet-pale/70; }
+
+.ligas__numeros { @apply mb-[22px] grid grid-cols-2 gap-[12px]; }
+.ligas__numeros > div {
+  @apply flex flex-col gap-[4px] bg-[rgba(255,255,255,0.035)] px-[14px] py-[12px];
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.ligas__numero-rotulo {
+  @apply text-[8px] tracking-[1.4px] text-violet-pale/50;
+  font-weight: 700;
+}
+.ligas__numero-valor { @apply font-display text-[26px] leading-none; font-weight: 400; }
+.ligas__numero-detalhe { @apply text-[10px] text-violet-pale/70; }
+
+.ligas__progresso-topo { @apply mb-[8px] flex items-center justify-between text-[11px] text-violet-pale/70; }
+.ligas__progresso-topo strong { @apply text-gold; font-weight: 700; }
+.ligas__barra {
+  @apply mb-[10px] h-[6px] bg-[rgba(255,255,255,0.08)];
+  border-radius: 6px;
+}
+.ligas__barra span {
+  @apply block h-full bg-gold;
+  border-radius: inherit;
+  transition: width 0.5s ease;
+}
+.ligas__progresso-texto { @apply text-[11px] leading-[1.5] text-violet-pale/70; }
+
+/* ---------- Pódio ---------- */
+.ligas__podio { @apply flex flex-col; }
+.ligas__podio > :last-child { @apply my-auto; }
+
+/* ---------- Classificação completa ---------- */
+.ligas__legenda { @apply flex gap-[10px]; }
+.ligas__legenda-item {
+  @apply flex h-[26px] items-center gap-[6px] px-[10px] text-[10px];
+  font-weight: 700;
+  border-radius: 8px;
+}
+.ligas__legenda-item--promocao {
+  @apply bg-gold/10 text-gold;
+}
+.ligas__legenda-item--rebaixamento {
+  @apply bg-[rgba(244,63,94,0.12)] text-[#fb7185];
+}
+
+.ligas__lista { @apply flex list-none flex-col gap-[6px] p-0; }
+
+.ligas__linha {
+  @apply grid grid-cols-[44px_36px_1fr_24px_auto] items-center gap-[14px] bg-[rgba(255,255,255,0.025)] px-[16px] py-[10px] text-[13px];
+  border: 1px solid rgba(255,255,255,0.06);
+  border-left: 3px solid transparent;
+  border-radius: 12px;
+}
+.ligas__linha--promocao {
+  border-left-color: var(--color-gold);
+}
+.ligas__linha--rebaixamento {
+  border-left-color: #f43f5e;
+}
+.ligas__linha.ligas__linha--voce {
+  @apply bg-gold/10;
+  border-color: color-mix(in srgb, var(--color-gold) 45%, transparent);
+}
+.ligas__linha.ligas__linha--voce.ligas__linha--promocao {
+  border-left-color: var(--color-gold);
+}
+
+.ligas__linha-posicao {
+  @apply text-[12px] text-violet-pale/70;
+  font-weight: 700;
+}
+.ligas__linha-avatar {
+  @apply grid size-[36px] place-items-center bg-violet-mid/25 text-[13px] text-violet-pale;
+  font-weight: 700;
+  border-radius: 12px;
+}
+.ligas__linha--voce .ligas__linha-avatar { @apply bg-gold text-[#211029]; }
+.ligas__linha-nome { @apply flex min-w-0 items-center gap-[10px] text-[#f4eeff]; font-weight: 500; }
+.ligas__linha-voce {
+  @apply bg-gold px-[6px] py-[2px] text-[8px] tracking-[1px] text-[#211029];
+  font-weight: 900;
+  border-radius: 4px;
+}
+.ligas__linha-zona { @apply grid place-items-center; }
+.ligas__linha--promocao .ligas__linha-zona { @apply text-gold; }
+.ligas__linha--rebaixamento .ligas__linha-zona { @apply text-[#fb7185]; }
+.ligas__linha-pontos {
+  @apply text-[12px] text-violet-pale;
+  font-weight: 700;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1100px) {
+  .ligas__seletor { @apply grid-cols-4; }
+  .ligas__colunas { @apply grid-cols-1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ligas *, .ligas *::before, .ligas *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
