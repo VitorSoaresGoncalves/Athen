@@ -5,6 +5,11 @@ import { supabase } from '../../lib/supabase';
 // Rotas usadas pela sidebar. Ajuste aqui se no seu router forem diferentes.
 const PROFILE_ROUTE = '/profile';
 const DASHBOARD_ROUTE = '/dashboard';
+const SALAS_ROUTE = '/salas';
+const LIGA_ROUTE = '/ligas';
+const AMIGOS_ROUTE = '/amigos';
+const NOTEBOOK_ROUTE = '/caderno';
+const CONFIG_ROUTE = '/configuracoes';
 
 type SidebarItem = {
     text: string;
@@ -28,12 +33,23 @@ const itens: SidebarItem[] = [
     },
     {
         text: "Salas",
+        to: SALAS_ROUTE,
+    },
+    {
+        text: "Ligas",
+        to: LIGA_ROUTE,
     },
     {
         text: "Amigos",
+        to: AMIGOS_ROUTE,
+    },
+    {
+        text: "Cadernos",
+        to: NOTEBOOK_ROUTE,
     },
     {
         text: "Configuração",
+        to: CONFIG_ROUTE,
     }
 ];
 
@@ -161,15 +177,21 @@ export function SidebarLeft() {
                 border-[#b5b5eb2a]
                 border-b"
             >
-                <h2 className="
-                    m-0
-                    text-[32px]
-                    tracking-[5px]
-                    text-center
-                    py-5"
+                <Link 
+                    to={DASHBOARD_ROUTE} 
+                    className="block no-underline hover:opacity-90 transition-opacity"
+                    aria-label="Ir para o Dashboard"
                 >
-                    ATHEN
-                </h2>
+                    <h2 className="
+                        m-0
+                        text-[32px]
+                        tracking-[5px]
+                        text-center
+                        py-5"
+                        >
+                        ATHEN
+                    </h2>
+                </Link>
             </section>
 
             {/* parte interna da sidebar */}
