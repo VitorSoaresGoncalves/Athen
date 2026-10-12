@@ -18,7 +18,7 @@ import {
 } from "../../data/repositories";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
-import "./profile.css";
+import "./Profile.css";
 
 type Curso = Database["public"]["Tables"]["Curso"]["Row"];
 

@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 // Rotas usadas pela sidebar. Ajuste aqui se no seu router forem diferentes.
-const PROFILE_ROUTE = '/Profile';
+const PROFILE_ROUTE = '/profile';
 const DASHBOARD_ROUTE = '/dashboard';
 
 type SidebarItem = {
