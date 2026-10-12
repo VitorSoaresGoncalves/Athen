@@ -6,7 +6,7 @@ import "./RegisterPage.css";
 export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nomeExibicao, setNomeExibicao] = useState("");
+  const [cargo, setCargo] = useState<"aluno" | "professor" | "">("");
   const [nomeUsuario, setNomeUsuario] = useState("");
 
   const [message, setMessage] = useState("");
@@ -30,7 +30,7 @@ export function RegisterPage() {
       password,
       options: {
         data: {
-          full_name: nomeExibicao.trim(),
+          cargo: cargo.trim(),
           username: nomeUsuario.trim(),
         },
       },
@@ -99,15 +99,17 @@ export function RegisterPage() {
           </div>
 
           <div className="input-group">
-            <label htmlFor="nomeExibicao">Nome de exibição</label>
-            <input
-              type="text"
-              id="nomeExibicao"
-              placeholder="Digite seu nome de exibição"
-              value={nomeExibicao}
-              onChange={(event) => setNomeExibicao(event.target.value)}
+            <label htmlFor="cargo">Cargo</label>
+            <select
+              id="cargo"
+              value={cargo}
+              onChange={(event) => setCargo(event.target.value as "aluno" | "professor" | "")}
               required
-            />
+            >
+              <option value="" disabled>Selecione seu cargo</option>
+              <option value="aluno">Aluno</option>
+              <option value="professor">Professor</option>
+            </select>
           </div>
 
           <div className="input-group">
