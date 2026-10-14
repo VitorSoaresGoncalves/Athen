@@ -9,6 +9,8 @@ import Salas from './pages/Salas'
 import Ligas from './pages/Ligas'
 import Profile  from './pages/profile/Profile';
 import ConfigPage from './pages/ConfigPage'
+import Amigos from './pages/Amigos';
+import NotebookPage from './pages/Notebook';
 
 export default function Hub() {
   return (
@@ -23,6 +25,8 @@ export default function Hub() {
         <Route path="/ligas" element={<Ligas />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/configuracoes" element={<ConfigPage />} />
+        <Route path="/amigos" element={<Amigos />} />
+        <Route path="/caderno" element={<NotebookPage />} />
       </Routes>
     </BrowserRouter>
   )
