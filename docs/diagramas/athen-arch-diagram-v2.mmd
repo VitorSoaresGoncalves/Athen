@@ -1,0 +1,46 @@
+flowchart LR
+  classDef client fill:#DCFCE7,stroke:#15803D,color:#14532D,stroke-width:2px;
+  classDef service fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A,stroke-width:2px;
+  classDef logic fill:#FEF3C7,stroke:#D97706,color:#78350F,stroke-width:2px;
+  classDef db fill:#EDE9FE,stroke:#7C3AED,color:#4C1D95,stroke-width:2px;
+  classDef future fill:#F3F4F6,stroke:#6B7280,color:#374151,stroke-dasharray:6 4;
+  classDef note fill:#FFFFFF,stroke:#6B7280,color:#111827,stroke-dasharray:5 5;
+
+  User["Usuário\naluno, educador ou admin"]:::client
+  Browser["Navegador\ncliente web"]:::client
+  Vercel["Vercel\nSPA estática + fallback de rotas"]:::service
+
+  subgraph App["Cliente Athen — React + TypeScript + Vite"]
+    UI["Features da SPA\nauth, catálogo, cursos, aulas, salas, social, notebook, CRUD"]:::client
+    Query["TanStack Query\ncache, mutations, retry e invalidação"]:::client
+    SDK["Supabase JS SDK\ntransporte tipado + sessão"]:::client
+  end
+
+  subgraph Supabase["Supabase — camada gerenciada"]
+    Auth["GoTrue / Supabase Auth\nsignup, login, sessão, confirmação, reset"]:::service
+    REST["PostgREST / Data API\nCRUD relacional autenticado"]:::service
+    RPC["RPC SQL\nfinalize_attempt, join_room, rankings, notificações"]:::logic
+    RLS["RLS + funções + triggers\nidentidade, autorização e regras de domínio"]:::logic
+    PG[("PostgreSQL\nprofiles, courses, lessons, attempts, rooms, social e rankings")]:::db
+    Storage["Supabase Storage\navatares\nrecurso complementar"]:::service
+  end
+
+  Future["Fora do estado atual\nanel de nós, hashing consistente, SSTables, Bloom filters\ne replicação customizada do PDF não existem no Athen"]:::future
+  Legend["Modelo: o frontend solicita; Auth autentica; RLS/RPC autorizam e calculam; PostgreSQL persiste"]:::note
+
+  User --> Browser
+  Browser -->|HTTPS| Vercel
+  Vercel -->|entrega assets| Browser
+  Browser --> UI
+  UI --> Query
+  Query --> SDK
+  SDK -->|signIn, signOut, getSession| Auth
+  Auth -->|sessão/JWT| SDK
+  SDK -->|consultas e mutations com JWT| REST
+  SDK -->|operações de domínio| RPC
+  REST --> RLS
+  RPC --> RLS
+  RLS --> PG
+  UI -.->|upload de avatar| Storage
+  Future -.-> Supabase
+  Legend -.-> App
