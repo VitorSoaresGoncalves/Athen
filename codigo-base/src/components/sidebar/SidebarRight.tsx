@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { hexToRgba } from "./topDownColor";
 
-
 const rebarba = 28;
 
 type SidebarRightProps = {
@@ -10,6 +9,72 @@ type SidebarRightProps = {
     cor: string;
     titulo: string;
     children: React.ReactNode;
+}
+
+type Amigo = {
+    nome: string;
+    xp: number;
+    eu?: boolean;
+};
+
+type BlocoProps = {
+    cor: string;
+    titulo: string;
+    children: React.ReactNode;
+};
+
+const amigos: Amigo[] = [
+    { nome: "Luna Silva", xp: 2340 },
+    { nome: "Pedro Costa", xp: 1890 },
+    { nome: "Ana Reis", xp: 1450 },
+    { nome: "Você", xp: 1120, eu: true },
+];
+
+const medalhas = ["🥇", "🥈", "🥉"];
+
+const quest = {
+    titulo: "Complete 3 aulas hoje", 
+    xp: 150, 
+    feito: 1, 
+    total: 3
+};
+
+const bloco_fundo = 0.05;
+const bloco_borda = 0.55;
+const bloco_brilho = 0.2;
+
+
+function Bloco({ cor, titulo, children }: BlocoProps) {
+    return (
+        <div
+            className="
+                rounded-2xl
+                border
+                p-4
+                backdrop-blur-[2px]
+                transition-[border-color,box-shadow]
+                duration-700"
+            style={{
+                borderColor: hexToRgba(cor, bloco_borda),
+                backgroundColor: hexToRgba(cor, bloco_fundo),
+                boxShadow: `0 0 16px ${hexToRgba(cor, bloco_brilho)}, inset 0 0 18px ${hexToRgba(cor, bloco_fundo + 0.03)}`,
+            }}
+        >
+            <h4
+                className="
+                    m-0
+                    mb-3
+                    text-[11px]
+                    uppercase
+                    tracking-[0.18em]"
+                style={{ color: hexToRgba(cor, 0.95) }}
+            >
+                {titulo}
+            </h4>
+
+            {children}
+        </div>
+    );
 }
 
 export function SidebarRight({ aberta, onFechar, cor, titulo, children }: SidebarRightProps) {
