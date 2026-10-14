@@ -3,10 +3,15 @@ import { ProtectedRoute } from './components/SupabaseConnect'
 import { CrudConsole } from './pages/CrudConsole'
 import {LoginPage} from './pages/LoginPage'
 import {RegisterPage} from './pages/RegisterPage';
-import  HomePage  from './pages/home-page/HomePage';
+import HomePage  from './pages/home-page/HomePage';
 import Dashboard from './pages/Dashboard';
 import Salas from './pages/Salas'
-import Cursos from './pages/Cursos'
+import Ligas from './pages/Ligas'
+import Profile  from './pages/profile/Profile';
+import ConfigPage from './pages/ConfigPage'
+import Amigos from './pages/Amigos';
+import NotebookPage from './pages/Notebook';
+import Cursos from './pages/Cursos';
 
 export default function Hub() {
   return (
@@ -18,7 +23,12 @@ export default function Hub() {
         <Route path="/register-page" element={<RegisterPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/salas" element={<Salas />} />
-        <Route path="cursos" element={<Cursos/>}/>
+        <Route path="/ligas" element={<Ligas />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/configuracoes" element={<ConfigPage />} />
+        <Route path="/amigos" element={<Amigos />} />
+        <Route path="/caderno" element={<NotebookPage />} />
+        <Route path="/cursos" element={<Cursos/>}/>
       </Routes>
     </BrowserRouter>
   )
