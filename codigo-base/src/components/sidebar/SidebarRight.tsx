@@ -7,8 +7,6 @@ type SidebarRightProps = {
     aberta: boolean;
     onFechar: () => void;
     cor: string;
-    titulo: string;
-    children: React.ReactNode;
 }
 
 type Amigo = {
@@ -39,10 +37,6 @@ const quest = {
     total: 3
 };
 
-const bloco_fundo = 0.05;
-const bloco_borda = 0.55;
-const bloco_brilho = 0.2;
-
 
 function Bloco({ cor, titulo, children }: BlocoProps) {
     return (
@@ -55,9 +49,9 @@ function Bloco({ cor, titulo, children }: BlocoProps) {
                 transition-[border-color,box-shadow]
                 duration-700"
             style={{
-                borderColor: hexToRgba(cor, bloco_borda),
-                backgroundColor: hexToRgba(cor, bloco_fundo),
-                boxShadow: `0 0 16px ${hexToRgba(cor, bloco_brilho)}, inset 0 0 18px ${hexToRgba(cor, bloco_fundo + 0.03)}`,
+                borderColor: hexToRgba(cor, 0.55),
+                backgroundColor: hexToRgba("#090512", 0.9),
+                boxShadow: `0 0 16px ${hexToRgba(cor, 0.2)}, inset 0 0 18px ${hexToRgba(cor, 0.08)}`,
             }}
         >
             <h4
@@ -77,8 +71,9 @@ function Bloco({ cor, titulo, children }: BlocoProps) {
     );
 }
 
-export function SidebarRight({ aberta, onFechar, cor, titulo, children }: SidebarRightProps) {
+export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
     const painelRef = useRef<HTMLDivElement>(null);
+    const progresso = Math.round((quest.feito / quest.total) * 100);
 
     useEffect(() => {
         if (!aberta) return;
@@ -117,6 +112,10 @@ export function SidebarRight({ aberta, onFechar, cor, titulo, children }: Sideba
                 relative
                 box-border
                 max-h-[80vh]
+                flex
+                flex-col
+                gap-3
+                p-4
                 w-full
                 overflow-y-auto
                 rounded-b-[20px]
@@ -131,32 +130,64 @@ export function SidebarRight({ aberta, onFechar, cor, titulo, children }: Sideba
                 boxShadow: `0 0px 12px ${hexToRgba(cor, 0.35)}, inset 0 0 26px ${hexToRgba(cor, 0.12)}`,
               }}
             >
-                {/* titulo */}
-                <header className="
-                    px-[18px]
-                    py-[16px]
-                    border-b"
-                  style={{ borderColor: hexToRgba(cor, 0.35) }}
-                >
-                    <h3 className="
-                        m-0
-                        text-[24px]
-                        text-[#e6e6f0]"
-                    >
-                        {titulo}
-                    </h3>
-                </header>
 
-                {/* elementos da top down */}
-                <div className="
-                    text-[#eaf2ff]
-                    [&>section]:border-b
-                    [&>section]:border-[#1e2a3d]
-                    [&>section]:px-[18px]
-                    [&>section]:py-4"
-                >
-                    {children}
-                </div>
+                {/* Rank de amigos */}
+                <Bloco cor={cor} titulo="Rank de amigos">
+                    <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                        {amigos.map((amigo, index) => (
+                            <li key={amigo.nome} className="flex items-center gap-2.5 text-sm">
+                                <span className="w-5 flex-none text-center text-base">
+                                    {medalhas[index] ?? index + 1}
+                                </span>
+                        
+                                <span
+                                    className={`min-w-0 flex-1 truncate ${amigo.eu ? "font-bold" : ""}`}
+                                    style={{ color: amigo.eu ? cor : "#eaf2ff" }}
+                                >
+                                    {amigo.nome}
+                                </span>
+                        
+                                <span className="flex-none text-xs tabular-nums" style={{ color: hexToRgba(cor, 0.95) }}>
+                                    {amigo.xp.toLocaleString("pt-BR")} xp
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </Bloco>
+                    
+                {/* Quest diaria */}
+                <Bloco cor={cor} titulo="Quest diária">
+                    <div className="flex items-start justify-between gap-3">
+                        <strong className="text-sm leading-snug text-[#f4eeff]">
+                            {quest.titulo}
+                        </strong>
+                    
+                        <span
+                            className="flex-none rounded-full border px-2 py-0.5 text-[11px] font-bold"
+                            style={{ borderColor: hexToRgba(cor, 0.6), color: cor }}
+                        >
+                            +{quest.xp} XP
+                        </span>
+                    </div>
+                    
+                    <div
+                        className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
+                        style={{ backgroundColor: hexToRgba(cor, 0.15) }}
+                    >
+                        <div
+                            className="h-full rounded-full transition-[width] duration-500"
+                            style={{
+                                width: `${progresso}%`,
+                                backgroundColor: cor,
+                                boxShadow: `0 0 10px ${hexToRgba(cor, 0.8)}`,
+                            }}
+                        />
+                    </div>
+                        
+                    <span className="mt-2 block text-xs" style={{ color: hexToRgba(cor, 0.9) }}>
+                        {quest.feito}/{quest.total} concluídas
+                    </span>
+                </Bloco>
             </aside>
 
             {/* rebarba da janela TopDown */}

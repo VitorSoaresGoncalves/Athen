@@ -642,15 +642,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
         aberta={lousaAberta}
         onFechar={() => setLousaAberta((valor) => !valor)}
         cor={activeTheme.primary}
-        titulo='Fundamentos'
-      >
-        <section className='bloco'>Bloco 1</section>
-        <section className='bloco'>Bloco 2</section>
-        <section className='bloco'>Bloco 3</section>
-        <section className='bloco'>Bloco 4</section>
-
-    </SidebarRight>
-    
+      />    
     </div>
   );
 }
