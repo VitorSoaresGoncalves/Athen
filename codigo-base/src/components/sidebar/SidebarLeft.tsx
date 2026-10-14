@@ -10,6 +10,7 @@ const LIGA_ROUTE = '/ligas';
 const AMIGOS_ROUTE = '/amigos';
 const NOTEBOOK_ROUTE = '/caderno';
 const CONFIG_ROUTE = '/configuracoes';
+const CURSOS_ROUTE = '/cursos'
 
 type SidebarItem = {
     text: string;
@@ -30,6 +31,7 @@ const itens: SidebarItem[] = [
     },
     {
         text: "Cursos",
+        to: CURSOS_ROUTE
     },
     {
         text: "Salas",

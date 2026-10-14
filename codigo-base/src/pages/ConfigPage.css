@@ -2,14 +2,20 @@
   position: relative;
   min-height: 100svh;
   width: 100%;
-  max-width: 960px;
-  margin: 0 auto;
-  flex: 1;
-  padding-top: 58px;
-  padding-left: 130px;
+  max-width: none;
+  margin: 0;
+  padding: 0;
   background-color: #0c071a;
   color: #f4eeff;
   isolation: isolate;
+}
+
+.configuracoes-page {
+  width: calc(100% - 230px);
+  min-height: 100svh;
+  margin-left: 230px;
+  box-sizing: border-box;
+  padding: 58px 30px 40px;
 }
 
 .configuracoes-layout::before {
