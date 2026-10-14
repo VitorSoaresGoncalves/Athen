@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CursoNotebook } from "../components/notebook/CursoNotebook";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
-import { CursoNotebook } from "../components/notebook/CursoNotebook";
+import { hexToRgba } from "../components/sidebar/topDownColor";
 import { aulaRepository, concluiRepository, cursoRepository, moduloRepository, salaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -24,19 +25,6 @@ function normalizeColor(color: string | null | undefined, index: number) {
   return candidate && /^#[0-9a-fA-F]{3,8}$/.test(candidate) ? candidate : FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
-function hexToRgba(hex: string, alpha: number) {
-  const normalized = hex.replace("#", "");
-  const value = normalized.length === 3
-    ? normalized.split("").map((part) => `${part}${part}`).join("")
-    : normalized;
-
-  if (value.length !== 6) return `rgba(6, 182, 212, ${alpha})`;
-
-  const red = Number.parseInt(value.slice(0, 2), 16);
-  const green = Number.parseInt(value.slice(2, 4), 16);
-  const blue = Number.parseInt(value.slice(4, 6), 16);
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
-}
 
 function createTheme(module: Modulo, index: number): ModuleTheme {
   const primary = normalizeColor(module.Cor_Tema, index);
@@ -423,13 +411,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
         {/* chamada do notebook */}
         <CursoNotebook course={course} />
 
-        <button
-          data-toggle-lousa='true'
-          className='dashboard__lousa-toggle absolute right-[50px] top-8 cursor-pointer rounded-lg border border-[#1e2a3d] bg-[#182335] px-[17px] py-[11px] text-sm text-[#eaf2ff]'
-          onClick={() => setLousaAberta(!lousaAberta)}
-        >
-          ▼
-        </button>
       </header>
 
       {coursePickerOpen && (
@@ -659,7 +640,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
     <SidebarRight
         aberta={lousaAberta}
-        onFechar={() => setLousaAberta(false)}
+        onFechar={() => setLousaAberta((valor) => !valor)}
         titulo='Fundamentos'
       >
         <section className='bloco'>Bloco 1</section>

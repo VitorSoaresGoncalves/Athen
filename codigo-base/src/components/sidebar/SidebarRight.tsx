@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 
+const rebarba = 28;
+
 type SidebarRightProps = {
     aberta: boolean;
     onFechar: () => void;
@@ -18,7 +20,6 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
 
             if (!(alvo instanceof Element)) return;
             if (painelRef.current?.contains(alvo)) return;
-            if (alvo.closest("[data-toggle-lousa]")) return;
 
             onFechar();
         }
@@ -29,7 +30,7 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
 
     return (
         // janela inteira da sidebar
-        <div ref={painelRef} className={`
+        <div ref={painelRef} className="
             fixed
             top-0
             right-[24px]
@@ -38,10 +39,10 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
             flex
             flex-col
             items-center
-            ransition-transform
+            transition-transform
             duration-[320ms]
-            ease-in-out
-            ${aberta ? "translate-y-0" : "-translate-y-full"}`}
+            ease-in-out"
+        style={{transform: aberta ? "translateY(0)" : `translateY(calc(-100% + ${rebarba}px))`}}
         >
             {/* caixa da top down*/}
             <aside className="
@@ -54,8 +55,7 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
                 border
                 border-t-0
                 border-[#1e2a3d]
-                bg-[#0e1420]
-                "
+                bg-[#0e1420]"
             >
                 {/* titulo */}
                 <header className="
@@ -86,10 +86,17 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
             </aside>
 
             {/* rebarba da janela TopDown */}
-            <button className="
+            <button
+              type="button"
+              onClick={onFechar}
+              aria-expanded={aberta}
+              aria-label={aberta ? "Recolher painel" : "Abrir painel"}
+              className="
+                group
                 w-[64px]
                 h-[20px]
                 flex
+                flex-none
                 items-center
                 justify-center
                 bg-[#0e1420]
@@ -98,9 +105,9 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
                 border-t-0
                 border-[#1e2a3d]
                 cursor-pointer"
-                onClick={onFechar} aria-label="Recolher painel"
+              style={{ height:rebarba }}
             >
-                <span className="h-[3px] w-[26px] rounded-[2px] bg-[#3d5a80]"/>
+                <span className="h-[3px] w-[26px] rounded-[2px] bg-[#3d5a80] transition-all duration-200 group-hover:w-[36px]"/>
             </button>
         </div>
     )
