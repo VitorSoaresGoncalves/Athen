@@ -641,6 +641,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
     <SidebarRight
         aberta={lousaAberta}
         onFechar={() => setLousaAberta((valor) => !valor)}
+        cor={activeTheme.primary}
         titulo='Fundamentos'
       >
         <section className='bloco'>Bloco 1</section>

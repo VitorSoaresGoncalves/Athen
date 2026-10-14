@@ -1,15 +1,18 @@
 import { useEffect, useRef } from 'react';
+import { hexToRgba } from "./topDownColor";
+
 
 const rebarba = 28;
 
 type SidebarRightProps = {
     aberta: boolean;
     onFechar: () => void;
+    cor: string;
     titulo: string;
     children: React.ReactNode;
 }
 
-export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRightProps) {
+export function SidebarRight({ aberta, onFechar, cor, titulo, children }: SidebarRightProps) {
     const painelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -46,23 +49,29 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
         >
             {/* caixa da top down*/}
             <aside className="
-                relatieve
-                w-full
-                max-h-[80vh]
-                overflow-y-auto
+                relative
                 box-border
-                rounded-b-[14px]
+                max-h-[80vh]
+                w-full
+                overflow-y-auto
+                rounded-b-[20px]
                 border
                 border-t-0
-                border-[#1e2a3d]
-                bg-[#0e1420]"
+                bg-transparent
+                backdrop-blur-[3px]
+                transition-[border-color,box-shadow]
+                duration-700"
+              style={{
+                borderColor: cor,
+                boxShadow: `0 0px 12px ${hexToRgba(cor, 0.35)}, inset 0 0 26px ${hexToRgba(cor, 0.12)}`,
+              }}
             >
                 {/* titulo */}
                 <header className="
                     px-[18px]
                     py-[16px]
-                    border-b
-                    border-[#1e2a3d]"
+                    border-b"
+                  style={{ borderColor: hexToRgba(cor, 0.35) }}
                 >
                     <h3 className="
                         m-0
@@ -93,21 +102,29 @@ export function SidebarRight({ aberta, onFechar, titulo, children }: SidebarRigh
               aria-label={aberta ? "Recolher painel" : "Abrir painel"}
               className="
                 group
-                w-[64px]
-                h-[20px]
+                w-[88px]
                 flex
                 flex-none
                 items-center
                 justify-center
-                bg-[#0e1420]
-                rounded-b-[10px]
+                bg-transparent
+                backdrop-blur-[3px]
+                rounded-b-[12px]
                 border
                 border-t-0
-                border-[#1e2a3d]
-                cursor-pointer"
-              style={{ height:rebarba }}
+                cursor-pointer
+                transition-[border-color,box-shadow]
+                duration-700"
+              style={{ 
+                height: rebarba,
+                borderColor: cor,
+                boxShadow: `0 0px 12px ${hexToRgba(cor, 0.4)}, inset 0 -6px 14px ${hexToRgba(cor, 0.15)}`, 
+              }}
             >
-                <span className="h-[3px] w-[26px] rounded-[2px] bg-[#3d5a80] transition-all duration-200 group-hover:w-[36px]"/>
+                <span 
+                  className="h-[3px] w-7 rounded-full transition-all duration-200 group-hover:w-10"
+                  style={{ backgroundColor: cor, boxShadow: `0 0 8px ${hexToRgba(cor, 0.9)}` }}
+                />
             </button>
         </div>
     )
