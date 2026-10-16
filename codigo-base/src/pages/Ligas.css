@@ -6,6 +6,7 @@
    ========================================================================== */
 @reference "../index.css";
 
+
 /* ---------- Base ---------- */
 .ligas {
   @apply flex w-full overflow-hidden font-body text-[#f4eeff];

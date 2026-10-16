@@ -1,59 +1,120 @@
-import { useCallback, useEffect, useState } from 'react'
-import { cursoRepository, usuarioRepository, moduloRepository, aulaRepository, questaoRepository, salaRepository, matriculaRepository } from '../data/repositories'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import {
+  avaliacaoRepository,
+  aulaRepository,
+  cursoRepository,
+  dominioRepository,
+  matriculaRepository,
+  moduloRepository,
+  questaoRepository,
+  salaRepository,
+  usuarioRepository,
+} from '../data/repositories'
 import { supabase } from '../lib/supabase'
 import type { Database, Json } from '../types/database'
 import './CrudConsole.css'
 
-type Usuario = Database['public']['Tables']['Usuario']['Row']
-type Curso = Database['public']['Tables']['Curso']['Row']
-type Modulo = Database['public']['Tables']['Modulo']['Row']
-type Aula = Database['public']['Tables']['Aula']['Row']
-type Questao = Database['public']['Tables']['Questao']['Row']
-type Sala = Database['public']['Tables']['Sala']['Row']
-type Matricula = Database['public']['Tables']['matricula']['Row']
-type Cargo = 'learner' | 'creator' | 'moderator'
-type CourseLevel = Database['public']['Enums']['course_level']
+type Usuario = Database['public']['Tables']['profiles']['Row']
+type Curso = Database['public']['Tables']['courses']['Row']
+type Modulo = Database['public']['Tables']['modules']['Row']
+type Aula = Database['public']['Tables']['lessons']['Row']
+type Questao = Database['public']['Tables']['questions']['Row']
+type Sala = Database['public']['Tables']['rooms']['Row']
+type Matricula = Database['public']['Tables']['enrollments']['Row']
+type Avaliacao = Database['public']['Tables']['reviews']['Row']
 type CourseStatus = Database['public']['Enums']['course_status']
+type CourseVisibility = Database['public']['Enums']['course_visibility']
+type ContentStatus = Database['public']['Enums']['content_status']
+type EnrollmentStatus = Database['public']['Enums']['enrollment_status']
 type QuestionType = Database['public']['Enums']['question_type']
-type Alternativa = { texto: string; correta: boolean }
-type ParMatch = { esquerda: string; direita: string }
-type Tab = 'usuarios' | 'cursos' | 'modulo' | 'aula' | 'questao' | 'sala' | 'matricula' | 'notebook';
+type Tab = 'usuarios' | 'cursos' | 'modulo' | 'aula' | 'questao' | 'sala' | 'matricula'
 
 const questionTypeLabels: Record<QuestionType, string> = {
-    multiple_choice: 'Múltipla escolha',
-    fill_blank: 'Preencher lacuna',
-    word_match: 'Associação de palavras',
-    order_sequence: 'Ordenar sequência',
+  multiple_choice: 'Múltipla escolha',
+  fill_blank: 'Preencher lacuna',
+  match: 'Associação (pares)',
+  sum_alternatives: 'Soma de alternativas',
 }
 
-function textoDoEnunciado(enunciado: Json): string {
-    if (typeof enunciado === 'string') return enunciado
-    if (enunciado && typeof enunciado === 'object' && !Array.isArray(enunciado) && 'texto' in enunciado && typeof (enunciado as { texto?: unknown }).texto === 'string') {
-        return (enunciado as { texto: string }).texto
-    }
-    return JSON.stringify(enunciado)
+// Modelos de `questions.config` no formato que a função grade_answer do banco (0010) espera:
+//   match:            { pairs: [{ left, right }] }
+//   multiple_choice:  { options: [{ id, text, correct }] }
+//   fill_blank:       { answers: ['...'] }
+//   sum_alternatives: { statements: [{ value, correct }], expected }  (expected é opcional)
+const configTemplates: Record<QuestionType, Json> = {
+  multiple_choice: { options: [{ id: 'a', text: '', correct: true }, { id: 'b', text: '', correct: false }] },
+  fill_blank: { answers: [''] },
+  match: { pairs: [{ left: '', right: '' }] },
+  sum_alternatives: { statements: [{ value: 1, correct: true }, { value: 2, correct: false }], expected: 1 },
+}
+const configToText = (config: Json) => JSON.stringify(config, null, 2)
+
+const errMsg = (error: unknown, fallback = 'erro desconhecido') => (error instanceof Error ? error.message : fallback)
+
+type FormUsuario = { email: string; password: string; display_name: string; username: string; bio: string }
+type FormCurso = { title: string; slug: string; description: string; category: string; tags: string; cover_url: string; status: CourseStatus; visibility: CourseVisibility }
+type FormModulo = { course_id: string; title: string; description: string; color: string; position: string }
+type FormAula = { module_id: string; title: string; content: string; position: string; status: ContentStatus }
+type FormQuestao = { lesson_id: string; prompt: string; type: QuestionType; xp_value: string; position: string; config: string }
+type FormSala = { name: string; access_code: string; course_id: string }
+type FormMatricula = { course_id: string; status: EnrollmentStatus; rating: string }
+
+const initialUsuario: FormUsuario = { email: 'a@a', password: '123456', display_name: 'jorge', username: 'aaaa', bio: 'aaa' }
+const initialCurso: FormCurso = { title: 'aaa', slug: 'zzz', description: 'zzz', category: 'zz', tags: 'zzz', cover_url: '', status: 'draft', visibility: 'public' }
+const initialModulo: FormModulo = { course_id: '', title: 'zz', description: 'zz', color: '#ffffff', position: '0' }
+const initialAula: FormAula = { module_id: '', title: 'zzzz', content: 'zzz', position: '0', status: 'draft' }
+const initialQuestao: FormQuestao = { lesson_id: '', prompt: 'zzzzz', type: 'multiple_choice', xp_value: '1', position: '0', config: configToText(configTemplates.multiple_choice) }
+const initialSala: FormSala = { name: 'zzzzz', access_code: 'zzzz', course_id: '' }
+const initialMatricula: FormMatricula = { course_id: '', status: 'active', rating: '' }
+
+// ---------------------------------------------------------------------------
+// Componentes auxiliares. Ficam FORA de CrudConsole de propósito: componentes declarados
+// dentro de outro componente são recriados a cada render e perdem o estado.
+// ---------------------------------------------------------------------------
+
+function Field({ label, help, className, children }: { label: string; help?: string; className?: string; children: ReactNode }) {
+  return (
+    <label className={className}>
+      <span>{label}</span>
+      {children}
+      {help && <small className="field-help">{help}</small>}
+    </label>
+  )
 }
 
-type FormUsuario = { email: string; password: string; Nome_Display: string; Nome_Usuario: string; Cargo: Cargo; Biografia: string }
-type FormCurso = { ID_Criador: string; Titulo: string; Slug: string; Descricao: string; Dificuldade: CourseLevel; Categoria: string; Tags: string; Cor_Capa: string; Icone: string; Status: CourseStatus }
-type FormModulo = { ID_Curso: string; Titulo: string; Subtitulo: string; Icone: string; Cor_Tema: string; Posicao: string }
-type FormAula = { ID_Modulo: string; Titulo: string; Descricao: string; Duracao: string; Posicao: string; Publicado: boolean }
-type FormQuestao = { ID_Aula: string; TextoEnunciado: string; Explicacao: string; Tipo: QuestionType; XP: string; Posicao: string; Alternativas: Alternativa[]; RespostaFillBlank: string; Pares: ParMatch[]; ItensOrdem: string[] }
-type FormSala = { ID_Criador: string; Nome: string; Codigo: string; fk_Curso_ID: string }
-type FormMatricula = { fk_Curso_ID: string; fk_Usuario_ID: string; Avaliacao: string }
+function FormActions({ editing, createLabel, loading, onReset }: { editing: boolean; createLabel: string; loading: boolean; onReset: () => void }) {
+  return (
+    <div className="form-actions">
+      <button className="button primary" type="submit" disabled={loading}>
+        {loading ? 'Salvando...' : editing ? 'Salvar alterações' : createLabel}
+      </button>
+      <button className="button ghost" type="button" onClick={onReset}>Limpar</button>
+    </div>
+  )
+}
 
+function ListToolbar({ title, onRefresh, loading }: { title: string; onRefresh: () => void; loading: boolean }) {
+  return (
+    <div className="list-toolbar">
+      <div><span className="eyebrow">REGISTROS</span><h2>{title}</h2></div>
+      <button className="button ghost" onClick={onRefresh} disabled={loading}>Atualizar lista</button>
+    </div>
+  )
+}
 
-const initialUsuario: FormUsuario = { email: 'a@a', password: '123456', Nome_Display: 'jorge', Nome_Usuario: 'aaaa', Cargo: 'learner', Biografia: 'aaa' }
-const initialCurso: FormCurso = { ID_Criador: '', Titulo: 'aaa', Slug: 'zzz', Descricao: 'zzz', Dificuldade: 'Beginner', Categoria: 'zz', Tags: 'zzz', Cor_Capa: '#fff', Icone: '◒', Status: 'draft' }
-const initialModulo: FormModulo = { ID_Curso: '', Titulo: 'zz', Subtitulo: 'zz', Icone: '📘', Cor_Tema: '#fff', Posicao: '0' }
-const initialAula: FormAula = { ID_Modulo: '', Titulo: 'zzzz', Descricao: 'zzz', Duracao: '11', Posicao: '0', Publicado: false }
-const initialQuestao: FormQuestao = { ID_Aula: '', TextoEnunciado: 'zzzzz', Explicacao: 'zzzz', Tipo: 'multiple_choice', XP: '1', Posicao: '0', Alternativas: [{ texto: '', correta: true }, { texto: '', correta: false }], RespostaFillBlank: '', Pares: [{ esquerda: '', direita: '' }], ItensOrdem: ['', ''] }
-const initialSala: FormSala = { ID_Criador: '', Nome: 'zzzzz', Codigo: 'zzzz', fk_Curso_ID: '' }
-const initialMatricula: FormMatricula = { fk_Curso_ID: '', fk_Usuario_ID: '', Avaliacao: '' }
-
+function SectionHeading({ editing, createTitle, editTitle, hint }: { editing: boolean; createTitle: string; editTitle: string; hint?: string }) {
+  return (
+    <div className="section-heading">
+      <span className="eyebrow">{editing ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
+      <h2>{editing ? editTitle : createTitle}</h2>
+      {hint && <p>{hint}</p>}
+    </div>
+  )
+}
 
 export function CrudConsole() {
   const [activeTab, setActiveTab] = useState<Tab>('usuarios')
+  const [currentUserId, setCurrentUserId] = useState('')
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [cursos, setCursos] = useState<Curso[]>([])
   const [modulos, setModulos] = useState<Modulo[]>([])
@@ -61,11 +122,12 @@ export function CrudConsole() {
   const [questoes, setQuestoes] = useState<Questao[]>([])
   const [salas, setSalas] = useState<Sala[]>([])
   const [matriculas, setMatriculas] = useState<Matricula[]>([])
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([])
   const [fUsuario, setFUsuario] = useState<FormUsuario>(initialUsuario)
   const [fCurso, setFCurso] = useState<FormCurso>(initialCurso)
   const [fModulo, setFModulo] = useState<FormModulo>(initialModulo)
   const [fAula, setFAula] = useState<FormAula>(initialAula)
-  const [fQuestao, setFQuestao] = useState<FormQuestao>(initialQuestao) 
+  const [fQuestao, setFQuestao] = useState<FormQuestao>(initialQuestao)
   const [fSala, setFSala] = useState<FormSala>(initialSala)
   const [fMatricula, setFMatricula] = useState<FormMatricula>(initialMatricula)
   const [editingUsuarioId, setEditingUsuarioId] = useState<string | null>(null)
@@ -74,1059 +136,746 @@ export function CrudConsole() {
   const [editingAulaId, setEditingAulaId] = useState<string | null>(null)
   const [editingQuestaoId, setEditingQuestaoId] = useState<string | null>(null)
   const [editingSalaId, setEditingSalaId] = useState<string | null>(null)
-  const [editingMatricula, setEditingMatricula] = useState<{ fk_Curso_ID: string; fk_Usuario_ID: string } | null>(null)
+  const [editingMatricula, setEditingMatricula] = useState<Matricula | null>(null)
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const notify = (text: string, isError = false) => setStatusMsg({ text, isError })
-  const loadUsuarios = useCallback(async () => { try { setUsuarios(await usuarioRepository.listar()) } catch (error) { notify(`Erro ao carregar usuários: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  const loadCursos = useCallback(async () => { try { setCursos(await cursoRepository.listar()) } catch (error) { notify(`Erro ao carregar cursos: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  const loadModulos = useCallback(async () => { try { setModulos(await moduloRepository.listar()) } catch (error) { notify(`Erro ao carregar módulos: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  const loadAulas = useCallback(async () => { try { setAulas(await aulaRepository.listar()) } catch (error) { notify(`Erro ao carregar aulas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  const loadQuestoes = useCallback(async () => { try { setQuestoes(await questaoRepository.listar()) } catch (error) { notify(`Erro ao carregar questões: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  const loadSalas = useCallback(async () => { try { setSalas(await salaRepository.listar()) } catch (error) { notify(`Erro ao carregar salas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  const loadMatriculas = useCallback(async () => { try { setMatriculas(await matriculaRepository.listar()) } catch (error) { notify(`Erro ao carregar matrículas: ${error instanceof Error ? error.message : 'erro desconhecido'}`, true) } }, [])
-  
+  const notify = useCallback((text: string, isError = false) => setStatusMsg({ text, isError }), [])
+  const loadUsuarios = useCallback(async () => { try { setUsuarios(await usuarioRepository.listar()) } catch (error) { notify(`Erro ao carregar usuários: ${errMsg(error)}`, true) } }, [notify])
+  const loadCursos = useCallback(async () => { try { setCursos(await cursoRepository.listar()) } catch (error) { notify(`Erro ao carregar cursos: ${errMsg(error)}`, true) } }, [notify])
+  const loadModulos = useCallback(async () => { try { setModulos(await moduloRepository.listar()) } catch (error) { notify(`Erro ao carregar módulos: ${errMsg(error)}`, true) } }, [notify])
+  const loadAulas = useCallback(async () => { try { setAulas(await aulaRepository.listar()) } catch (error) { notify(`Erro ao carregar aulas: ${errMsg(error)}`, true) } }, [notify])
+  const loadQuestoes = useCallback(async () => { try { setQuestoes(await questaoRepository.listar()) } catch (error) { notify(`Erro ao carregar questões: ${errMsg(error)}`, true) } }, [notify])
+  const loadSalas = useCallback(async () => { try { setSalas(await salaRepository.listar()) } catch (error) { notify(`Erro ao carregar salas: ${errMsg(error)}`, true) } }, [notify])
+  const loadMatriculas = useCallback(async () => {
+    try {
+      const { data } = await supabase.auth.getUser()
+      setMatriculas(await matriculaRepository.listar())
+      if (data.user) setAvaliacoes(await avaliacaoRepository.listarPorUsuario(data.user.id))
+    } catch (error) { notify(`Erro ao carregar matrículas: ${errMsg(error)}`, true) }
+  }, [notify])
 
   useEffect(() => {
-  const carregarDados = async () => {
-    if (activeTab === 'usuarios') await loadUsuarios()
-    else if (activeTab === 'cursos') await loadCursos()
-    else if (activeTab === 'modulo') {
-      await loadCursos()
-      await loadModulos()
-    } else if (activeTab === 'aula') {
-      await loadCursos()
-      await loadModulos()
-      await loadAulas()
-    } else if (activeTab === 'questao') {
-      await loadCursos()
-      await loadModulos()
-      await loadAulas()
-      await loadQuestoes()
-    } else if (activeTab === 'sala') {
-      await loadCursos()
-      await loadSalas()
-    } else if (activeTab === 'matricula') {
-      await loadCursos()
-      await loadMatriculas()
+    const carregarDados = async () => {
+      if (activeTab === 'usuarios') await loadUsuarios()
+      else if (activeTab === 'cursos') await loadCursos()
+      else if (activeTab === 'modulo') { await loadCursos(); await loadModulos() }
+      else if (activeTab === 'aula') { await loadCursos(); await loadModulos(); await loadAulas() }
+      else if (activeTab === 'questao') { await loadCursos(); await loadModulos(); await loadAulas(); await loadQuestoes() }
+      else if (activeTab === 'sala') { await loadCursos(); await loadSalas() }
+      else if (activeTab === 'matricula') { await loadCursos(); await loadMatriculas() }
     }
+    void carregarDados()
+  }, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes, loadSalas, loadMatriculas])
+
+  // Usuário logado: é o criador dos cursos e o educador das salas.
+  // Fica sincronizado com a sessão do Supabase (login, logout, troca de usuário), para que
+  // o creator_id / educator_id enviados sempre batam com auth.uid() nas policies de RLS.
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? ''))
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUserId(session?.user?.id ?? '')
+    })
+    return () => listener.subscription.unsubscribe()
+  }, [])
+
+  // Cursos / módulos / aulas que pertencem ao usuário logado (para os selects).
+  const meusCursos = cursos.filter((curso) => curso.creator_id === currentUserId)
+  const meusModulos = modulos.filter((modulo) => meusCursos.some((curso) => curso.id === modulo.course_id))
+  const minhasAulas = aulas.filter((aula) => meusModulos.some((modulo) => modulo.id === aula.module_id))
+
+  // handles
+
+  const handleUsuario = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      const username = fUsuario.username.trim()
+      const displayName = fUsuario.display_name.trim()
+      if (!displayName) throw new Error('Informe o nome de exibição.')
+      if (!username) throw new Error('Informe o nome de usuário.')
+
+      if (editingUsuarioId) {
+        // role, xp, nível e streak são controlados pelo servidor e não são editados aqui.
+        await usuarioRepository.atualizar(editingUsuarioId, { display_name: displayName, username, bio: fUsuario.bio.trim() || null })
+        notify('Usuário atualizado com sucesso.')
+      } else {
+        const existing = await usuarioRepository.obterPorUsername(username)
+        if (existing) throw new Error('Esse nome de usuário já está em uso.')
+
+        // O perfil (profiles) é criado por trigger (handle_new_user), que lê display_name e
+        // username dos metadados abaixo.
+        const { data, error } = await supabase.auth.signUp({
+          email: fUsuario.email.trim(),
+          password: fUsuario.password,
+          options: { data: { display_name: displayName, username } },
+        })
+        if (error) throw new Error(`Erro no cadastro (Auth): ${error.message}`)
+        if (!data.user) throw new Error('O Supabase não retornou o usuário criado.')
+        if (data.user.identities?.length === 0) throw new Error('Já existe uma conta com esse e-mail.')
+
+        // Com sessão (confirmação de e-mail desligada), o signUp já deixa o novo usuário logado,
+        // então a policy profiles_update_own permite atualizar o próprio perfil.
+        if (data.session) {
+          await usuarioRepository.atualizar(data.user.id, { display_name: displayName, username, bio: fUsuario.bio.trim() || null })
+        }
+        notify(data.session ? `Usuário criado e perfil atualizado. ID: ${data.user.id}` : 'Usuário criado. Confirme o e-mail para completar o perfil.')
+      }
+
+      setFUsuario(initialUsuario)
+      setEditingUsuarioId(null)
+      await loadUsuarios()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar usuário.'), true) }
+    finally { setLoading(false) }
   }
-  void carregarDados()}, [activeTab, loadUsuarios, loadCursos, loadModulos, loadAulas, loadQuestoes, loadSalas, loadMatriculas,])
 
-  useEffect(() => { void supabase.auth.getUser().then(({ data }) => { if (data.user) { 
-    setFCurso((current) => ({ ...current, ID_Criador: data.user.id }))
-    setFSala((current) => ({ ...current, ID_Criador: data.user.id }))
-    setFMatricula((current) => ({ ...current, fk_Usuario_ID: data.user.id }))} }) }, [])
+  const handleCurso = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      // Confere o usuário direto na sessão (não no estado) para evitar creator_id desatualizado.
+      const { data: authData } = await supabase.auth.getUser()
+      const userId = authData.user?.id
+      if (!userId) throw new Error('Faça login para criar cursos.')
+      if (!fCurso.title.trim() || !fCurso.slug.trim()) throw new Error('Título e slug são obrigatórios.')
+      const payload = {
+        creator_id: userId,
+        title: fCurso.title.trim(),
+        slug: fCurso.slug.trim().toLowerCase(),
+        description: fCurso.description.trim() || null,
+        category: fCurso.category.trim() || null,
+        tags: fCurso.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+        cover_url: fCurso.cover_url.trim() || null,
+        status: fCurso.status,
+        visibility: fCurso.visibility,
+      }
+      if (editingCursoId) {
+        await cursoRepository.atualizar(editingCursoId, payload)
+        notify('Curso atualizado com sucesso.')
+      } else {
+        await cursoRepository.criar(payload)
+        notify('Curso criado com sucesso.')
+      }
+      setFCurso(initialCurso)
+      setEditingCursoId(null)
+      await loadCursos()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar curso.'), true) }
+    finally { setLoading(false) }
+  }
 
-    // handles
- 
-    const handleUsuario = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            const username = fUsuario.Nome_Usuario.trim()
-            if (editingUsuarioId) {
-                await usuarioRepository.atualizar(editingUsuarioId, { 
-                    Nome_Display: fUsuario.Nome_Display.trim(), 
-                    Nome_Usuario: username || null, 
-                    Cargo: fUsuario.Cargo, 
-                    Biografia: fUsuario.Biografia.trim() 
-                })
-                notify('Usuário atualizado com sucesso.')
-            }
-            else {
-                if (username) {
-                    const { data: existing, error } = await supabase.from('Usuario').select('ID').eq('Nome_Usuario', username).maybeSingle()
-                    if (error) throw new Error(`Erro ao checar nome de usuário: ${error.message}`)
-                    if (existing) throw new Error('Esse nome de usuário já está em uso.')
-                }
+  const handleModulo = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      if (!fModulo.course_id) throw new Error('Selecione o curso.')
+      if (!fModulo.title.trim()) throw new Error('Título é obrigatório.')
+      const payload = {
+        course_id: fModulo.course_id,
+        title: fModulo.title.trim(),
+        description: fModulo.description.trim() || null,
+        color: fModulo.color || null,
+        position: Number(fModulo.position) || 0,
+      }
+      if (editingModuloId) {
+        await moduloRepository.atualizar(editingModuloId, payload)
+        notify('Módulo atualizado com sucesso.')
+      } else {
+        await moduloRepository.criar(payload)
+        notify('Módulo criado com sucesso.')
+      }
+      setFModulo({ ...initialModulo, course_id: fModulo.course_id })
+      setEditingModuloId(null)
+      await loadModulos()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar módulo.'), true) }
+    finally { setLoading(false) }
+  }
 
-                const { data, error } = await supabase.auth.signUp({ 
-                    email: fUsuario.email.trim(), 
-                    password: fUsuario.password, 
-                    options: { 
-                        data: { 
-                            name: fUsuario.Nome_Display.trim(), 
-                            username 
-                        } 
-                    } 
-                })
-                if (error) throw new Error(`Erro no cadastro (Auth): ${error.message}`)
-                if (!data.user) throw new Error('O Supabase não retornou o usuário criado.')
-                if (data.user.identities?.length === 0) throw new Error('Já existe uma conta com esse e-mail.')
+  const handleAula = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      if (!fAula.module_id) throw new Error('Selecione o módulo.')
+      if (!fAula.title.trim()) throw new Error('Título é obrigatório.')
+      const payload = {
+        module_id: fAula.module_id,
+        title: fAula.title.trim(),
+        content: fAula.content.trim() || null,
+        position: Number(fAula.position) || 0,
+        status: fAula.status,
+      }
+      if (editingAulaId) {
+        await aulaRepository.atualizar(editingAulaId, payload)
+        notify('Aula atualizada com sucesso.')
+      } else {
+        await aulaRepository.criar(payload)
+        notify('Aula criada com sucesso.')
+      }
+      setFAula({ ...initialAula, module_id: fAula.module_id })
+      setEditingAulaId(null)
+      await loadAulas()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar aula.'), true) }
+    finally { setLoading(false) }
+  }
 
-                if (data.session) {
-                    await usuarioRepository.atualizar(data.user.id, { 
-                        Nome_Display: fUsuario.Nome_Display.trim(), 
-                        Nome_Usuario: username || null, 
-                        Cargo: fUsuario.Cargo, 
-                        Biografia: fUsuario.Biografia.trim() 
-                    })
-                }
-                setFCurso((current) => ({ ...current, ID_Criador: data.user!.id }))
-                notify(data.session ? `Usuário criado e perfil atualizado. ID: ${data.user.id}` : 'Usuário criado. Confirme o e-mail para completar o perfil.')
-            }
+  const handleQuestao = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      if (!fQuestao.lesson_id) throw new Error('Selecione a aula.')
+      if (!fQuestao.prompt.trim()) throw new Error('Enunciado é obrigatório.')
 
-            setFUsuario(initialUsuario); 
-            setEditingUsuarioId(null); 
-            await loadUsuarios()
+      let config: Json
+      try { config = JSON.parse(fQuestao.config) as Json }
+      catch { throw new Error('A configuração (config) não é um JSON válido.') }
 
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar usuário.', true) } 
-        finally { setLoading(false) }
-    }
+      const payload = {
+        lesson_id: fQuestao.lesson_id,
+        prompt: fQuestao.prompt.trim(),
+        type: fQuestao.type,
+        config,
+        xp_value: Number(fQuestao.xp_value) || 0,
+        position: Number(fQuestao.position) || 0,
+      }
+      if (editingQuestaoId) {
+        await questaoRepository.atualizar(editingQuestaoId, payload)
+        notify('Questão atualizada com sucesso.')
+      } else {
+        await questaoRepository.criar(payload)
+        notify('Questão criada com sucesso.')
+      }
+      setFQuestao({ ...initialQuestao, lesson_id: fQuestao.lesson_id })
+      setEditingQuestaoId(null)
+      await loadQuestoes()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar questão.'), true) }
+    finally { setLoading(false) }
+  }
 
-    const handleCurso = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            const creatorId = fCurso.ID_Criador.trim()
-            if (!creatorId) throw new Error('Informe o ID do criador.')
-            if (!fCurso.Titulo.trim() || !fCurso.Slug.trim()) throw new Error('Título e slug são obrigatórios.')
-            const payload = { 
-                ID_Criador: creatorId, 
-                Titulo: fCurso.Titulo.trim(), 
-                Slug: fCurso.Slug.trim().toLowerCase(), 
-                Descricao: fCurso.Descricao.trim(), 
-                Dificuldade: fCurso.Dificuldade, 
-                Categoria: fCurso.Categoria.trim(), 
-                Tags: fCurso.Tags.split(',').map((tag) => tag.trim()).filter(Boolean), 
-                Cor_Capa: fCurso.Cor_Capa, 
-                Icone: fCurso.Icone, 
-                Status: fCurso.Status 
-            }
-            if (editingCursoId) { 
-                await cursoRepository.atualizar(editingCursoId, payload); 
-                notify('Curso atualizado com sucesso.') 
-            }
-            else { 
-                await cursoRepository.criar(payload); notify('Curso criado com sucesso.') 
-            }
-            const lastCreator = fCurso.ID_Criador; 
-            setFCurso({ ...initialCurso, ID_Criador: lastCreator }); 
-            setEditingCursoId(null); 
-            await loadCursos()
-            
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar curso.', true) } 
-        finally { setLoading(false) }
-    }
+  const handleSala = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      const userId = authData.user?.id
+      if (!userId) throw new Error('Faça login para criar salas.')
+      if (!fSala.name.trim() || !fSala.access_code.trim()) throw new Error('Nome e código são obrigatórios.')
+      const payload = {
+        educator_id: userId,
+        name: fSala.name.trim(),
+        access_code: fSala.access_code.trim().toUpperCase(),
+        course_id: fSala.course_id || null,
+      }
+      if (editingSalaId) {
+        await salaRepository.atualizar(editingSalaId, payload)
+        notify('Sala atualizada com sucesso.')
+      } else {
+        await salaRepository.criar(payload)
+        notify('Sala criada com sucesso.')
+      }
+      setFSala(initialSala)
+      setEditingSalaId(null)
+      await loadSalas()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar sala.'), true) }
+    finally { setLoading(false) }
+  }
 
-    const handleModulo = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            if (!fModulo.ID_Curso) throw new Error('Selecione o curso.')
-            if (!fModulo.Titulo.trim()) throw new Error('Título é obrigatório.')
-            const payload = {
-                ID_Curso: fModulo.ID_Curso,
-                Titulo: fModulo.Titulo.trim(),
-                Subtitulo: fModulo.Subtitulo.trim(),
-                Icone: fModulo.Icone,
-                Cor_Tema: fModulo.Cor_Tema,
-                Posicao: Number(fModulo.Posicao) || 0,
-            }
-            if (editingModuloId) {
-                await moduloRepository.atualizar(editingModuloId, payload)
-                notify('Módulo atualizado com sucesso.')
-            } else {
-                await moduloRepository.criar(payload)
-                notify('Módulo criado com sucesso.')
-            }
-            const lastCurso = fModulo.ID_Curso
-            setFModulo({ ...initialModulo, ID_Curso: lastCurso })
-            setEditingModuloId(null)
-            await loadModulos()
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar módulo.', true) }
-        finally { setLoading(false) }
-    }
+  const handleMatricula = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setStatusMsg(null); setLoading(true)
+    try {
+      const { data: authData } = await supabase.auth.getUser()
+      const userId = authData.user?.id
+      if (!userId) throw new Error('Faça login para gerenciar matrículas.')
+      if (editingMatricula) {
+        // o progresso é calculado pelo servidor; aqui só mudam o status e a nota (reviews)
+        await matriculaRepository.atualizarStatus(editingMatricula.course_id, userId, fMatricula.status)
+        if (fMatricula.rating !== '') {
+          const nota = Number(fMatricula.rating)
+          if (Number.isNaN(nota) || nota < 0 || nota > 5) throw new Error('Informe uma avaliação de 0 a 5.')
+          await avaliacaoRepository.salvar({ course_id: editingMatricula.course_id, user_id: userId, rating: nota })
+        }
+        notify('Matrícula atualizada com sucesso.')
+      } else {
+        if (!fMatricula.course_id) throw new Error('Selecione o curso.')
+        await matriculaRepository.criar({ course_id: fMatricula.course_id, user_id: userId })
+        notify('Matrícula criada com sucesso.')
+      }
+      setFMatricula(initialMatricula)
+      setEditingMatricula(null)
+      await loadMatriculas()
+    } catch (error) { notify(errMsg(error, 'Erro ao salvar matrícula.'), true) }
+    finally { setLoading(false) }
+  }
 
-    const handleAula = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            if (!fAula.ID_Modulo) throw new Error('Selecione o módulo.')
-            if (!fAula.Titulo.trim()) throw new Error('Título é obrigatório.')
-            const payload = {
-                ID_Modulo: fAula.ID_Modulo,
-                Titulo: fAula.Titulo.trim(),
-                Descricao: fAula.Descricao.trim(),
-                Duracao: fAula.Duracao.trim(),
-                Posicao: Number(fAula.Posicao) || 0,
-                Publicado: fAula.Publicado,
-            }
-            if (editingAulaId) {
-                await aulaRepository.atualizar(editingAulaId, payload)
-                notify('Aula atualizada com sucesso.')
-            } else {
-                await aulaRepository.criar(payload)
-                notify('Aula criada com sucesso.')
-            }
-            const lastModulo = fAula.ID_Modulo
-            setFAula({ ...initialAula, ID_Modulo: lastModulo })
-            setEditingAulaId(null)
-            await loadAulas()
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar aula.', true) }
-        finally { setLoading(false) }
-    }
+  const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+  const editUsuario = (usuario: Usuario) => { setFUsuario({ email: '', password: '', display_name: usuario.display_name, username: usuario.username, bio: usuario.bio ?? '' }); setEditingUsuarioId(usuario.id); scrollTop() }
+  const editCurso = (curso: Curso) => { setFCurso({ title: curso.title, slug: curso.slug, description: curso.description ?? '', category: curso.category ?? '', tags: curso.tags.join(', '), cover_url: curso.cover_url ?? '', status: curso.status, visibility: curso.visibility }); setEditingCursoId(curso.id); scrollTop() }
+  const editModulo = (modulo: Modulo) => { setFModulo({ course_id: modulo.course_id, title: modulo.title, description: modulo.description ?? '', color: modulo.color ?? '#ffffff', position: String(modulo.position) }); setEditingModuloId(modulo.id); scrollTop() }
+  const editAula = (aula: Aula) => { setFAula({ module_id: aula.module_id, title: aula.title, content: aula.content ?? '', position: String(aula.position), status: aula.status }); setEditingAulaId(aula.id); scrollTop() }
+  const editQuestao = (questao: Questao) => { setFQuestao({ lesson_id: questao.lesson_id, prompt: questao.prompt, type: questao.type, xp_value: String(questao.xp_value), position: String(questao.position), config: configToText(questao.config) }); setEditingQuestaoId(questao.id); scrollTop() }
+  const editSala = (sala: Sala) => { setFSala({ name: sala.name, access_code: sala.access_code, course_id: sala.course_id ?? '' }); setEditingSalaId(sala.id); scrollTop() }
+  const editMatricula = (matricula: Matricula) => {
+    const avaliacao = avaliacoes.find((item) => item.course_id === matricula.course_id)
+    setFMatricula({ course_id: matricula.course_id, status: matricula.status, rating: avaliacao ? String(avaliacao.rating) : '' })
+    setEditingMatricula(matricula)
+    scrollTop()
+  }
 
-    const handleQuestao = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            if (!fQuestao.ID_Aula) throw new Error('Selecione a aula.')
-            if (!fQuestao.TextoEnunciado.trim()) throw new Error('Enunciado é obrigatório.')
+  // Ao trocar o tipo, carrega o modelo de config e o XP padrão do tipo (calculado no banco).
+  const changeQuestionType = async (type: QuestionType) => {
+    setFQuestao((current) => ({ ...current, type, config: configToText(configTemplates[type]) }))
+    try {
+      const xp = await dominioRepository.xpPorTipoQuestao(type)
+      setFQuestao((current) => (current.type === type ? { ...current, xp_value: String(xp) } : current))
+    } catch { /* mantém o XP atual */ }
+  }
 
-            let respostaJson: Json
+  const remove = async (label: string, article: 'este' | 'esta', action: () => Promise<void>, reload: () => Promise<void>) => {
+    if (!window.confirm(`Excluir ${article} ${label}?`)) return
+    setLoading(true)
+    try { await action(); notify(`${label[0].toUpperCase()}${label.slice(1)} excluíd${article === 'este' ? 'o' : 'a'} com sucesso.`); await reload() }
+    catch (error) { notify(errMsg(error, `Erro ao excluir ${label}.`), true) }
+    finally { setLoading(false) }
+  }
+  const removeUsuario = (id: string) => remove('usuário', 'este', () => usuarioRepository.deletar(id), loadUsuarios)
+  const removeCurso = (id: string) => remove('curso', 'este', () => cursoRepository.deletar(id), loadCursos)
+  const removeModulo = (id: string) => remove('módulo', 'este', () => moduloRepository.deletar(id), loadModulos)
+  const removeAula = (id: string) => remove('aula', 'esta', () => aulaRepository.deletar(id), loadAulas)
+  const removeQuestao = (id: string) => remove('questão', 'esta', () => questaoRepository.deletar(id), loadQuestoes)
+  const removeSala = (id: string) => remove('sala', 'esta', () => salaRepository.deletar(id), loadSalas)
+  const removeMatricula = (matricula: Matricula) => remove('matrícula', 'esta', () => matriculaRepository.deletar(matricula.course_id, matricula.user_id), loadMatriculas)
 
-            if (fQuestao.Tipo === 'multiple_choice') {
-                const alternativasValidas = fQuestao.Alternativas.map((a) => a.texto.trim()).filter(Boolean)
-                if (alternativasValidas.length < 2) throw new Error('Adicione ao menos 2 alternativas.')
-                const indiceCorreto = fQuestao.Alternativas.findIndex((a) => a.correta && a.texto.trim())
-                if (indiceCorreto === -1) throw new Error('Marque qual alternativa é a correta.')
-                respostaJson = { alternativas: alternativasValidas, indiceCorreto }
-            } else if (fQuestao.Tipo === 'fill_blank') {
-                if (!fQuestao.RespostaFillBlank.trim()) throw new Error('Informe a resposta correta da lacuna.')
-                respostaJson = { resposta: fQuestao.RespostaFillBlank.trim() }
-            } else if (fQuestao.Tipo === 'word_match') {
-                const paresValidos = fQuestao.Pares.filter((p) => p.esquerda.trim() && p.direita.trim()).map((p) => ({ esquerda: p.esquerda.trim(), direita: p.direita.trim() }))
-                if (paresValidos.length < 1) throw new Error('Adicione ao menos um par completo.')
-                respostaJson = { pares: paresValidos }
-            } else {
-                const itensValidos = fQuestao.ItensOrdem.map((i) => i.trim()).filter(Boolean)
-                if (itensValidos.length < 2) throw new Error('Adicione ao menos 2 itens.')
-                respostaJson = { itens: itensValidos }
-            }
+  const resetAll = () => {
+    setStatusMsg(null)
+    setEditingUsuarioId(null); setEditingCursoId(null); setEditingModuloId(null); setEditingAulaId(null)
+    setEditingQuestaoId(null); setEditingSalaId(null); setEditingMatricula(null)
+    setFUsuario(initialUsuario); setFCurso(initialCurso); setFModulo(initialModulo); setFAula(initialAula)
+    setFQuestao(initialQuestao); setFSala(initialSala); setFMatricula(initialMatricula)
+  }
+  const switchTab = (tab: Tab) => { setActiveTab(tab); resetAll() }
 
-            const payload = {
-                ID_Aula: fQuestao.ID_Aula,
-                Enunciado: { texto: fQuestao.TextoEnunciado.trim() }, 
-                Explicacao: fQuestao.Explicacao.trim(),
-                Tipo: fQuestao.Tipo,
-                Tipo_Resposta: respostaJson,
-                XP: Number(fQuestao.XP) || 0,
-                Posicao: Number(fQuestao.Posicao) || 0,
-            }
-            if (editingQuestaoId) {
-                await questaoRepository.atualizar(editingQuestaoId, payload)
-                notify('Questão atualizada com sucesso.')
-            } else {
-                await questaoRepository.criar(payload)
-                notify('Questão criada com sucesso.')
-            }
-            const lastAula = fQuestao.ID_Aula
-            setFQuestao({ ...initialQuestao, ID_Aula: lastAula })
-            setEditingQuestaoId(null)
-            await loadQuestoes()
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar questão.', true) }
-        finally { setLoading(false) }
-    }
+  const tabs: [Tab, string][] = [
+    ['usuarios', 'Usuários'], ['cursos', 'Cursos'], ['modulo', 'Módulos'], ['aula', 'Aulas'],
+    ['questao', 'Questões'], ['sala', 'Salas'], ['matricula', 'Matrículas'],
+  ]
 
-    const handleSala = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            const creatorId = fSala.ID_Criador.trim()
-            if (!creatorId) throw new Error('Informe o ID do criador.')
-            if (!fSala.Nome.trim() || !fSala.Codigo.trim()) throw new Error('Nome e código são obrigatórios.')
-            const payload = {
-                ID_Criador: creatorId,
-                Nome: fSala.Nome.trim(),
-                Codigo: fSala.Codigo.trim().toUpperCase(),
-                fk_Curso_ID: fSala.fk_Curso_ID || null,
-            }
-            if (editingSalaId) {
-                await salaRepository.atualizar(editingSalaId, payload)
-                notify('Sala atualizada com sucesso.')
-            } else {
-                await salaRepository.criar(payload)
-                notify('Sala criada com sucesso.')
-            }
-            const lastCreator = fSala.ID_Criador
-            setFSala({ ...initialSala, ID_Criador: lastCreator })
-            setEditingSalaId(null)
-            await loadSalas()
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar sala.', true) }
-        finally { setLoading(false) }
-    }
+  return <main className="crud-shell">
 
-    const handleMatricula = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault(); setStatusMsg(null); setLoading(true)
-        try {
-            if (editingMatricula) {
-                const nota = Number(fMatricula.Avaliacao)
-                if (!fMatricula.Avaliacao || Number.isNaN(nota)) throw new Error('Informe uma avaliação numérica.')
-                await matriculaRepository.atualizarAvaliacao(editingMatricula.fk_Curso_ID, editingMatricula.fk_Usuario_ID, nota)
-                notify('Avaliação atualizada com sucesso.')
-            } else {
-                if (!fMatricula.fk_Curso_ID) throw new Error('Selecione o curso.')
-                await matriculaRepository.criar({ fk_Curso_ID: fMatricula.fk_Curso_ID, fk_Usuario_ID: fMatricula.fk_Usuario_ID })
-                notify('Matrícula criada com sucesso.')
-            }
-            setFMatricula((current) => ({ ...initialMatricula, fk_Usuario_ID: current.fk_Usuario_ID }))
-            setEditingMatricula(null)
-            await loadMatriculas()
-        } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao salvar matrícula.', true) }
-        finally { setLoading(false) }
-    }
+    <nav className="table-tabs" aria-label="Tabelas do banco">
+      {tabs.map(([tab, label]) => (
+        <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => switchTab(tab)}>{label}</button>
+      ))}
+    </nav>
 
-    const editUsuario = (usuario: Usuario) => { setFUsuario({ email: '', password: '', Nome_Display: usuario.Nome_Display, Nome_Usuario: usuario.Nome_Usuario ?? '', Cargo: usuario.Cargo as Cargo, Biografia: usuario.Biografia }); setEditingUsuarioId(usuario.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    const editCurso = (curso: Curso) => { setFCurso({ ID_Criador: curso.ID_Criador, Titulo: curso.Titulo, Slug: curso.Slug, Descricao: curso.Descricao, Dificuldade: curso.Dificuldade, Categoria: curso.Categoria, Tags: curso.Tags.join(', '), Cor_Capa: curso.Cor_Capa, Icone: curso.Icone, Status: curso.Status }); setEditingCursoId(curso.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    const editModulo = (modulo: Modulo) => { setFModulo({ ID_Curso: modulo.ID_Curso, Titulo: modulo.Titulo, Subtitulo: modulo.Subtitulo, Icone: modulo.Icone, Cor_Tema: modulo.Cor_Tema, Posicao: String(modulo.Posicao) }); setEditingModuloId(modulo.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    const editAula = (aula: Aula) => { setFAula({ ID_Modulo: aula.ID_Modulo, Titulo: aula.Titulo, Descricao: aula.Descricao, Duracao: aula.Duracao, Posicao: String(aula.Posicao), Publicado: aula.Publicado }); setEditingAulaId(aula.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    const editQuestao = (questao: Questao) => { const resposta = questao.Tipo_Resposta as { alternativas?: string[]; indiceCorreto?: number; resposta?: string; pares?: ParMatch[]; itens?: string[] } | null; setFQuestao({ ID_Aula: questao.ID_Aula, TextoEnunciado: textoDoEnunciado(questao.Enunciado), Explicacao: questao.Explicacao, Tipo: questao.Tipo, XP: String(questao.XP), Posicao: String(questao.Posicao), Alternativas: questao.Tipo === 'multiple_choice' && Array.isArray(resposta?.alternativas) ? resposta.alternativas.map((texto, i) => ({ texto, correta: resposta?.indiceCorreto === i })) : initialQuestao.Alternativas, RespostaFillBlank: questao.Tipo === 'fill_blank' ? (resposta?.resposta ?? '') : '', Pares: questao.Tipo === 'word_match' && Array.isArray(resposta?.pares) ? resposta.pares : initialQuestao.Pares, ItensOrdem: questao.Tipo === 'order_sequence' && Array.isArray(resposta?.itens) ? resposta.itens : initialQuestao.ItensOrdem }); setEditingQuestaoId(questao.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    
-    const addAlternativa = () => setFQuestao((current) => ({ ...current, Alternativas: [...current.Alternativas, { texto: '', correta: false }] }))
-    const removeAlternativa = (index: number) => setFQuestao((current) => ({ ...current, Alternativas: current.Alternativas.filter((_, i) => i !== index) }))
-    const updateAlternativaTexto = (index: number, texto: string) => setFQuestao((current) => ({ ...current, Alternativas: current.Alternativas.map((a, i) => (i === index ? { ...a, texto } : a)) }))
-    const setAlternativaCorreta = (index: number) => setFQuestao((current) => ({ ...current, Alternativas: current.Alternativas.map((a, i) => ({ ...a, correta: i === index })) }))
-    const addPar = () => setFQuestao((current) => ({ ...current, Pares: [...current.Pares, { esquerda: '', direita: '' }] }))
-    const removePar = (index: number) => setFQuestao((current) => ({ ...current, Pares: current.Pares.filter((_, i) => i !== index) }))
-    const updatePar = (index: number, lado: 'esquerda' | 'direita', valor: string) => setFQuestao((current) => ({ ...current, Pares: current.Pares.map((p, i) => (i === index ? { ...p, [lado]: valor } : p)) }))
-    const addItemOrdem = () => setFQuestao((current) => ({ ...current, ItensOrdem: [...current.ItensOrdem, ''] }))
-    const removeItemOrdem = (index: number) => setFQuestao((current) => ({ ...current, ItensOrdem: current.ItensOrdem.filter((_, i) => i !== index) }))
-    const updateItemOrdem = (index: number, valor: string) => setFQuestao((current) => ({ ...current, ItensOrdem: current.ItensOrdem.map((item, i) => (i === index ? valor : item)) }))
+    {statusMsg && <div className={`crud-status ${statusMsg.isError ? 'error' : 'success'}`} role="status">{statusMsg.text}</div>}
 
-    const editSala = (sala: Sala) => { setFSala({ ID_Criador: sala.ID_Criador, Nome: sala.Nome, Codigo: sala.Codigo, fk_Curso_ID: sala.fk_Curso_ID ?? '' }); setEditingSalaId(sala.ID); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-    const editMatricula = (matricula: Matricula) => { setFMatricula({ fk_Curso_ID: matricula.fk_Curso_ID, fk_Usuario_ID: matricula.fk_Usuario_ID, Avaliacao: matricula.Avaliacao !== null ? String(matricula.Avaliacao) : '' }); setEditingMatricula({ fk_Curso_ID: matricula.fk_Curso_ID, fk_Usuario_ID: matricula.fk_Usuario_ID }); window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-    const removeUsuario = async (id: string) => { if (!window.confirm('Excluir este usuário?')) return; setLoading(true); try { await usuarioRepository.deletar(id); notify('Usuário excluído com sucesso.'); await loadUsuarios() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir usuário.', true) } finally { setLoading(false) } }
-    const removeCurso = async (id: string) => { if (!window.confirm('Excluir este curso?')) return; setLoading(true); try { await cursoRepository.deletar(id); notify('Curso excluído com sucesso.'); await loadCursos() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir curso.', true) } finally { setLoading(false) } }
-    const removeModulo = async (id: string) => { if (!window.confirm('Excluir este módulo?')) return; setLoading(true); try { await moduloRepository.deletar(id); notify('Módulo excluído com sucesso.'); await loadModulos() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir módulo.', true) } finally { setLoading(false) } }
-    const removeAula = async (id: string) => { if (!window.confirm('Excluir esta aula?')) return; setLoading(true); try { await aulaRepository.deletar(id); notify('Aula excluída com sucesso.'); await loadAulas() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir aula.', true) } finally { setLoading(false) } }
-    const removeQuestao = async (id: string) => { if (!window.confirm('Excluir esta questão?')) return; setLoading(true); try { await questaoRepository.deletar(id); notify('Questão excluída com sucesso.'); await loadQuestoes() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir questão.', true) } finally { setLoading(false) } }
-    const removeSala = async (id: string) => { if (!window.confirm('Excluir esta sala?')) return; setLoading(true); try { await salaRepository.deletar(id); notify('Sala excluída com sucesso.'); await loadSalas() } catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir sala.', true) } finally { setLoading(false) } }
-    const removeMatricula = async (fkCursoId: string, fkUsuarioId: string) => { if (!window.confirm('Excluir esta matrícula?')) return; setLoading(true); try { await matriculaRepository.deletar(fkCursoId, fkUsuarioId); notify('Matrícula excluída com sucesso.'); await loadMatriculas()} catch (error) { notify(error instanceof Error ? error.message : 'Erro ao excluir matrícula.', true) }finally { setLoading(false) }}
-    
-    const resetCurrentForm = () => {
-        setStatusMsg(null); setEditingUsuarioId(null); setEditingCursoId(null); setEditingModuloId(null)
-        if (activeTab === 'usuarios') setFUsuario(initialUsuario)
-        else if (activeTab === 'cursos') setFCurso((current) => ({ ...initialCurso, ID_Criador: current.ID_Criador }))
-        else if (activeTab === 'modulo') setFModulo((current) => ({ ...initialModulo, ID_Curso: current.ID_Curso }))
-        else if (activeTab === 'aula') setFAula((current) => ({ ...initialAula, ID_Modulo: current.ID_Modulo }))
-        else if (activeTab === 'questao') setFQuestao((current) => ({ ...initialQuestao, ID_Aula: current.ID_Aula }))
-        else if (activeTab === 'sala') setFSala((current) => ({ ...initialSala, ID_Criador: current.ID_Criador }))
-        else if (activeTab === 'matricula') setFMatricula((current) => ({ ...initialMatricula, fk_Usuario_ID: current.fk_Usuario_ID }))
-    }
-        
-    return <main className="crud-shell">
+    {activeTab === 'usuarios' ? <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingUsuarioId} createTitle="Criar usuário" editTitle="Alterar usuário" hint="O perfil é criado por trigger no cadastro. Cargo, XP, nível e streak são controlados pelo servidor." />
+        <form onSubmit={handleUsuario} className="crud-form">
+          {!editingUsuarioId && <>
+            <Field label="E-mail *" help="Ex.: usuario@exemplo.com — e-mail utilizado para autenticação no Supabase Auth.">
+              <input type="email" value={fUsuario.email} onChange={(event) => setFUsuario({ ...fUsuario, email: event.target.value })} required />
+            </Field>
+            <Field label="Senha *" help="Mínimo de 6 caracteres.">
+              <input type="password" value={fUsuario.password} onChange={(event) => setFUsuario({ ...fUsuario, password: event.target.value })} minLength={6} required />
+            </Field>
+          </>}
+          <Field label="Nome de exibição *" help="Ex.: Maria Silva — nome público exibido no perfil.">
+            <input value={fUsuario.display_name} onChange={(event) => setFUsuario({ ...fUsuario, display_name: event.target.value })} required />
+          </Field>
+          <Field label="Nome de usuário *" help="Ex.: maria_silva — nome de usuário único no sistema.">
+            <input value={fUsuario.username} onChange={(event) => setFUsuario({ ...fUsuario, username: event.target.value })} required />
+          </Field>
+          <Field label="Biografia" help="Ex.: Desenvolvedor Front-end apaixonado por React e TypeScript.">
+            <textarea value={fUsuario.bio} onChange={(event) => setFUsuario({ ...fUsuario, bio: event.target.value })} rows={4} />
+          </Field>
+          <FormActions editing={!!editingUsuarioId} createLabel="Criar usuário" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-        <nav className="table-tabs" aria-label="Tabelas do banco">
-            <button className={activeTab === 'usuarios' ? 'active' : ''} onClick={() => { setActiveTab('usuarios'); resetCurrentForm() }}>Usuários</button>
-            <button className={activeTab === 'cursos' ? 'active' : ''} onClick={() => { setActiveTab('cursos'); resetCurrentForm() }}>Cursos</button>
-            <button className={activeTab === 'modulo' ? 'active' : ''} onClick={() => { setActiveTab('modulo'); resetCurrentForm() }}>modulo</button>
-            <button className={activeTab === 'aula' ? 'active' : ''} onClick={() => { setActiveTab('aula'); resetCurrentForm() }}>aula</button>
-            <button className={activeTab === 'questao' ? 'active' : ''} onClick={() => { setActiveTab('questao'); resetCurrentForm() }}>Questões</button>
-            <button className={activeTab === 'sala' ? 'active' : ''} onClick={() => { setActiveTab('sala'); resetCurrentForm() }}>Salas</button>
-            <button className={activeTab === 'matricula' ? 'active' : ''} onClick={() => { setActiveTab('matricula'); resetCurrentForm() }}>Matriculas</button>
-        </nav>
-        
-        {statusMsg && <div className={`crud-status ${statusMsg.isError ? 'error' : 'success'}`} role="status">{statusMsg.text}</div>}
+      <section className="crud-card list-card">
+        <ListToolbar title="Usuários" onRefresh={() => void loadUsuarios()} loading={loading} />
+        <UserTable usuarios={usuarios} loading={loading} onEdit={editUsuario} onDelete={(id) => void removeUsuario(id)} />
+      </section>
+    </>
+    : activeTab === 'cursos' ? <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingCursoId} createTitle="Criar curso" editTitle="Alterar curso" hint="O criador do curso é o usuário logado." />
+        <form onSubmit={handleCurso} className="crud-form">
+          <Field label="ID do criador *" help="UUID do usuário logado (preenchido automaticamente).">
+            <input value={currentUserId} readOnly placeholder="Faça login" />
+          </Field>
+          <Field label="Título *" help="Título do curso.">
+            <input value={fCurso.title} onChange={(event) => setFCurso({ ...fCurso, title: event.target.value })} required />
+          </Field>
+          <Field label="Slug *" help="Slug do curso (usado para a URL). Precisa ser único.">
+            <input value={fCurso.slug} onChange={(event) => setFCurso({ ...fCurso, slug: event.target.value })} required />
+          </Field>
+          <Field label="Descrição" help="Descrição do curso.">
+            <textarea value={fCurso.description} onChange={(event) => setFCurso({ ...fCurso, description: event.target.value })} rows={4} />
+          </Field>
+          <Field label="Categoria" help="Ex.: Programação, Design, Data Science">
+            <input value={fCurso.category} onChange={(event) => setFCurso({ ...fCurso, category: event.target.value })} />
+          </Field>
+          <Field label="Tags" help="Tags do curso (separadas por vírgula).">
+            <input value={fCurso.tags} onChange={(event) => setFCurso({ ...fCurso, tags: event.target.value })} placeholder="javascript, frontend, web" />
+          </Field>
+          <Field label="URL da capa" help="Endereço da imagem de capa do curso.">
+            <input type="url" value={fCurso.cover_url} onChange={(event) => setFCurso({ ...fCurso, cover_url: event.target.value })} placeholder="https://..." />
+          </Field>
+          <Field label="Status" help="draft (rascunho) ou published (publicado).">
+            <select value={fCurso.status} onChange={(event) => setFCurso({ ...fCurso, status: event.target.value as CourseStatus })}>
+              <option value="draft">draft</option>
+              <option value="published">published</option>
+            </select>
+          </Field>
+          <Field label="Visibilidade" help="public (todos veem) ou private (só quem tem acesso).">
+            <select value={fCurso.visibility} onChange={(event) => setFCurso({ ...fCurso, visibility: event.target.value as CourseVisibility })}>
+              <option value="public">public</option>
+              <option value="private">private</option>
+            </select>
+          </Field>
+          <FormActions editing={!!editingCursoId} createLabel="Criar curso" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-        {activeTab === 'usuarios' ? <>
-            <section className="crud-card form-card">
-                <div className="section-heading">
-                    <span className="eyebrow">{editingUsuarioId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                    <h2>{editingUsuarioId ? 'Alterar usuário' : 'Criar usuário'}</h2>
-                </div>
-                
-                <form onSubmit={handleUsuario} className="crud-form">{
-                    !editingUsuarioId && <>
-                    <label>
-                      <span>E-mail *</span>
-                      <input type="email" value={fUsuario.email} onChange={(event) => setFUsuario({ ...fUsuario, email: event.target.value })} required />
-                      <small className="field-help">Ex.: usuario@exemplo.com — e-mail utilizado para autenticação no Supabase Auth.</small>
-                    </label>
-                    <label>
-                      <span>Senha *</span>
-                      <input type="password" value={fUsuario.password} onChange={(event) => setFUsuario({ ...fUsuario, password: event.target.value })} minLength={6} required />
-                      <small className="field-help">Mínimo de 6 caracteres.</small>
-                    </label>
-                  </>}
-                    <label>
-                      <span>Nome de exibição *</span>
-                      <input value={fUsuario.Nome_Display} onChange={(event) => setFUsuario({ ...fUsuario, Nome_Display: event.target.value })} required />
-                      <small className="field-help">Ex.: Maria Silva — nome público exibido no perfil.</small>
-                    </label>
-                    <label>
-                      <span>Nome de usuário</span>
-                      <input value={fUsuario.Nome_Usuario} onChange={(event) => setFUsuario({ ...fUsuario, Nome_Usuario: event.target.value })} />
-                      <small className="field-help">Ex.: maria_silva — nome de usuário único no sistema.</small>
-                    </label>
-                    <label>
-                      <span>Cargo</span>
-                      <select value={fUsuario.Cargo} onChange={(event) => setFUsuario({ ...fUsuario, Cargo: event.target.value as Cargo })}>
-                        <option value="learner">learner</option>
-                        <option value="creator">creator</option>
-                        <option value="moderator">moderator</option>
-                      </select>
-                      <small className="field-help">learner (estudante), creator (criador de conteúdo) ou moderator (moderador).</small>
-                    </label>
-                    <label>
-                      <span>Biografia</span>
-                      <textarea value={fUsuario.Biografia} onChange={(event) => setFUsuario({ ...fUsuario, Biografia: event.target.value })} rows={4} />
-                      <small className="field-help">Ex.: Desenvolvedor Front-end apaixonado por React e TypeScript.</small>
-                    </label>
-                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingUsuarioId ? 'Salvar alterações' : 'Criar usuário'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
-                </form>
-            </section>
-        
-            <section className="crud-card list-card">
-                <div className="list-toolbar">
-                    <div>
-                        
-                        <h2>Ultimo usuário criado</h2>
-                    </div>
-                <button className="button ghost" onClick={() => void loadUsuarios()} disabled={loading}>Atualizar</button>
-                </div>
-                <UserTable usuarios={usuarios} loading={loading} onEdit={editUsuario} onDelete={(id) => void removeUsuario(id)} />
-            </section>
+      <section className="crud-card list-card">
+        <ListToolbar title="Cursos" onRefresh={() => void loadCursos()} loading={loading} />
+        <CourseTable cursos={cursos} loading={loading} onEdit={editCurso} onDelete={(id) => void removeCurso(id)} />
+      </section>
+    </>
+    : activeTab === 'modulo' ? <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingModuloId} createTitle="Criar módulo" editTitle="Alterar módulo" hint="Escolha a qual curso este módulo pertence (só cursos seus aparecem aqui)." />
+        <form onSubmit={handleModulo} className="crud-form">
+          <Field label="Curso *" help="Selecione o curso ao qual este módulo pertence.">
+            <select value={fModulo.course_id} onChange={(event) => setFModulo({ ...fModulo, course_id: event.target.value })} required>
+              <option value="" disabled>Selecione um curso</option>
+              {meusCursos.map((curso) => <option key={curso.id} value={curso.id}>{curso.title}</option>)}
+            </select>
+          </Field>
+          <Field label="Título *" help="Título do módulo.">
+            <input value={fModulo.title} onChange={(event) => setFModulo({ ...fModulo, title: event.target.value })} required />
+          </Field>
+          <Field label="Descrição" help="Descrição do módulo.">
+            <textarea value={fModulo.description} onChange={(event) => setFModulo({ ...fModulo, description: event.target.value })} rows={3} />
+          </Field>
+          <Field label="Posição" help="Posição do módulo no curso.">
+            <input type="number" value={fModulo.position} onChange={(event) => setFModulo({ ...fModulo, position: event.target.value })} />
+          </Field>
+          <Field label="Cor" help="Cor associada ao módulo.">
+            <input type="color" value={fModulo.color} onChange={(event) => setFModulo({ ...fModulo, color: event.target.value })} />
+          </Field>
+          <FormActions editing={!!editingModuloId} createLabel="Criar módulo" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-        </> 
-        : activeTab === 'cursos' ? <>
+      <section className="crud-card list-card">
+        <ListToolbar title="Módulos" onRefresh={() => void loadModulos()} loading={loading} />
+        <ModuloTable modulos={modulos} cursos={cursos} loading={loading} onEdit={editModulo} onDelete={(id) => void removeModulo(id)} />
+      </section>
+    </>
+    : activeTab === 'aula' ? <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingAulaId} createTitle="Criar aula" editTitle="Alterar aula" hint="Escolha a qual módulo esta aula pertence (só módulos dos seus cursos aparecem aqui)." />
+        <form onSubmit={handleAula} className="crud-form">
+          <Field label="Módulo *" help="Módulo que conterá esta aula.">
+            <select value={fAula.module_id} onChange={(event) => setFAula({ ...fAula, module_id: event.target.value })} required>
+              <option value="" disabled>Selecione um módulo</option>
+              {meusModulos.map((modulo) => {
+                const cursoDoModulo = cursos.find((c) => c.id === modulo.course_id)
+                return <option key={modulo.id} value={modulo.id}>{cursoDoModulo?.title ?? '?'} → {modulo.title}</option>
+              })}
+            </select>
+          </Field>
+          <Field label="Título *" help="Título da aula.">
+            <input value={fAula.title} onChange={(event) => setFAula({ ...fAula, title: event.target.value })} required />
+          </Field>
+          <Field label="Conteúdo" help="Conteúdo da aula.">
+            <textarea value={fAula.content} onChange={(event) => setFAula({ ...fAula, content: event.target.value })} rows={5} />
+          </Field>
+          <Field label="Posição" help="Posição da aula no módulo.">
+            <input type="number" value={fAula.position} onChange={(event) => setFAula({ ...fAula, position: event.target.value })} />
+          </Field>
+          <Field label="Status" help="draft (rascunho), published (publicada) ou archived (arquivada).">
+            <select value={fAula.status} onChange={(event) => setFAula({ ...fAula, status: event.target.value as ContentStatus })}>
+              <option value="draft">draft</option>
+              <option value="published">published</option>
+              <option value="archived">archived</option>
+            </select>
+          </Field>
+          <FormActions editing={!!editingAulaId} createLabel="Criar aula" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-            <section className="crud-card form-card">
-                <div className="section-heading">
-                    <span className="eyebrow">{editingCursoId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                    <h2>{editingCursoId ? 'Alterar curso' : 'Criar curso'}</h2>
-                    <p>O ID do criador começa com o último cadastrado e pode ser conferido no banco.</p>
-                </div>
+      <section className="crud-card list-card">
+        <ListToolbar title="Aulas" onRefresh={() => void loadAulas()} loading={loading} />
+        <AulaTable aulas={aulas} modulos={modulos} loading={loading} onEdit={editAula} onDelete={(id) => void removeAula(id)} />
+      </section>
+    </>
+    : activeTab === 'questao' ? <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingQuestaoId} createTitle="Criar questão" editTitle="Alterar questão" hint="Escolha a qual aula esta questão pertence (só aulas dos seus cursos aparecem aqui)." />
+        <form onSubmit={handleQuestao} className="crud-form">
+          <Field label="Aula *" help="Selecione a aula relacionada à questão.">
+            <select value={fQuestao.lesson_id} onChange={(event) => setFQuestao({ ...fQuestao, lesson_id: event.target.value })} required>
+              <option value="" disabled>Selecione uma aula</option>
+              {minhasAulas.map((aula) => <option key={aula.id} value={aula.id}>{aula.title}</option>)}
+            </select>
+          </Field>
+          <Field label="Tipo" help="Formato da interação esperada do aluno.">
+            <select value={fQuestao.type} onChange={(event) => void changeQuestionType(event.target.value as QuestionType)}>
+              {Object.entries(questionTypeLabels).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
+            </select>
+          </Field>
+          <Field className="wide" label="Enunciado *" help="Ex.: Qual hook é utilizado para gerenciar estado em componentes funcionais?">
+            <textarea value={fQuestao.prompt} onChange={(event) => setFQuestao({ ...fQuestao, prompt: event.target.value })} rows={3} required />
+          </Field>
+          <Field className="wide" label="Configuração (JSON) *" help="Opções, respostas corretas, pares etc. Ao trocar o tipo, um modelo no formato do grade_answer é carregado.">
+            <textarea value={fQuestao.config} onChange={(event) => setFQuestao({ ...fQuestao, config: event.target.value })} rows={10} spellCheck={false} style={{ fontFamily: 'monospace' }} required />
+          </Field>
+          <Field label="XP" help="Pontos de experiência da questão (o padrão vem do tipo).">
+            <input type="number" value={fQuestao.xp_value} onChange={(event) => setFQuestao({ ...fQuestao, xp_value: event.target.value })} />
+          </Field>
+          <Field label="Posição" help="Ex.: 1 — ordem da questão na aula.">
+            <input type="number" value={fQuestao.position} onChange={(event) => setFQuestao({ ...fQuestao, position: event.target.value })} />
+          </Field>
+          <FormActions editing={!!editingQuestaoId} createLabel="Criar questão" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-                <form onSubmit={handleCurso} className="crud-form">
-                    <label>
-                      <span>ID do criador *</span>
-                      <input value={fCurso.ID_Criador} readOnly placeholder="Último usuário cadastrado" />
-                      <small className="field-help">UUID do usuário criador (preenchido automaticamente).</small>
-                    </label>
-                    <label>
-                      <span>Título *</span>
-                      <input value={fCurso.Titulo} onChange={(event) => setFCurso({ ...fCurso, Titulo: event.target.value })} required />
-                      <small className="field-help">Título do curso (máximo de 100 caracteres).</small>
-                    </label>
-                    <label>
-                      <span>Slug *</span>
-                      <input value={fCurso.Slug} onChange={(event) => setFCurso({ ...fCurso, Slug: event.target.value })} required />
-                      <small className="field-help">Slug do curso (usado para a URL).</small>
-                    </label>
-                    <label>
-                      <span>Descrição</span>
-                      <textarea value={fCurso.Descricao} onChange={(event) => setFCurso({ ...fCurso, Descricao: event.target.value })} rows={4} />
-                      <small className="field-help">Descrição do curso (máximo de 200 caracteres).</small>
-                    </label>
-                    <label>
-                      <span>Dificuldade</span>
-                      <select value={fCurso.Dificuldade} onChange={(event) => setFCurso({ ...fCurso, Dificuldade: event.target.value as CourseLevel })}>
-                        <option>Beginner</option>
-                        <option>Intermediate</option>
-                        <option>Advanced</option>
-                      </select>
-                      <small className="field-help">Nível de conhecimento exigido do aluno.</small>
-                    </label>
-                    <label>
-                      <span>Categoria</span>
-                      <input value={fCurso.Categoria} onChange={(event) => setFCurso({ ...fCurso, Categoria: event.target.value })} />
-                      <small className="field-help">Ex.: Programação, Design, Data Science</small>
-                    </label>
-                    <label>
-                      <span>Tags</span>
-                      <input value={fCurso.Tags} onChange={(event) => setFCurso({ ...fCurso, Tags: event.target.value })} placeholder="javascript, frontend, web" />
-                      <small className="field-help">Tags do curso (separadas por vírgula).</small>
-                    </label>
-                    <label>
-                      <span>Cor da capa</span>
-                      <input type="color" value={fCurso.Cor_Capa} onChange={(event) => setFCurso({ ...fCurso, Cor_Capa: event.target.value })} />
-                      <small className="field-help">Cor da capa do curso.</small>
-                    </label>
-                    <label>
-                      <span>Ícone</span>
-                      <input value={fCurso.Icone} onChange={(event) => setFCurso({ ...fCurso, Icone: event.target.value })} />
-                      <small className="field-help">Ícone do curso.</small>
-                    </label>
-                    <label>
-                      <span>Status</span>
-                      <select value={fCurso.Status} onChange={(event) => setFCurso({ ...fCurso, Status: event.target.value as CourseStatus })}>
-                        <option value="draft">draft</option>
-                        <option value="published">published</option>
-                        <option value="archived">archived</option>
-                      </select>
-                      <small className="field-help">draft (rascunho), published (visível) ou archived (arquivado).</small>
-                    </label>
-                    <div className="form-actions">
-                      <button className="button primary" type="submit" disabled={loading}>
-                        {loading ? 'Salvando...' : editingCursoId ? 'Salvar alterações' : 'Criar curso'}
-                      </button>
-                      <button className="button ghost" type="button" onClick={resetCurrentForm}>
-                        Limpar
-                      </button>
-                    </div>
-                  </form>
-                </section>
+      <section className="crud-card list-card">
+        <ListToolbar title="Questões" onRefresh={() => void loadQuestoes()} loading={loading} />
+        <QuestaoTable questoes={questoes} aulas={aulas} loading={loading} onEdit={editQuestao} onDelete={(id) => void removeQuestao(id)} />
+      </section>
+    </>
+    : activeTab === 'sala' ? <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingSalaId} createTitle="Criar sala" editTitle="Alterar sala" hint="Vínculo com curso é opcional. Código precisa ser único." />
+        <form onSubmit={handleSala} className="crud-form">
+          <Field label="ID do educador *" help="UUID do usuário logado, responsável pela sala.">
+            <input value={currentUserId} readOnly placeholder="Faça login" />
+          </Field>
+          <Field label="Nome *" help="Ex.: Turma React 2026.1">
+            <input value={fSala.name} onChange={(event) => setFSala({ ...fSala, name: event.target.value })} required />
+          </Field>
+          <Field label="Código de acesso *" help="Ex.: TURMA2026 — código único em maiúsculas para entrada na sala.">
+            <input value={fSala.access_code} onChange={(event) => setFSala({ ...fSala, access_code: event.target.value })} placeholder="ex: TURMA2024" required />
+          </Field>
+          <Field label="Curso vinculado" help="Associe um curso opcional para os estudantes da sala.">
+            <select value={fSala.course_id} onChange={(event) => setFSala({ ...fSala, course_id: event.target.value })}>
+              <option value="">Nenhum</option>
+              {meusCursos.map((curso) => <option key={curso.id} value={curso.id}>{curso.title}</option>)}
+            </select>
+          </Field>
+          <FormActions editing={!!editingSalaId} createLabel="Criar sala" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-            <section className="crud-card list-card">
-                <div className="list-toolbar"><div>
-                    <span className="eyebrow">REGISTROS</span>
-                    <h2>Cursos</h2>
-                </div>
-                <button className="button ghost" onClick={() => void loadCursos()} disabled={loading}>Atualizar lista</button></div><CourseTable cursos={cursos} loading={loading} onEdit={editCurso} onDelete={(id) => void removeCurso(id)} />
+      <section className="crud-card list-card">
+        <ListToolbar title="Salas" onRefresh={() => void loadSalas()} loading={loading} />
+        <SalaTable salas={salas} cursos={cursos} loading={loading} onEdit={editSala} onDelete={(id) => void removeSala(id)} />
+      </section>
+    </>
+    : <>
+      <section className="crud-card form-card">
+        <SectionHeading editing={!!editingMatricula} createTitle="Nova matrícula" editTitle="Atualizar matrícula" hint='Aqui você só vê e mexe nas suas próprias matrículas (RLS "self only").' />
+        <form onSubmit={handleMatricula} className="crud-form">
+          {!editingMatricula && (
+            <Field label="Curso *" help="Selecione o curso para realizar a matrícula.">
+              <select value={fMatricula.course_id} onChange={(event) => setFMatricula({ ...fMatricula, course_id: event.target.value })} required>
+                <option value="" disabled>Selecione um curso</option>
+                {cursos.map((curso) => <option key={curso.id} value={curso.id}>{curso.title}</option>)}
+              </select>
+            </Field>
+          )}
+          {editingMatricula && (
+            <>
+              <p><strong>Curso:</strong> {cursos.find((c) => c.id === editingMatricula.course_id)?.title ?? editingMatricula.course_id}</p>
+              <Field label="Status" help="active, completed ou dropped. O progresso é calculado pelo servidor.">
+                <select value={fMatricula.status} onChange={(event) => setFMatricula({ ...fMatricula, status: event.target.value as EnrollmentStatus })}>
+                  <option value="active">active</option>
+                  <option value="completed">completed</option>
+                  <option value="dropped">dropped</option>
+                </select>
+              </Field>
+              <Field label="Avaliação" help="Nota inteira de 0 a 5 (gravada em reviews). Deixe em branco para não alterar.">
+                <input type="number" min={0} max={5} step={1} value={fMatricula.rating} onChange={(event) => setFMatricula({ ...fMatricula, rating: event.target.value })} />
+              </Field>
+            </>
+          )}
+          <FormActions editing={!!editingMatricula} createLabel="Matricular" loading={loading} onReset={resetAll} />
+        </form>
+      </section>
 
-            </section>
-        </>
-        : activeTab === 'modulo' ? <>
-            <section className="crud-card form-card">
-                <div className="section-heading">
-                    <span className="eyebrow">{editingModuloId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                    <h2>{editingModuloId ? 'Alterar módulo' : 'Criar módulo'}</h2>
-                    <p>Escolha a qual curso este módulo pertence.</p>
-                </div>
-
-                <form onSubmit={handleModulo} className="crud-form">
-                    <label>
-                        <span>Curso *</span>
-                        <select value={fModulo.ID_Curso} onChange={(event) => setFModulo({ ...fModulo, ID_Curso: event.target.value })} required>
-                            <option value="" disabled>Selecione um curso</option>
-                            {cursos
-                            .filter((curso) => curso.ID_Criador === fCurso.ID_Criador).map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
-                        </select>
-                        <small className="field-help">Selecione o curso ao qual este módulo pertence.</small>
-                    </label>
-                    <label>
-                        <span>Título *</span>
-                        <input value={fModulo.Titulo} onChange={(event) => setFModulo({ ...fModulo, Titulo: event.target.value })} required />
-                        <small className="field-help">Título do módulo (máximo de 100 caracteres).</small>
-                    </label>
-                    <label>
-                        <span>Subtítulo</span>
-                        <input value={fModulo.Subtitulo} onChange={(event) => setFModulo({ ...fModulo, Subtitulo: event.target.value })} />
-                        <small className="field-help">Subtítulo do módulo (máximo de 100 caracteres).</small>
-                    </label>
-                    <label>
-                        <span>Posição</span>
-                        <input type="number" value={fModulo.Posicao} onChange={(event) => setFModulo({ ...fModulo, Posicao: event.target.value })} />
-                        <small className="field-help">Posição do módulo no curso.</small>
-                    </label>
-                    <label>
-                        <span>Cor do tema</span>
-                        <input type="color" value={fModulo.Cor_Tema} onChange={(event) => setFModulo({ ...fModulo, Cor_Tema: event.target.value })} />
-                        <small className="field-help">Cor associada ao tema do módulo.</small>
-                    </label>
-                    <label>
-                        <span>Ícone</span>
-                        <input value={fModulo.Icone} onChange={(event) => setFModulo({ ...fModulo, Icone: event.target.value })} />
-                        <small className="field-help">Ícone representativo do módulo.</small>
-                    </label>
-                    <div className="form-actions">
-                        <button className="button primary" type="submit" disabled={loading}>
-                            {loading ? 'Salvando...' : editingModuloId ? 'Salvar alterações' : 'Criar módulo'}
-                        </button>
-                        <button className="button ghost" type="button" onClick={resetCurrentForm}>
-                            Limpar
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            <section className="crud-card list-card">
-                <div className="list-toolbar"><div>
-                    <span className="eyebrow">REGISTROS</span>
-                    <h2>Módulos</h2>
-                </div>
-                <button className="button ghost" onClick={() => void loadModulos()} disabled={loading}>Atualizar lista</button></div>
-                <ModuloTable modulos={modulos} cursos={cursos} loading={loading} onEdit={editModulo} onDelete={(id) => void removeModulo(id)} />
-            </section>
-        </>
-        : activeTab === 'aula' ? <>
-            <section className="crud-card form-card">
-                <div className="section-heading">
-                    <span className="eyebrow">{editingAulaId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                    <h2>{editingAulaId ? 'Alterar aula' : 'Criar aula'}</h2>
-                    <p>Escolha a qual módulo esta aula pertence (só módulos dos seus cursos aparecem aqui).</p>
-                </div>
-
-                <form onSubmit={handleAula} className="crud-form">
-                    <label>
-                        <span>Módulo *</span>
-                        <select value={fAula.ID_Modulo} onChange={(event) => setFAula({ ...fAula, ID_Modulo: event.target.value })} required>
-                            <option value="" disabled>Selecione um módulo</option>
-                            {modulos
-                                .filter((modulo) => cursos.some((curso) => curso.ID === modulo.ID_Curso && curso.ID_Criador === fCurso.ID_Criador))
-                                .map((modulo) => {
-                                    const cursoDoModulo = cursos.find((c) => c.ID === modulo.ID_Curso)
-                                    return <option key={modulo.ID} value={modulo.ID}>{cursoDoModulo?.Titulo ?? '?'} → {modulo.Titulo}</option>
-                                })}
-                        </select>
-                        <small className="field-help">Módulo que conterá esta aula.</small>
-                    </label>
-                    <label>
-                        <span>Título *</span>
-                        <input value={fAula.Titulo} onChange={(event) => setFAula({ ...fAula, Titulo: event.target.value })} required />
-                        <small className="field-help">Título da aula (máximo de 100 caracteres).</small>
-                    </label>
-                    <label>
-                        <span>Descrição</span>
-                        <textarea value={fAula.Descricao} onChange={(event) => setFAula({ ...fAula, Descricao: event.target.value })} rows={4} />
-                        <small className="field-help">Descrição detalhada da aula.</small>
-                    </label>
-                    <label>
-                        <span>Duração</span>
-                        <input value={fAula.Duracao} onChange={(event) => setFAula({ ...fAula, Duracao: event.target.value })} placeholder="ex: 00:12:00" />
-                        <small className="field-help">Duração estimada da aula.</small>
-                    </label>
-                    <label>
-                        <span>Posição</span>
-                        <input type="number" value={fAula.Posicao} onChange={(event) => setFAula({ ...fAula, Posicao: event.target.value })} />
-                        <small className="field-help">Posição da aula no módulo.</small>
-                    </label>
-                    <label>
-                        <span>Publicado</span>
-                        <input type="checkbox" checked={fAula.Publicado} onChange={(event) => setFAula({ ...fAula, Publicado: event.target.checked })} />
-                        <small className="field-help">Indica se a aula está publicada.</small>
-                    </label>
-                    <div className="form-actions">
-                        <button className="button primary" type="submit" disabled={loading}>
-                            {loading ? 'Salvando...' : editingAulaId ? 'Salvar alterações' : 'Criar aula'}
-                        </button>
-                        <button className="button ghost" type="button" onClick={resetCurrentForm}>
-                            Limpar
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            <section className="crud-card list-card">
-                <div className="list-toolbar"><div>
-                    <span className="eyebrow">REGISTROS</span>
-                    <h2>Aulas</h2>
-                </div>
-                <button className="button ghost" onClick={() => void loadAulas()} disabled={loading}>Atualizar lista</button></div>
-                <AulaTable aulas={aulas} modulos={modulos} loading={loading} onEdit={editAula} onDelete={(id) => void removeAula(id)} />
-            </section>
-        </>
-        : activeTab === 'questao' ? <>
-            <section className="crud-card form-card">
-                <div className="section-heading">
-                    <span className="eyebrow">{editingQuestaoId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                    <h2>{editingQuestaoId ? 'Alterar questão' : 'Criar questão'}</h2>
-                    <p>Escolha a qual aula esta questão pertence (só aulas dos seus cursos aparecem aqui).</p>
-                </div>
-
-                <form onSubmit={handleQuestao} className="crud-form">
-                    <label>
-                        <span>Aula *</span>
-                        <select value={fQuestao.ID_Aula} onChange={(event) => setFQuestao({ ...fQuestao, ID_Aula: event.target.value })} required>
-                            <option value="" disabled>Selecione uma aula</option>
-                            {aulas
-                                .filter((aula) => {
-                                    const modulo = modulos.find((m) => m.ID === aula.ID_Modulo)
-                                    if (!modulo) return false
-                                    return cursos.some((curso) => curso.ID === modulo.ID_Curso && curso.ID_Criador === fCurso.ID_Criador)
-                                })
-                                .map((aula) => <option key={aula.ID} value={aula.ID}>{aula.Titulo}</option>)}
-                        </select>
-                        <small className="field-help">Selecione a aula relacionada à questão.</small>
-                    </label>
-                    <label>
-                        <span>Tipo</span>
-                        <select value={fQuestao.Tipo} onChange={(event) => setFQuestao({ ...fQuestao, Tipo: event.target.value as QuestionType })}>
-                            {Object.entries(questionTypeLabels).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
-                        </select>
-                        <small className="field-help">Formato da interação esperada do aluno.</small>
-                    </label>
-                    <label className="wide">
-                        <span>Enunciado *</span>
-                        <textarea value={fQuestao.TextoEnunciado} onChange={(event) => setFQuestao({ ...fQuestao, TextoEnunciado: event.target.value })} rows={3} required />
-                        <small className="field-help">Ex.: Qual hook é utilizado para gerenciar estado em componentes funcionais?</small>
-                    </label>
-
-                    {fQuestao.Tipo === 'multiple_choice' && (
-                        <div className="wide">
-                            <span>Alternativas * (marque a correta)</span>
-                            <small className="field-help">Preencha ao menos duas opções e marque o botão de seleção na opção correta.</small>
-                            {fQuestao.Alternativas.map((alternativa, index) => (
-                                <div key={index} className="form-actions">
-                                    <input type="radio" name="alternativaCorreta" checked={alternativa.correta} onChange={() => setAlternativaCorreta(index)} />
-                                    <input value={alternativa.texto} onChange={(event) => updateAlternativaTexto(index, event.target.value)} placeholder={`Alternativa ${index + 1}`} />
-                                    <button className="button ghost" type="button" onClick={() => removeAlternativa(index)}>Remover</button>
-                                </div>
-                            ))}
-                            <button className="button ghost" type="button" onClick={addAlternativa}>+ Alternativa</button>
-                        </div>
-                    )}
-
-                    {fQuestao.Tipo === 'fill_blank' && (
-                        <label className="wide">
-                            <span>Resposta correta *</span>
-                            <input value={fQuestao.RespostaFillBlank} onChange={(event) => setFQuestao({ ...fQuestao, RespostaFillBlank: event.target.value })} />
-                            <small className="field-help">Ex.: useState — texto exato esperado no preenchimento da lacuna.</small>
-                        </label>
-                    )}
-
-                    {fQuestao.Tipo === 'word_match' && (
-                        <div className="wide">
-                            <span>Pares (esquerda ↔ direita)</span>
-                            <small className="field-help">Ex.: Esquerda: "JSX", Direita: "Sintaxe estendida do JavaScript".</small>
-                            {fQuestao.Pares.map((par, index) => (
-                                <div key={index} className="form-actions">
-                                    <input value={par.esquerda} onChange={(event) => updatePar(index, 'esquerda', event.target.value)} placeholder="Esquerda" />
-                                    <input value={par.direita} onChange={(event) => updatePar(index, 'direita', event.target.value)} placeholder="Direita" />
-                                    <button className="button ghost" type="button" onClick={() => removePar(index)}>Remover</button>
-                                </div>
-                            ))}
-                            <button className="button ghost" type="button" onClick={addPar}>+ Par</button>
-                        </div>
-                    )}
-
-                    {fQuestao.Tipo === 'order_sequence' && (
-                        <div className="wide">
-                            <span>Itens, na ordem correta</span>
-                            <small className="field-help">Adicione os itens na sequência correta em que o aluno deve ordená-los.</small>
-                            {fQuestao.ItensOrdem.map((item, index) => (
-                                <div key={index} className="form-actions">
-                                    <input value={item} onChange={(event) => updateItemOrdem(index, event.target.value)} placeholder={`Item ${index + 1}`} />
-                                    <button className="button ghost" type="button" onClick={() => removeItemOrdem(index)}>Remover</button>
-                                </div>
-                            ))}
-                            <button className="button ghost" type="button" onClick={addItemOrdem}>+ Item</button>
-                        </div>
-                    )}
-
-                    <label>
-                      <span>XP</span>
-                      <input type="number" value={fQuestao.XP} onChange={(event) => setFQuestao({ ...fQuestao, XP: event.target.value })} />
-                      <small className="field-help">Ex.: 10 — quantidade de pontos de experiência concedidos.</small>
-                    </label>
-                    <label>
-                      <span>Posição</span>
-                      <input type="number" value={fQuestao.Posicao} onChange={(event) => setFQuestao({ ...fQuestao, Posicao: event.target.value })} />
-                      <small className="field-help">Ex.: 1 — ordem da questão no questionário.</small>
-                    </label>
-                    <label className="wide">
-                      <span>Explicação</span>
-                      <textarea value={fQuestao.Explicacao} onChange={(event) => setFQuestao({ ...fQuestao, Explicacao: event.target.value })} rows={3} />
-                      <small className="field-help">Ex.: O useState permite adicionar o estado do React a componentes de função.</small>
-                    </label>
-                    <div className="form-actions">
-                      <button className="button primary" type="submit" disabled={loading}>
-                        {loading ? 'Salvando...' : editingQuestaoId ? 'Salvar alterações' : 'Criar questão'}
-                      </button>
-                      <button className="button ghost" type="button" onClick={resetCurrentForm}>
-                        Limpar
-                      </button>
-                    </div>
-                  </form>
-                </section>
-
-            <section className="crud-card list-card">
-                <div className="list-toolbar"><div>
-                    <span className="eyebrow">REGISTROS</span>
-                    <h2>Questões</h2>
-                </div>
-                <button className="button ghost" onClick={() => void loadQuestoes()} disabled={loading}>Atualizar lista</button></div>
-                <QuestaoTable questoes={questoes} aulas={aulas} loading={loading} onEdit={editQuestao} onDelete={(id) => void removeQuestao(id)} />
-            </section>
-        </>
-        : activeTab === 'sala' ? <>
-        <section className="crud-card form-card">
-                <div className="section-heading">
-                    <span className="eyebrow">{editingSalaId ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                    <h2>{editingSalaId ? 'Alterar sala' : 'Criar sala'}</h2>
-                    <p>Vínculo com curso é opcional. Código precisa ser único.</p>
-                </div>
-
-                <form onSubmit={handleSala} className="crud-form">
-                    <label>
-                        <span>ID do criador *</span>
-                        <input value={fSala.ID_Criador} readOnly placeholder="Último usuário cadastrado" />
-                        <small className="field-help">UUID do usuário responsável pela sala.</small>
-                    </label>
-                    <label>
-                        <span>Nome *</span>
-                        <input value={fSala.Nome} onChange={(event) => setFSala({ ...fSala, Nome: event.target.value })} required />
-                        <small className="field-help">Ex.: Turma React 2026.1</small>
-                    </label>
-                    <label>
-                        <span>Código *</span>
-                        <input value={fSala.Codigo} onChange={(event) => setFSala({ ...fSala, Codigo: event.target.value })} placeholder="ex: TURMA2024" required />
-                        <small className="field-help">Ex.: TURMA2026 — código único em maiúsculas para entrada na sala.</small>
-                    </label>
-                    <label>
-                        <span>Curso vinculado</span>
-                        <select value={fSala.fk_Curso_ID} onChange={(event) => setFSala({ ...fSala, fk_Curso_ID: event.target.value })}>
-                            <option value="">Nenhum</option>
-                            {cursos.filter((curso) => curso.ID_Criador === fSala.ID_Criador).map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
-                        </select>
-                        <small className="field-help">Associe um curso opcional para os estudantes da sala.</small>
-                    </label>
-                    <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingSalaId ? 'Salvar alterações' : 'Criar sala'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
-                </form>
-            </section>
-
-            <section className="crud-card list-card">
-                <div className="list-toolbar"><div>
-                    <span className="eyebrow">REGISTROS</span>
-                    <h2>Salas</h2>
-                </div>
-                <button className="button ghost" onClick={() => void loadSalas()} disabled={loading}>Atualizar lista</button></div>
-                <SalaTable salas={salas} cursos={cursos} loading={loading} onEdit={editSala} onDelete={(id) => void removeSala(id)} />
-            </section>
-        </>
-        : <>
-        <section className="crud-card form-card">
-            <div className="section-heading">
-                <span className="eyebrow">{editingMatricula ? 'EDIÇÃO' : 'NOVO REGISTRO'}</span>
-                <h2>{editingMatricula ? 'Atualizar avaliação' : 'Nova matrícula'}</h2>
-                <p>Aqui você só vê e mexe nas suas próprias matrículas (RLS "self only").</p>
-            </div>
-
-            <form onSubmit={handleMatricula} className="crud-form">
-                {!editingMatricula && (
-                    <label>
-                        <span>Curso *</span>
-                        <select value={fMatricula.fk_Curso_ID} onChange={(event) => setFMatricula({ ...fMatricula, fk_Curso_ID: event.target.value })} required>
-                            <option value="" disabled>Selecione um curso</option>
-                            {cursos.map((curso) => <option key={curso.ID} value={curso.ID}>{curso.Titulo}</option>)}
-                        </select>
-                        <small className="field-help">Selecione o curso para realizar a matrícula.</small>
-                    </label>
-                )}
-                {editingMatricula && (
-                    <p><strong>Curso:</strong> {cursos.find((c) => c.ID === editingMatricula.fk_Curso_ID)?.Titulo ?? editingMatricula.fk_Curso_ID}</p>
-                )}
-                <label>
-                  <span>Avaliação {editingMatricula ? '*' : '(deixe em branco ao matricular)'}</span>
-                  <input type="number" min={0} max={5} step={1} value={fMatricula.Avaliacao} onChange={(event) => setFMatricula({ ...fMatricula, Avaliacao: event.target.value })} required={!!editingMatricula} />
-                  <small className="field-help">Ex.: Nota inteira de 0 a 5 avaliando o curso.</small>
-                </label>
-                <div className="form-actions"><button className="button primary" type="submit" disabled={loading}>{loading ? 'Salvando...' : editingMatricula ? 'Salvar avaliação' : 'Matricular'}</button><button className="button ghost" type="button" onClick={resetCurrentForm}>Limpar</button></div>
-            </form>
-        </section>
-
-        <section className="crud-card list-card">
-            <div className="list-toolbar"><div>
-                <span className="eyebrow">REGISTROS</span>
-                <h2>Minhas matrículas</h2>
-            </div>
-            <button className="button ghost" onClick={() => void loadMatriculas()} disabled={loading}>Atualizar lista</button></div>
-            <MatriculaTable matriculas={matriculas} cursos={cursos} loading={loading} onEdit={editMatricula} onDelete={(fkCurso, fkUsuario) => void removeMatricula(fkCurso, fkUsuario)} />
-        </section>
-        </>}
-    </main>
+      <section className="crud-card list-card">
+        <ListToolbar title="Minhas matrículas" onRefresh={() => void loadMatriculas()} loading={loading} />
+        <MatriculaTable matriculas={matriculas} cursos={cursos} avaliacoes={avaliacoes} loading={loading} onEdit={editMatricula} onDelete={(matricula) => void removeMatricula(matricula)} />
+      </section>
+    </>}
+  </main>
 }
 
-function UserTable({ usuarios, loading, onEdit, onDelete }:{ usuarios: Usuario[]; loading: boolean; onEdit: (usuario: Usuario) => void; onDelete: (id: string) => void }) { 
-        return <div className="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th>Usuário</th>
-                            <th>Cargo</th>
-                            <th>Biografia</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>{ usuarios.map((usuario) => 
-                            <tr key={usuario.ID}>
-                                <td><code>{usuario.ID}</code></td>
-                                <td>{usuario.Nome_Display}</td>
-                                <td>{usuario.Nome_Usuario ?? '—'}</td>
-                                <td>{usuario.Cargo}</td><td>{usuario.Biografia || '—'}</td>
-                                <td className="row-actions"><button className="link-button" onClick={() => onEdit(usuario)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(usuario.ID)}>Apagar</button></td>
-                                </tr>)
-                            }
-                            { usuarios.length === 0 && <tr>
-                                <td className="empty" colSpan={6}>{loading ? 'Carregando...' : 'Nenhum usuário visível para a sessão atual.'}</td>
-                                </tr>}
-                    </tbody>
-                </table>
-                </div> 
+function RowActions({ onEdit, onDelete, editLabel = 'Alterar' }: { onEdit: () => void; onDelete: () => void; editLabel?: string }) {
+  return (
+    <td className="row-actions">
+      <button className="link-button" onClick={onEdit}>{editLabel}</button>
+      <button className="link-button danger" onClick={onDelete}>Apagar</button>
+    </td>
+  )
 }
 
-function CourseTable({ cursos, loading, onEdit, onDelete }: { cursos: Curso[]; loading: boolean; onEdit: (curso: Curso) => void; onDelete: (id: string) => void }) { 
-    return <div className="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>ID Criador</th>
-                    <th>Título</th>
-                    <th>Slug</th>
-                    <th>Dificuldade</th>
-                    <th>Categoria</th>
-                    <th>Status</th>
-                    <th>Alunos</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>{cursos.map((curso) => 
-                <tr key={curso.ID}>
-                    <td><code>{curso.ID}</code></td>
-                    <td><code>{curso.ID_Criador}</code></td>
-                    <td>{curso.Icone} {curso.Titulo}</td>
-                    <td>{curso.Slug}</td>
-                    <td>{curso.Dificuldade}</td>
-                    <td>{curso.Categoria}</td>
-                    <td>{curso.Status}</td>
-                    <td>{curso.Contagem_Estudante}</td>
-                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(curso)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(curso.ID)}>Apagar</button></td>
-                    </tr>)
-                    }
-                    { cursos.length === 0 && <tr>
-                        <td className="empty" colSpan={9}>{loading ? 'Carregando...' : 'Nenhum curso visível para a sessão atual.'}</td>
-                        </tr>}
-            </tbody>
-        </table>
-        </div> 
+function EmptyRow({ colSpan, loading, text }: { colSpan: number; loading: boolean; text: string }) {
+  return <tr><td className="empty" colSpan={colSpan}>{loading ? 'Carregando...' : text}</td></tr>
+}
+
+function UserTable({ usuarios, loading, onEdit, onDelete }: { usuarios: Usuario[]; loading: boolean; onEdit: (usuario: Usuario) => void; onDelete: (id: string) => void }) {
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Nome</th><th>Usuário</th><th>Cargo</th><th>Nível</th><th>XP</th><th>Biografia</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {usuarios.map((usuario) =>
+          <tr key={usuario.id}>
+            <td><code>{usuario.id}</code></td>
+            <td>{usuario.display_name}</td>
+            <td>{usuario.username}</td>
+            <td>{usuario.role}</td>
+            <td>{usuario.level}</td>
+            <td>{usuario.xp_global}</td>
+            <td>{usuario.bio || '—'}</td>
+            <RowActions onEdit={() => onEdit(usuario)} onDelete={() => onDelete(usuario.id)} />
+          </tr>)}
+        {usuarios.length === 0 && <EmptyRow colSpan={8} loading={loading} text="Nenhum usuário visível para a sessão atual." />}
+      </tbody>
+    </table>
+  </div>
+}
+
+function CourseTable({ cursos, loading, onEdit, onDelete }: { cursos: Curso[]; loading: boolean; onEdit: (curso: Curso) => void; onDelete: (id: string) => void }) {
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>ID Criador</th><th>Título</th><th>Slug</th><th>Categoria</th><th>Status</th><th>Visibilidade</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {cursos.map((curso) =>
+          <tr key={curso.id}>
+            <td><code>{curso.id}</code></td>
+            <td><code>{curso.creator_id}</code></td>
+            <td>{curso.title}</td>
+            <td>{curso.slug}</td>
+            <td>{curso.category ?? '—'}</td>
+            <td>{curso.status}</td>
+            <td>{curso.visibility}</td>
+            <RowActions onEdit={() => onEdit(curso)} onDelete={() => onDelete(curso.id)} />
+          </tr>)}
+        {cursos.length === 0 && <EmptyRow colSpan={8} loading={loading} text="Nenhum curso visível para a sessão atual." />}
+      </tbody>
+    </table>
+  </div>
 }
 
 function ModuloTable({ modulos, cursos, loading, onEdit, onDelete }: { modulos: Modulo[]; cursos: Curso[]; loading: boolean; onEdit: (modulo: Modulo) => void; onDelete: (id: string) => void }) {
-    return <div className="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Curso</th>
-                    <th>Título</th>
-                    <th>Subtítulo</th>
-                    <th>Posição</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>{modulos.map((modulo) =>
-                <tr key={modulo.ID}>
-                    <td><code>{modulo.ID}</code></td>
-                    <td>{cursos.find((c) => c.ID === modulo.ID_Curso)?.Titulo ?? <code>{modulo.ID_Curso}</code>}</td>
-                    <td>{modulo.Icone} {modulo.Titulo}</td>
-                    <td>{modulo.Subtitulo || '—'}</td>
-                    <td>{modulo.Posicao}</td>
-                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(modulo)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(modulo.ID)}>Apagar</button></td>
-                </tr>)
-                }
-                { modulos.length === 0 && <tr>
-                    <td className="empty" colSpan={6}>{loading ? 'Carregando...' : 'Nenhum módulo cadastrado.'}</td>
-                    </tr>}
-            </tbody>
-        </table>
-        </div>
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Curso</th><th>Título</th><th>Descrição</th><th>Posição</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {modulos.map((modulo) =>
+          <tr key={modulo.id}>
+            <td><code>{modulo.id}</code></td>
+            <td>{cursos.find((c) => c.id === modulo.course_id)?.title ?? <code>{modulo.course_id}</code>}</td>
+            <td>{modulo.title}</td>
+            <td>{modulo.description || '—'}</td>
+            <td>{modulo.position}</td>
+            <RowActions onEdit={() => onEdit(modulo)} onDelete={() => onDelete(modulo.id)} />
+          </tr>)}
+        {modulos.length === 0 && <EmptyRow colSpan={6} loading={loading} text="Nenhum módulo cadastrado." />}
+      </tbody>
+    </table>
+  </div>
 }
 
 function AulaTable({ aulas, modulos, loading, onEdit, onDelete }: { aulas: Aula[]; modulos: Modulo[]; loading: boolean; onEdit: (aula: Aula) => void; onDelete: (id: string) => void }) {
-    return <div className="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Módulo</th>
-                    <th>Título</th>
-                    <th>Duração</th>
-                    <th>Posição</th>
-                    <th>Publicado</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>{aulas.map((aula) =>
-                <tr key={aula.ID}>
-                    <td><code>{aula.ID}</code></td>
-                    <td>{modulos.find((m) => m.ID === aula.ID_Modulo)?.Titulo ?? <code>{aula.ID_Modulo}</code>}</td>
-                    <td>{aula.Titulo}</td>
-                    <td>{aula.Duracao || '—'}</td>
-                    <td>{aula.Posicao}</td>
-                    <td>{aula.Publicado ? 'Sim' : 'Não'}</td>
-                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(aula)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(aula.ID)}>Apagar</button></td>
-                </tr>)
-                }
-                { aulas.length === 0 && <tr>
-                    <td className="empty" colSpan={7}>{loading ? 'Carregando...' : 'Nenhuma aula cadastrada.'}</td>
-                    </tr>}
-            </tbody>
-        </table>
-        </div>
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Módulo</th><th>Título</th><th>Posição</th><th>Status</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {aulas.map((aula) =>
+          <tr key={aula.id}>
+            <td><code>{aula.id}</code></td>
+            <td>{modulos.find((m) => m.id === aula.module_id)?.title ?? <code>{aula.module_id}</code>}</td>
+            <td>{aula.title}</td>
+            <td>{aula.position}</td>
+            <td>{aula.status}</td>
+            <RowActions onEdit={() => onEdit(aula)} onDelete={() => onDelete(aula.id)} />
+          </tr>)}
+        {aulas.length === 0 && <EmptyRow colSpan={6} loading={loading} text="Nenhuma aula cadastrada." />}
+      </tbody>
+    </table>
+  </div>
 }
 
 function QuestaoTable({ questoes, aulas, loading, onEdit, onDelete }: { questoes: Questao[]; aulas: Aula[]; loading: boolean; onEdit: (questao: Questao) => void; onDelete: (id: string) => void }) {
-    return <div className="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Aula</th>
-                    <th>Enunciado</th>
-                    <th>Tipo</th>
-                    <th>XP</th>
-                    <th>Posição</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>{questoes.map((questao) =>
-                <tr key={questao.ID}>
-                    <td><code>{questao.ID}</code></td>
-                    <td>{aulas.find((a) => a.ID === questao.ID_Aula)?.Titulo ?? <code>{questao.ID_Aula}</code>}</td>
-                    <td>{textoDoEnunciado(questao.Enunciado)}</td>
-                    <td>{questionTypeLabels[questao.Tipo]}</td>
-                    <td>{questao.XP}</td>
-                    <td>{questao.Posicao}</td>
-                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(questao)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(questao.ID)}>Apagar</button></td>
-                </tr>)
-                }
-                { questoes.length === 0 && <tr>
-                    <td className="empty" colSpan={7}>{loading ? 'Carregando...' : 'Nenhuma questão cadastrada.'}</td>
-                    </tr>}
-            </tbody>
-        </table>
-        </div>
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Aula</th><th>Enunciado</th><th>Tipo</th><th>XP</th><th>Posição</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {questoes.map((questao) =>
+          <tr key={questao.id}>
+            <td><code>{questao.id}</code></td>
+            <td>{aulas.find((a) => a.id === questao.lesson_id)?.title ?? <code>{questao.lesson_id}</code>}</td>
+            <td>{questao.prompt}</td>
+            <td>{questionTypeLabels[questao.type]}</td>
+            <td>{questao.xp_value}</td>
+            <td>{questao.position}</td>
+            <RowActions onEdit={() => onEdit(questao)} onDelete={() => onDelete(questao.id)} />
+          </tr>)}
+        {questoes.length === 0 && <EmptyRow colSpan={7} loading={loading} text="Nenhuma questão cadastrada." />}
+      </tbody>
+    </table>
+  </div>
 }
 
 function SalaTable({ salas, cursos, loading, onEdit, onDelete }: { salas: Sala[]; cursos: Curso[]; loading: boolean; onEdit: (sala: Sala) => void; onDelete: (id: string) => void }) {
-    return <div className="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nome</th>
-                    <th>Código</th>
-                    <th>Curso vinculado</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>{salas.map((sala) =>
-                <tr key={sala.ID}>
-                    <td><code>{sala.ID}</code></td>
-                    <td>{sala.Nome}</td>
-                    <td><code>{sala.Codigo}</code></td>
-                    <td>{sala.fk_Curso_ID ? (cursos.find((c) => c.ID === sala.fk_Curso_ID)?.Titulo ?? <code>{sala.fk_Curso_ID}</code>) : '—'}</td>
-                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(sala)}>Alterar</button><button className="link-button danger" onClick={() => onDelete(sala.ID)}>Apagar</button></td>
-                </tr>)
-                }
-                { salas.length === 0 && <tr>
-                    <td className="empty" colSpan={5}>{loading ? 'Carregando...' : 'Nenhuma sala cadastrada.'}</td>
-                    </tr>}
-            </tbody>
-        </table>
-        </div>
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Nome</th><th>Código</th><th>Curso vinculado</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {salas.map((sala) =>
+          <tr key={sala.id}>
+            <td><code>{sala.id}</code></td>
+            <td>{sala.name}</td>
+            <td><code>{sala.access_code}</code></td>
+            <td>{sala.course_id ? (cursos.find((c) => c.id === sala.course_id)?.title ?? <code>{sala.course_id}</code>) : '—'}</td>
+            <RowActions onEdit={() => onEdit(sala)} onDelete={() => onDelete(sala.id)} />
+          </tr>)}
+        {salas.length === 0 && <EmptyRow colSpan={5} loading={loading} text="Nenhuma sala cadastrada." />}
+      </tbody>
+    </table>
+  </div>
 }
 
-function MatriculaTable({ matriculas, cursos, loading, onEdit, onDelete }: { matriculas: Matricula[]; cursos: Curso[]; loading: boolean; onEdit: (matricula: Matricula) => void; onDelete: (fkCursoId: string, fkUsuarioId: string) => void }) {
-    return <div className="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Curso</th>
-                    <th>Aulas finalizadas</th>
-                    <th>Avaliação</th>
-                    <th>XP total</th>
-                    <th>XP diário</th>
-                    <th>Última aparição</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>{matriculas.map((matricula) =>
-                <tr key={`${matricula.fk_Curso_ID}-${matricula.fk_Usuario_ID}`}>
-                    <td>{cursos.find((c) => c.ID === matricula.fk_Curso_ID)?.Titulo ?? <code>{matricula.fk_Curso_ID}</code>}</td>
-                    <td>{matricula.Aulas_Finalizadas}</td>
-                    <td>{matricula.Avaliacao ?? '—'}</td>
-                    <td>{matricula.XP_Total}</td>
-                    <td>{matricula.XP_Diario}</td>
-                    <td>{matricula.Ultima_Aparicao ?? '—'}</td>
-                    <td className="row-actions"><button className="link-button" onClick={() => onEdit(matricula)}>Avaliar</button><button className="link-button danger" onClick={() => onDelete(matricula.fk_Curso_ID, matricula.fk_Usuario_ID)}>Apagar</button></td>
-                </tr>)
-                }
-                { matriculas.length === 0 && <tr>
-                    <td className="empty" colSpan={7}>{loading ? 'Carregando...' : 'Nenhuma matrícula.'}</td>
-                    </tr>}
-            </tbody>
-        </table>
-        </div>
+function MatriculaTable({ matriculas, cursos, avaliacoes, loading, onEdit, onDelete }: { matriculas: Matricula[]; cursos: Curso[]; avaliacoes: Avaliacao[]; loading: boolean; onEdit: (matricula: Matricula) => void; onDelete: (matricula: Matricula) => void }) {
+  return <div className="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Curso</th><th>Status</th><th>Progresso</th><th>Avaliação</th><th>Matriculado em</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {matriculas.map((matricula) =>
+          <tr key={matricula.id}>
+            <td>{cursos.find((c) => c.id === matricula.course_id)?.title ?? <code>{matricula.course_id}</code>}</td>
+            <td>{matricula.status}</td>
+            <td>{Math.round(matricula.progress)}%</td>
+            <td>{avaliacoes.find((a) => a.course_id === matricula.course_id)?.rating ?? '—'}</td>
+            <td>{new Date(matricula.created_at).toLocaleDateString('pt-BR')}</td>
+            <RowActions editLabel="Editar" onEdit={() => onEdit(matricula)} onDelete={() => onDelete(matricula)} />
+          </tr>)}
+        {matriculas.length === 0 && <EmptyRow colSpan={6} loading={loading} text="Nenhuma matrícula." />}
+      </tbody>
+    </table>
+  </div>
 }

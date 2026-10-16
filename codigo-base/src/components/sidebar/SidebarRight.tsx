@@ -103,7 +103,7 @@ export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
             flex-col
             items-center
             transition-transform
-            duration-[320ms]
+            duration-320ms
             ease-in-out"
         style={{transform: aberta ? "translateY(0)" : `translateY(calc(-100% + ${rebarba}px))`}}
         >
