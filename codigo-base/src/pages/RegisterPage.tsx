@@ -5,7 +5,7 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 export function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [cargo, setCargo] = useState<"aluno" | "professor" | "">("");
+  const [cargo, setCargo] = useState<"student" | "educator" | "">("");
   const [nomeUsuario, setNomeUsuario] = useState("");
 
   const [message, setMessage] = useState("");
@@ -117,7 +117,7 @@ export function RegisterPage() {
               id="cargo"
               value={cargo}
               onChange={(event) =>
-                setCargo(event.target.value as "aluno" | "professor" | "")
+                setCargo(event.target.value as "student" | "educator" | "")
               }
               required
               className="rounded-[5px] border border-[#ccc] p-[10px]"
@@ -125,8 +125,8 @@ export function RegisterPage() {
               <option value="" disabled>
                 Selecione seu cargo
               </option>
-              <option value="aluno">Aluno</option>
-              <option value="professor">Professor</option>
+              <option value="student">Estudante</option>
+              <option value="educator">Educador</option>
             </select>
           </div>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import { usuarioRepository } from '../../data/repositories';
 import { supabase } from '../../lib/supabase';
 
 // Rotas usadas pela sidebar. Ajuste aqui se no seu router forem diferentes.
@@ -10,123 +11,63 @@ const LIGA_ROUTE = '/ligas';
 const AMIGOS_ROUTE = '/amigos';
 const NOTEBOOK_ROUTE = '/caderno';
 const CONFIG_ROUTE = '/configuracoes';
-const CURSOS_ROUTE = '/cursos'
+const CURSOS_ROUTE = '/cursos';
+
+/** Evento disparado pelo Profile depois de salvar, para a sidebar recarregar o perfil. */
+export const PROFILE_UPDATED_EVENT = 'athen:profile-updated';
 
 type SidebarItem = {
     text: string;
     to?: string; // sem "to" = ainda não tem página (mantém href="#")
 }
 
-type perfilUser = {
-    Nome_Display: string | null;
-    Nome_Usuario: string | null;
-    Avatar_Url: string | null;
+type PerfilUser = {
+    display_name: string | null;
+    username: string | null;
+    avatar_url: string | null;
 }
 
-
 const itens: SidebarItem[] = [
-    {
-        text: "Início",
-        to: DASHBOARD_ROUTE,
-    },
-    {
-        text: "Cursos",
-        to: CURSOS_ROUTE
-    },
-    {
-        text: "Salas",
-        to: SALAS_ROUTE,
-    },
-    {
-        text: "Ligas",
-        to: LIGA_ROUTE,
-    },
-    {
-        text: "Amigos",
-        to: AMIGOS_ROUTE,
-    },
-    {
-        text: "Cadernos",
-        to: NOTEBOOK_ROUTE,
-    },
-    {
-        text: "Configuração",
-        to: CONFIG_ROUTE,
-    }
+    { text: "Início", to: DASHBOARD_ROUTE },
+    { text: "Cursos", to: CURSOS_ROUTE },
+    { text: "Salas", to: SALAS_ROUTE },
+    { text: "Ligas", to: LIGA_ROUTE },
+    { text: "Amigos", to: AMIGOS_ROUTE },
+    { text: "Cadernos", to: NOTEBOOK_ROUTE },
+    { text: "Configuração", to: CONFIG_ROUTE },
 ];
 
 /**
- * Foto do usuário logado (user_metadata.avatar_url).
- * Atualiza sozinha quando o perfil é salvo (evento USER_UPDATED do Supabase Auth).
+ * Perfil do usuário logado (tabela "profiles").
+ * Recarrega quando a sessão muda (login/logout) e quando o Profile salva alterações.
  */
 function useUserProfile() {
-    const [profile, setProfile] = useState<perfilUser | null>(null);
+    const [profile, setProfile] = useState<PerfilUser | null>(null);
     const [carregando, setCarregando] = useState(true);
 
     useEffect(() => {
         let cancelado = false;
 
         async function carregarPerfil() {
-            setCarregando(true);
+            try {
+                const atual = await usuarioRepository.obterAtual();
+                if (cancelado) return;
 
-            const {
-                data: { user },
-                error: erroUsuario,
-            } = await supabase.auth.getUser();
-
-            if (erroUsuario || !user) {
-                if (!cancelado) {
-                    setProfile(null);
-                    setCarregando(false);
-                }
-
-                return;
-            }
-
-            const { data, error } = await supabase
-                .from("Usuario")
-                .select("ID, Nome_Display, Nome_Usuario, Avatar_Url")
-                .eq("ID", user.id)
-                .maybeSingle();
-
-            if (cancelado) return;
-
-            if (error) {
+                setProfile(
+                    atual
+                        ? {
+                              display_name: atual.display_name,
+                              username: atual.username,
+                              avatar_url: atual.avatar_url,
+                          }
+                        : null,
+                );
+            } catch (error) {
                 console.error("Erro ao buscar perfil:", error);
-
-                setProfile({
-                    Nome_Display:
-                        user.user_metadata?.Nome_Display ?? null,
-
-                    Nome_Usuario:
-                        user.user_metadata?.Nome_Usuario ?? null,
-
-                    Avatar_Url:
-                        user.user_metadata?.Avatar_Url ?? null,
-                });
-
-                setCarregando(false);
-                return;
+                if (!cancelado) setProfile(null);
+            } finally {
+                if (!cancelado) setCarregando(false);
             }
-
-            setProfile({
-                Nome_Display:
-                    data?.Nome_Display ??
-                    user.user_metadata?.Nome_Display ??
-                    null,
-
-                Nome_Usuario:
-                    data?.Nome_Usuario ??
-                    user.user_metadata?.Nome_Usuario ??
-                    null,
-
-                Avatar_Url:
-                    data?.Avatar_Url ??
-                    user.user_metadata?.Avatar_Url ??
-                    null,
-            });
-
-            setCarregando(false);
         }
 
         void carregarPerfil();
@@ -134,27 +75,27 @@ function useUserProfile() {
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange(() => {
+            // adiado para não chamar o Supabase dentro do callback de auth
             setTimeout(() => { void carregarPerfil(); }, 0);
         });
+
+        const aoAtualizarPerfil = () => { void carregarPerfil(); };
+        window.addEventListener(PROFILE_UPDATED_EVENT, aoAtualizarPerfil);
 
         return () => {
             cancelado = true;
             subscription.unsubscribe();
+            window.removeEventListener(PROFILE_UPDATED_EVENT, aoAtualizarPerfil);
         };
     }, []);
 
-    return {
-        profile,
-        carregando
-    };
+    return { profile, carregando };
 }
-
-
 
 export function SidebarLeft() {
     // objeto com informacoes do usuario
-    const userSrc = useUserProfile(); 
-    const picture: string | null = userSrc.profile?.Avatar_Url ?? null;
+    const userSrc = useUserProfile();
+    const picture: string | null = userSrc.profile?.avatar_url ?? null;
 
     return (
         // corpo inteiro da sidebar
@@ -179,8 +120,8 @@ export function SidebarLeft() {
                 border-[#b5b5eb2a]
                 border-b"
             >
-                <Link 
-                    to={DASHBOARD_ROUTE} 
+                <Link
+                    to={DASHBOARD_ROUTE}
                     className="block no-underline hover:opacity-90 transition-opacity"
                     aria-label="Ir para o Dashboard"
                 >
@@ -225,9 +166,9 @@ export function SidebarLeft() {
                         <NavLink
                             to={item.to}
                             key={item.text}
-                            className={({ isActive }) => 
-                                `${baseItemClass} ${isActive 
-                                    ? 'bg-[#22223a] text-white' 
+                            className={({ isActive }) =>
+                                `${baseItemClass} ${isActive
+                                    ? 'bg-[#22223a] text-white'
                                     : 'bg-transparent text-[#a0a0b8] hover:bg-[#22223a] hover:text-white'
                                 }`
                             }
@@ -235,14 +176,14 @@ export function SidebarLeft() {
                             <span className="text-[20px]">{item.text}</span>
                         </NavLink>
                     ) : (
-                        <a 
-                            href="#" 
-                            key={item.text} 
+                        <a
+                            href="#"
+                            key={item.text}
                             className={`
-                                ${baseItemClass} 
-                                bg-transparent 
-                                text-[#a0a0b8] 
-                                hover:bg-[#22223a] 
+                                ${baseItemClass}
+                                bg-transparent
+                                text-[#a0a0b8]
+                                hover:bg-[#22223a]
                                 hover:text-white
                             `}
                         >
@@ -283,19 +224,19 @@ export function SidebarLeft() {
                     }}
                     >
                         {picture
-                            ?   <img 
-                            src={userSrc.profile?.Avatar_Url ?? undefined} 
-                            alt="Foto de perfil" 
-                            className="w-full h-full object-cover"
-                            />
+                            ?   <img
+                                    src={picture}
+                                    alt="Foto de perfil"
+                                    className="w-full h-full object-cover"
+                                />
                             :   <span className="
-                            flex
-                            w-full
-                            h-full
-                            text-[44px]
-                            items-center
-                            justify-center"
-                            >
+                                    flex
+                                    w-full
+                                    h-full
+                                    text-[44px]
+                                    items-center
+                                    justify-center"
+                                >
                                     🙈
                                 </span>
                         }
@@ -303,17 +244,15 @@ export function SidebarLeft() {
 
                     {/* Nome display e do usuario */}
                     <div className="min-w-0 flex flex-col gap-1.75">
-                            <span className="block truncate text-[22px] leading-none text-gold">
-                                {userSrc?.profile?.Nome_Display ?? "AAAAAAI"}
-                            </span>
+                        <span className="block truncate text-[22px] leading-none text-gold">
+                            {userSrc.profile?.display_name ?? (userSrc.carregando ? "..." : "Estudante")}
+                        </span>
 
-                            <span className="block truncate text-[13px] leading-none text-purple-400">
-                                {userSrc?.profile?.Nome_Usuario ?? "El Pepe"}
-                            </span>
+                        <span className="block truncate text-[13px] leading-none text-purple-400">
+                            {userSrc.profile?.username ? `@${userSrc.profile.username}` : ""}
+                        </span>
                     </div>
                 </div>
-
-                
             </Link>
         </aside>
     )
