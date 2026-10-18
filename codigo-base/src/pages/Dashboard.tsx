@@ -6,7 +6,6 @@ import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
 import "./Dashboard.css";
 
-
 type Curso = Database["public"]["Tables"]["courses"]["Row"];
 type Modulo = Database["public"]["Tables"]["modules"]["Row"];
 type Aula = Database["public"]["Tables"]["lessons"]["Row"];
@@ -321,174 +320,168 @@ export default function Dashboard({ courseId }: DashboardProps) {
     selectModule(dashboardModules[nextModuleIndex].id);
   }
 
-  if (loading) {
-    return <main className="dashboard dashboard--state">Carregando sua trilha...</main>;
-  }
-
-  if (errorMessage || !course || !activeModule) {
-    return (
-      <main className="dashboard dashboard--state">
-        <p>{errorMessage || "Não há módulos cadastrados para este curso."}</p>
-      </main>
-    );
-  }
-
   return (
-      <div className="tela">
-
+    <div className="tela">
       <SidebarLeft />
 
-    <main className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
+      {loading ? (
+        <main className="dashboard dashboard--state">Carregando sua trilha...</main>
+      ) : errorMessage || !course || !activeModule ? (
+        <main className="dashboard dashboard--state">
+          <p>{errorMessage || "Nenhum curso ou módulo disponível no momento."}</p>
+        </main>
+      ) : (
+        <main className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
 
-      <header className="dashboard-header">
-        <label className="dashboard-course-select">
-          <span className="dashboard-course-select__icon">{DEFAULT_COURSE_ICON}</span>
-          <select
-            className="dashboard-course-select__field"
-            value={selectedCourseId ?? course.id}
-            onChange={(event) => handleCourseChange(event.target.value)}
-            aria-label="Selecionar curso"
-          >
-            {courses.map((availableCourse) => (
-              <option key={availableCourse.id} value={availableCourse.id}>
-                {availableCourse.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <h1 className="dashboard-header__title">{activeItem?.type === "lesson" ? activeItem.aula.title : activeModule.title}</h1>
-      </header>
-
-      <section
-        ref={trailRef}
-        className="trail-scroll"
-        aria-label="Trilha de aprendizagem"
-        onMouseDown={(event) => handlePointerDown(event.pageX)}
-        onMouseMove={(event) => handlePointerMove(event.pageX)}
-        onMouseUp={() => { dragState.current.dragging = false; }}
-        onMouseLeave={() => { dragState.current.dragging = false; }}
-        onTouchStart={(event) => handlePointerDown(event.touches[0].pageX)}
-        onTouchMove={(event) => handlePointerMove(event.touches[0].pageX)}
-        onTouchEnd={() => { dragState.current.dragging = false; }}
-      >
-        <div className="trail" style={{ width: trailWidth }}>
-          <div className="trail__glow" style={{ background: `radial-gradient(ellipse 50% 60% at 50% 50%, ${hexToRgba(activeTheme.primary, 0.12)} 0%, transparent 70%)` }} />
-          <svg className="trail__path" width={trailWidth} height="320" aria-hidden="true">
-            <path d={createSmoothPath(positions)} fill="none" stroke={activeTheme.muted} strokeWidth="5" strokeDasharray="10 8" strokeLinecap="round" />
-            {Array.from({ length: pathEndIndex }).map((_, index) => (
-              <g key={`completed-segment-${index}`}>
-                {(() => {
-                  const changesModule = trail[index].module.id !== trail[index + 1].module.id;
-                  const transitionStart = changesModule ? 78 : 0;
-
-                  return (
-                    <defs>
-                      <linearGradient
-                        id={`trail-segment-gradient-${index}`}
-                        gradientUnits="userSpaceOnUse"
-                        x1={positions[index].x}
-                        y1={positions[index].y}
-                        x2={positions[index + 1].x}
-                        y2={positions[index + 1].y}
-                        >
-                        <stop offset="0%" stopColor={trail[index].module.theme.primary} />
-                        <stop offset={`${transitionStart}%`} stopColor={trail[index].module.theme.primary} />
-                        <stop offset="100%" stopColor={trail[index + 1].module.theme.primary} />
-                      </linearGradient>
-                    </defs>
-                  );
-                })()}
-                <path
-                  d={createSmoothPath(positions.slice(index, index + 2))}
-                  fill="none"
-                  stroke={`url(#trail-segment-gradient-${index})`}
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  />
-              </g>
-            ))}
-          </svg>
-          {trail.map((item, index) => {
-            const isActive = index === activeIndex;
-            const isPast = index <= pathEndIndex;
-            const completed = item.type === "lesson" && completedLessonIds.has(item.aula.id);
-            const theme = item.module.theme;
-            const position = positions[index];
-
-            return (
-              <button
-              key={item.type === "module" ? item.module.id : item.aula.id}
-              className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""}`}
-              data-trail-index={index}
-              style={{ left: position.x - getTrailNodeOffset(item.type), top: position.y - getTrailNodeOffset(item.type) }}
-              onClick={() => handleTrailItemClick(index, item)}
-              aria-label={item.type === "module" ? `Módulo ${item.module.title}` : `Aula ${item.aula.title}`}
+          <header className="dashboard-header">
+            <label className="dashboard-course-select">
+              <span className="dashboard-course-select__icon">{DEFAULT_COURSE_ICON}</span>
+              <select
+                className="dashboard-course-select__field"
+                value={selectedCourseId ?? course.id}
+                onChange={(event) => handleCourseChange(event.target.value)}
+                aria-label="Selecionar curso"
               >
-                <span
-                  className="trail-node__face"
-                  style={{
-                    background: isActive || isPast || completed ? `linear-gradient(145deg, ${theme.primary}, ${theme.primary}aa)` : "#30244d",
-                    borderColor: isActive || isPast || completed ? theme.primary : theme.muted,
-                    boxShadow: isActive ? `0 0 28px ${theme.primary}99` : undefined,
-                  }}
-                  >
-                  {item.type === "module" ? DEFAULT_MODULE_ICON : completed ? "✓" : isActive ? "▶" : "○"}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                {courses.map((availableCourse) => (
+                  <option key={availableCourse.id} value={availableCourse.id}>
+                    {availableCourse.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <h1 className="dashboard-header__title">{activeItem?.type === "lesson" ? activeItem.aula.title : activeModule.title}</h1>
+          </header>
 
-      {/* Rodapé: percentual do módulo ativo e atalhos para os módulos carregados. */}
-      <footer className="dashboard-footer">
-        <div className="progress-row" aria-label={`Progresso do módulo: ${progressPercent}%`}>
-          <div className="progress-blocks">
-            {Array.from({ length: progressBlockCount }).map((_, index) => <span key={index} className={`progress-block ${index < completedBlocks ? "progress-block--completed" : ""}`} style={{ borderColor: index < completedBlocks ? activeTheme.primary : activeTheme.muted, background: index < completedBlocks ? activeTheme.primary : "transparent" }} />)}
-          </div>
-          <span className="progress-separator" style={{ color: activeTheme.muted }}>|</span>
-          <strong className="progress-percent" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
-        </div>
-        <div className="module-carousel" aria-label="Navegação entre módulos">
-          <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
-          <div className="module-carousel__viewport">
-            <div className="module-carousel__track">
-              {carouselModules.map((module, index) => {
-                const isCurrent = index === 1;
+          <section
+            ref={trailRef}
+            className="trail-scroll"
+            aria-label="Trilha de aprendizagem"
+            onMouseDown={(event) => handlePointerDown(event.pageX)}
+            onMouseMove={(event) => handlePointerMove(event.pageX)}
+            onMouseUp={() => { dragState.current.dragging = false; }}
+            onMouseLeave={() => { dragState.current.dragging = false; }}
+            onTouchStart={(event) => handlePointerDown(event.touches[0].pageX)}
+            onTouchMove={(event) => handlePointerMove(event.touches[0].pageX)}
+            onTouchEnd={() => { dragState.current.dragging = false; }}
+          >
+            <div className="trail" style={{ width: trailWidth }}>
+              <div className="trail__glow" style={{ background: `radial-gradient(ellipse 50% 60% at 50% 50%, ${hexToRgba(activeTheme.primary, 0.12)} 0%, transparent 70%)` }} />
+              <svg className="trail__path" width={trailWidth} height="320" aria-hidden="true">
+                <path d={createSmoothPath(positions)} fill="none" stroke={activeTheme.muted} strokeWidth="5" strokeDasharray="10 8" strokeLinecap="round" />
+                {Array.from({ length: pathEndIndex }).map((_, index) => (
+                  <g key={`completed-segment-${index}`}>
+                    {(() => {
+                      const changesModule = trail[index].module.id !== trail[index + 1].module.id;
+                      const transitionStart = changesModule ? 78 : 0;
+
+                      return (
+                        <defs>
+                          <linearGradient
+                            id={`trail-segment-gradient-${index}`}
+                            gradientUnits="userSpaceOnUse"
+                            x1={positions[index].x}
+                            y1={positions[index].y}
+                            x2={positions[index + 1].x}
+                            y2={positions[index + 1].y}
+                          >
+                            <stop offset="0%" stopColor={trail[index].module.theme.primary} />
+                            <stop offset={`${transitionStart}%`} stopColor={trail[index].module.theme.primary} />
+                            <stop offset="100%" stopColor={trail[index + 1].module.theme.primary} />
+                          </linearGradient>
+                        </defs>
+                      );
+                    })()}
+                    <path
+                      d={createSmoothPath(positions.slice(index, index + 2))}
+                      fill="none"
+                      stroke={`url(#trail-segment-gradient-${index})`}
+                      strokeWidth="5"
+                      strokeLinecap="round"
+                    />
+                  </g>
+                ))}
+              </svg>
+              {trail.map((item, index) => {
+                const isActive = index === activeIndex;
+                const isPast = index <= pathEndIndex;
+                const completed = item.type === "lesson" && completedLessonIds.has(item.aula.id);
+                const theme = item.module.theme;
+                const position = positions[index];
 
                 return (
-                  <div key={`${module.id}-${index}`} className={`module-carousel__item ${isCurrent ? "module-carousel__item--current" : ""}`}>
-                    <span className="module-carousel__name" style={{ color: isCurrent ? module.theme.primary : module.theme.muted, borderColor: isCurrent ? module.theme.primary : module.theme.muted }}>{module.title}</span>
-                    <button
-                      className="module-carousel__button"
-                      type="button"
+                  <button
+                    key={item.type === "module" ? item.module.id : item.aula.id}
+                    className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""}`}
+                    data-trail-index={index}
+                    style={{ left: position.x - getTrailNodeOffset(item.type), top: position.y - getTrailNodeOffset(item.type) }}
+                    onClick={() => handleTrailItemClick(index, item)}
+                    aria-label={item.type === "module" ? `Módulo ${item.module.title}` : `Aula ${item.aula.title}`}
+                  >
+                    <span
+                      className="trail-node__face"
                       style={{
-                        background: isCurrent ? `linear-gradient(145deg, ${module.theme.primary}, ${module.theme.primary}bb)` : "transparent",
-                        borderColor: module.theme.primary,
-                        boxShadow: isCurrent ? `0 0 20px ${module.theme.primary}66` : "none",
+                        background: isActive || isPast || completed ? `linear-gradient(145deg, ${theme.primary}, ${theme.primary}aa)` : "#30244d",
+                        borderColor: isActive || isPast || completed ? theme.primary : theme.muted,
+                        boxShadow: isActive ? `0 0 28px ${theme.primary}99` : undefined,
                       }}
-                      onClick={() => selectModule(module.id)}
-                      aria-label={`Selecionar módulo ${module.title}`}
-                      >
-                      <span className="module-carousel__icon">{DEFAULT_MODULE_ICON}</span>
-                    </button>
-                  </div>
+                    >
+                      {item.type === "module" ? DEFAULT_MODULE_ICON : completed ? "✓" : isActive ? "▶" : "○"}
+                    </span>
+                  </button>
                 );
               })}
             </div>
-          </div>
-          <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
-        </div>
-      </footer>
-    </main>
+          </section>
 
-    {/* A aba da própria sidebar abre e fecha o painel, por isso onFechar alterna o estado. */}
-    <SidebarRight
+          {/* Rodapé: percentual do módulo ativo e atalhos para os módulos carregados. */}
+          <footer className="dashboard-footer">
+            <div className="progress-row" aria-label={`Progresso do módulo: ${progressPercent}%`}>
+              <div className="progress-blocks">
+                {Array.from({ length: progressBlockCount }).map((_, index) => <span key={index} className={`progress-block ${index < completedBlocks ? "progress-block--completed" : ""}`} style={{ borderColor: index < completedBlocks ? activeTheme.primary : activeTheme.muted, background: index < completedBlocks ? activeTheme.primary : "transparent" }} />)}
+              </div>
+              <span className="progress-separator" style={{ color: activeTheme.muted }}>|</span>
+              <strong className="progress-percent" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
+            </div>
+            <div className="module-carousel" aria-label="Navegação entre módulos">
+              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
+              <div className="module-carousel__viewport">
+                <div className="module-carousel__track">
+                  {carouselModules.map((module, index) => {
+                    const isCurrent = index === 1;
+
+                    return (
+                      <div key={`${module.id}-${index}`} className={`module-carousel__item ${isCurrent ? "module-carousel__item--current" : ""}`}>
+                        <span className="module-carousel__name" style={{ color: isCurrent ? module.theme.primary : module.theme.muted, borderColor: isCurrent ? module.theme.primary : module.theme.muted }}>{module.title}</span>
+                        <button
+                          className="module-carousel__button"
+                          type="button"
+                          style={{
+                            background: isCurrent ? `linear-gradient(145deg, ${module.theme.primary}, ${module.theme.primary}bb)` : "transparent",
+                            borderColor: module.theme.primary,
+                            boxShadow: isCurrent ? `0 0 20px ${module.theme.primary}66` : "none",
+                          }}
+                          onClick={() => selectModule(module.id)}
+                          aria-label={`Selecionar módulo ${module.title}`}
+                        >
+                          <span className="module-carousel__icon">{DEFAULT_MODULE_ICON}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
+            </div>
+          </footer>
+        </main>
+      )}
+
+      {/* A aba da própria sidebar abre e fecha o painel, por isso onFechar alterna o estado. */}
+      <SidebarRight
         aberta={lousaAberta}
         onFechar={() => setLousaAberta((aberta) => !aberta)}
         cor={activeTheme.primary}
       />
-
     </div>
   );
 }
