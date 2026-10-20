@@ -1218,6 +1218,13 @@ export const medalhaUsuarioRepository = {
 
 // reviews: uma nota (0 a 5) por usuário por curso.
 export const avaliacaoRepository = {
+  // Todas as avaliações visíveis (usado para a nota média de cada curso no catálogo).
+  async listar(): Promise<Avaliacao[]> {
+    const { data, error } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+    if (error) throw new Error(`Erro ao listar avaliações: ${error.message}`);
+    return data || [];
+  },
+
   async listarPorCurso(idCurso: string): Promise<Avaliacao[]> {
     const { data, error } = await supabase
       .from('reviews')

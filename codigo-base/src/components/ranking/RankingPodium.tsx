@@ -270,7 +270,15 @@ export function RankingPodium({
   const isCompact = variant === "compact";
 
   const gridColumns =
-    players.length === 1 ? "grid-cols-1 w-[23%]" : players.length === 3 ? "grid-cols-3 w-[64%]" : "grid-cols-5 w-full";
+    players.length === 1
+      ? "grid-cols-1 w-[23%]"
+      : players.length === 2
+        ? "grid-cols-2 w-[44%]"
+        : players.length === 3
+          ? "grid-cols-3 w-[64%]"
+          : players.length === 4
+            ? "grid-cols-4 w-[82%]"
+            : "grid-cols-5 w-full";
 
   return (
     <div
