@@ -661,3 +661,82 @@
   .cursos__modal-rodape { @apply flex-wrap gap-[10px] px-[16px] py-[12px]; }
   .cursos__modal-acoes { @apply ml-auto; }
 }
+
+/* ---------- Dados reais: selos, avisos e estados ---------- */
+.cursos__selo {
+  @apply mr-[6px] inline-block px-[9px] py-[3px] text-[9px] tracking-[0.6px] uppercase text-violet-pale;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+.cursos__selo--ativo {
+  @apply text-gold;
+  border-color: color-mix(in srgb, var(--color-gold) 55%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+
+.cursos__aviso-info {
+  @apply mb-[20px] px-[16px] py-[12px] text-[12px] text-violet-pale;
+  background: rgba(84, 49, 140, 0.28);
+  border: 1px solid rgba(201, 184, 232, 0.28);
+  border-radius: 12px;
+}
+
+.cursos__sem-resultado--erro { color: #fecaca; }
+
+.cursos__erro-inline {
+  @apply self-center text-[11px];
+  color: #fecaca;
+}
+.cursos__form-criar .cursos__erro-inline { @apply col-span-2; }
+
+.cursos__vazio-modulos { @apply px-[4px] py-[10px] text-[11px] text-violet-pale/60; }
+
+.cursos__aula--concluida { opacity: 0.8; }
+.cursos__aula--concluida .cursos__aula-play {
+  @apply bg-gold text-[#211029];
+}
+
+.cursos__botao-primario:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- Avaliação do curso ---------- */
+.cursos__estrelas { @apply mb-[10px] flex gap-[4px]; }
+.cursos__estrela {
+  @apply cursor-pointer p-0 text-[26px] leading-none;
+  color: rgba(255, 255, 255, 0.22);
+  background: transparent;
+  border: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.cursos__estrela:hover:not(:disabled) { transform: scale(1.15); }
+.cursos__estrela:disabled { cursor: default; }
+.cursos__estrela--cheia { @apply text-gold; }
+
+.cursos__comentario {
+  @apply mb-[10px] w-full resize-none px-[12px] py-[10px] text-[11px] text-[#f4eeff];
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  outline: 0;
+  font-family: inherit;
+}
+.cursos__comentario:focus {
+  border-color: color-mix(in srgb, var(--color-gold) 52%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+.cursos__comentario::placeholder { @apply text-violet-pale/45; }
+
+.cursos__avaliacao-acoes { @apply mb-[8px] flex items-center gap-[12px]; }
+.cursos__botao-avaliar { @apply h-[38px] px-[16px] text-[11px]; }
+.cursos__link-remover {
+  @apply cursor-pointer text-[11px] text-violet-pale/70 underline;
+  background: transparent;
+  border: 0;
+}
+.cursos__link-remover:hover:not(:disabled) { @apply text-violet-pale; }
+.cursos__link-remover:disabled { opacity: 0.5; cursor: default; }

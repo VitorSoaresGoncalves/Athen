@@ -21,14 +21,14 @@ export default function Hub() {
         <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
         <Route path="/login-page" element={<LoginPage />} />
         <Route path="/register-page" element={<RegisterPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/salas" element={<Salas />} />
         <Route path="/ligas" element={<Ligas />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/configuracoes" element={<ConfigPage />} />
         <Route path="/amigos" element={<Amigos />} />
         <Route path="/caderno" element={<NotebookPage />} />
-        <Route path="/cursos" element={<Cursos/>}/>
+        <Route path="/cursos" element={<ProtectedRoute><Cursos /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )

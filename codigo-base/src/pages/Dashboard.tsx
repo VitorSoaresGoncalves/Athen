@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { LessonModal } from "../components/lesson/LessonModal";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
-import { aulaRepository, concluiRepository, cursoRepository, moduloRepository } from "../data/repositories";
+import { aulaRepository, concluiRepository, cursoRepository, matriculaRepository, moduloRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
 import "./Dashboard.css";
@@ -11,12 +13,16 @@ type Modulo = Database["public"]["Tables"]["modules"]["Row"];
 type Aula = Database["public"]["Tables"]["lessons"]["Row"];
 type ModuleTheme = { primary: string; background: string; muted: string; shadow: string };
 type DashboardModule = Modulo & { aulas: Aula[]; theme: ModuleTheme };
-type TrailItem = { type: "module"; module: DashboardModule } | { type: "lesson"; module: DashboardModule; aula: Aula };
+type LessonTrailItem = { type: "lesson"; module: DashboardModule; aula: Aula };
+type TrailItem = { type: "module"; module: DashboardModule } | LessonTrailItem;
 interface DashboardProps { courseId?: string }
 
 // O banco novo não tem mais coluna de ícone em cursos/módulos: usamos ícones padrão.
 const DEFAULT_COURSE_ICON = "📚";
 const DEFAULT_MODULE_ICON = "📘";
+
+// Largura da SidebarLeft (fixa). O conteúdo da trilha usa o espaço que sobra.
+const SIDEBAR_WIDTH = 230;
 
 // cor, tema do módulo e geometria da trilha.
 const FALLBACK_COLORS = ["#06b6d4", "#22c55e", "#a855f7", "#f97316", "#eab308"];
@@ -69,7 +75,7 @@ function getTrailNodeOffset(type: TrailItem["type"]) {
 
 function getTrailViewportWidth() {
   if (typeof window === "undefined") return 960;
-  return Math.max(640, window.innerWidth - 320);
+  return Math.max(640, window.innerWidth - SIDEBAR_WIDTH);
 }
 
 function getPosition(index: number) {
@@ -103,6 +109,36 @@ function getRequestedCourseId(courseId?: string) {
   return new URLSearchParams(window.location.search).get("curso") ?? undefined;
 }
 
+// Aulas que o usuário logado já concluiu no contexto de curso.
+// (Filtra pelo usuário: para administradores a policy também devolve as conclusões dos outros.)
+async function loadCompletedLessonIds(): Promise<Set<string>> {
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return new Set();
+
+  const conclusions = await concluiRepository.listarPorUsuario(data.user.id);
+  return new Set(conclusions.filter((conclusion) => conclusion.context === "course").map((conclusion) => conclusion.lesson_id));
+}
+
+function CourseSelect({ courses, value, onChange }: { courses: Curso[]; value: string | undefined; onChange: (courseId: string) => void }) {
+  return (
+    <label className="dashboard-course-select">
+      <span className="dashboard-course-select__icon">{DEFAULT_COURSE_ICON}</span>
+      <select
+        className="dashboard-course-select__field"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label="Selecionar curso"
+      >
+        {courses.map((availableCourse) => (
+          <option key={availableCourse.id} value={availableCourse.id}>
+            {availableCourse.title}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 
 export default function Dashboard({ courseId }: DashboardProps) {
 
@@ -113,12 +149,25 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [dashboardModules, setDashboardModules] = useState<DashboardModule[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
   const [activeIndex, setActiveIndex] = useState(0);
+  const [openLesson, setOpenLesson] = useState<{ aula: Aula; module: DashboardModule } | null>(null);
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const trailRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0, moved: false });
+  const noticeTimer = useRef<number | undefined>(undefined);
 
-  // Busca os cursos do seletor
+  // Mostra um aviso rápido na tela e some sozinho.
+  function showNotice(message: string) {
+    window.clearTimeout(noticeTimer.current);
+    setNotice(message);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 2800);
+  }
+
+  useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
+
+  // Busca os cursos do seletor e escolhe o curso inicial:
+  // o do link (?curso=), senão o matriculado mais recente, senão o primeiro publicado.
   useEffect(() => {
     let cancelled = false;
 
@@ -128,10 +177,21 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
       try {
         const requestedCourseId = getRequestedCourseId(courseId);
-        const courses = await cursoRepository.listar();
+        const { data: userData } = await supabase.auth.getUser();
+        const [courses, enrollments] = await Promise.all([
+          cursoRepository.listar(),
+          userData.user ? matriculaRepository.listarPorUsuario(userData.user.id) : Promise.resolve([]),
+        ]);
+
+        // As matrículas já vêm da mais recente para a mais antiga.
+        const enrolledCourse = enrollments
+          .filter((enrollment) => enrollment.status !== "dropped")
+          .map((enrollment) => courses.find((item) => item.id === enrollment.course_id))
+          .find((item) => item !== undefined);
+
         const initialCourse = requestedCourseId
           ? courses.find((item) => item.id === requestedCourseId)
-          : courses.find((item) => item.status === "published");
+          : enrolledCourse ?? courses.find((item) => item.status === "published");
 
         if (!initialCourse) throw new Error(requestedCourseId ? "Curso não encontrado." : "Nenhum curso publicado disponível.");
 
@@ -173,16 +233,29 @@ export default function Dashboard({ courseId }: DashboardProps) {
           })),
         );
 
-        // Conclusões de aulas no contexto de curso (as de sala não entram na trilha).
-        const { data: userData } = await supabase.auth.getUser();
-        const conclusions = userData.user ? await concluiRepository.listarPorContexto("course") : [];
-        const lessonIds = new Set(conclusions.map((conclusion) => conclusion.lesson_id));
+        const lessonIds = await loadCompletedLessonIds();
+
+        // Começa a trilha na primeira aula ainda não concluída ("continuar de onde parou").
+        let position = 0;
+        let startIndex = 0;
+        let foundStart = false;
+        for (const module of modulesWithLessons) {
+          position += 1;
+          for (const aula of module.aulas) {
+            if (!foundStart && !lessonIds.has(aula.id)) {
+              startIndex = position;
+              foundStart = true;
+            }
+            position += 1;
+          }
+        }
 
         if (cancelled) return;
         setCourse(selectedCourse);
         setDashboardModules(modulesWithLessons);
         setCompletedLessonIds(lessonIds);
-        setActiveIndex(0);
+        setActiveIndex(startIndex);
+        setOpenLesson(null);
       } catch (error) {
         if (cancelled) return;
         setErrorMessage(error instanceof Error ? error.message : "Não foi possível carregar a trilha.");
@@ -200,6 +273,21 @@ export default function Dashboard({ courseId }: DashboardProps) {
     { type: "module", module } as const,
     ...module.aulas.map((aula) => ({ type: "lesson", module, aula }) as const),
   ]), [dashboardModules]);
+
+  // Uma aula só libera quando a aula anterior da trilha foi concluída.
+  const lockedIndexes = useMemo(() => {
+    const locked = new Set<number>();
+    let previousDone = true;
+
+    trail.forEach((item, index) => {
+      if (item.type !== "lesson") return;
+      const done = completedLessonIds.has(item.aula.id);
+      if (!done && !previousDone) locked.add(index);
+      previousDone = done;
+    });
+
+    return locked;
+  }, [trail, completedLessonIds]);
 
   const positions = useMemo(() => trail.map((_, index) => getPosition(index)), [trail]);
   const trailStep = getDesktopTrailStep();
@@ -228,13 +316,22 @@ export default function Dashboard({ courseId }: DashboardProps) {
   // A linha avança até a última aula concluída ou até o item selecionado.
   const pathEndIndex = Math.max(completedPathEndIndex, activeIndex);
   const activeModuleIndex = Math.max(0, dashboardModules.findIndex((module) => module.id === activeModule?.id));
-  const carouselModules = dashboardModules.length > 0
-    ? [
-        dashboardModules[(activeModuleIndex - 1 + dashboardModules.length) % dashboardModules.length],
-        dashboardModules[activeModuleIndex],
-        dashboardModules[(activeModuleIndex + 1) % dashboardModules.length],
-      ]
-    : [];
+
+  // Carrossel: anterior, atual e próximo. Com menos de 3 módulos, mostra só os que existem
+  // (sem repetir o mesmo módulo nas laterais).
+  const carouselItems = useMemo(() => {
+    const total = dashboardModules.length;
+    if (total === 0) return [];
+
+    const indexes = total >= 3
+      ? [(activeModuleIndex - 1 + total) % total, activeModuleIndex, (activeModuleIndex + 1) % total]
+      : Array.from({ length: total }, (_, index) => index);
+
+    return indexes.map((moduleIndex) => ({
+      module: dashboardModules[moduleIndex],
+      current: moduleIndex === activeModuleIndex,
+    }));
+  }, [dashboardModules, activeModuleIndex]);
 
 
   // Centraliza o nó ativo após a troca de aula ou módulo.
@@ -279,42 +376,40 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setSelectedCourseId(nextCourseId);
   }
 
-  // ---------------------------------------------------------------------------
-  // CONCLUSÃO VISUAL TEMPORÁRIA — remover quando existir a tela de aula.
-  //
-  // Conclusão local temporária (nada é gravado em "completions"): 1º clique seleciona,
-  // 2º clique alterna a conclusão, e só vale se a aula anterior já estiver concluída.
-  // No banco novo a conclusão real é gravada pelo servidor em
-  // tentativaRepository.finalizar(), não pelo cliente.
-  // ---------------------------------------------------------------------------
+  // 1º clique seleciona a aula; 2º clique (na aula já selecionada) abre o pop-up
+  // com o conteúdo e as questões. Aulas bloqueadas só mostram um aviso.
   function handleTrailItemClick(index: number, item: TrailItem) {
     if (dragState.current.moved) return;
 
     if (item.type === "lesson" && index === activeIndex) {
-      setCompletedLessonIds((currentIds) => {
-        const nextIds = new Set(currentIds);
-
-        if (nextIds.has(item.aula.id)) {
-          nextIds.delete(item.aula.id);
-          return nextIds;
-        }
-
-        const previousLesson = [...trail.slice(0, index)].reverse().find((trailItem) => trailItem.type === "lesson");
-        const previousLessonCompleted = !previousLesson || nextIds.has(previousLesson.aula.id);
-        if (!previousLessonCompleted) return currentIds;
-
-        nextIds.add(item.aula.id);
-        return nextIds;
-      });
+      if (lockedIndexes.has(index)) {
+        showNotice("Conclua a aula anterior para liberar esta.");
+        return;
+      }
+      setOpenLesson({ aula: item.aula, module: item.module });
       return;
     }
 
     setActiveIndex(index);
   }
 
+  // O servidor já gravou a conclusão em finalize_attempt: aqui só recarregamos
+  // as conclusões e avançamos a seleção para a próxima aula.
+  async function handleLessonCompleted(lessonId: string) {
+    try {
+      setCompletedLessonIds(await loadCompletedLessonIds());
+    } catch {
+      showNotice("Aula concluída, mas não foi possível atualizar a trilha agora.");
+    }
+
+    const lessonIndex = trail.findIndex((item) => item.type === "lesson" && item.aula.id === lessonId);
+    const nextLessonIndex = trail.findIndex((item, index) => index > lessonIndex && item.type === "lesson");
+    if (lessonIndex === activeIndex && nextLessonIndex >= 0) setActiveIndex(nextLessonIndex);
+  }
+
   // Move o carrossel para o módulo anterior ou para o próximo módulo.
   function moveCarousel(direction: -1 | 1) {
-    if (dashboardModules.length < 1) return;
+    if (dashboardModules.length < 2) return;
 
     const nextModuleIndex = (activeModuleIndex + direction + dashboardModules.length) % dashboardModules.length;
     selectModule(dashboardModules[nextModuleIndex].id);
@@ -329,26 +424,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
       ) : errorMessage || !course || !activeModule ? (
         <main className="dashboard dashboard--state">
           <p>{errorMessage || "Nenhum curso ou módulo disponível no momento."}</p>
+          {courses.length > 0 && <CourseSelect courses={courses} value={selectedCourseId} onChange={handleCourseChange} />}
+          <Link className="dashboard__link" to="/cursos">Ver todos os cursos</Link>
         </main>
       ) : (
         <main className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
 
           <header className="dashboard-header">
-            <label className="dashboard-course-select">
-              <span className="dashboard-course-select__icon">{DEFAULT_COURSE_ICON}</span>
-              <select
-                className="dashboard-course-select__field"
-                value={selectedCourseId ?? course.id}
-                onChange={(event) => handleCourseChange(event.target.value)}
-                aria-label="Selecionar curso"
-              >
-                {courses.map((availableCourse) => (
-                  <option key={availableCourse.id} value={availableCourse.id}>
-                    {availableCourse.title}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <CourseSelect courses={courses} value={selectedCourseId ?? course.id} onChange={handleCourseChange} />
             <h1 className="dashboard-header__title">{activeItem?.type === "lesson" ? activeItem.aula.title : activeModule.title}</h1>
           </header>
 
@@ -405,33 +488,37 @@ export default function Dashboard({ courseId }: DashboardProps) {
                 const isActive = index === activeIndex;
                 const isPast = index <= pathEndIndex;
                 const completed = item.type === "lesson" && completedLessonIds.has(item.aula.id);
+                const locked = lockedIndexes.has(index);
                 const theme = item.module.theme;
                 const position = positions[index];
+                const lit = isActive || isPast || completed;
 
                 return (
                   <button
                     key={item.type === "module" ? item.module.id : item.aula.id}
-                    className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""}`}
+                    className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""} ${locked ? "trail-node--locked" : ""}`}
                     data-trail-index={index}
                     style={{ left: position.x - getTrailNodeOffset(item.type), top: position.y - getTrailNodeOffset(item.type) }}
                     onClick={() => handleTrailItemClick(index, item)}
-                    aria-label={item.type === "module" ? `Módulo ${item.module.title}` : `Aula ${item.aula.title}`}
+                    aria-label={item.type === "module" ? `Módulo ${item.module.title}` : `Aula ${item.aula.title}${locked ? " (bloqueada)" : completed ? " (concluída)" : ""}`}
                   >
                     <span
                       className="trail-node__face"
                       style={{
-                        background: isActive || isPast || completed ? `linear-gradient(145deg, ${theme.primary}, ${theme.primary}aa)` : "#30244d",
-                        borderColor: isActive || isPast || completed ? theme.primary : theme.muted,
+                        background: lit ? `linear-gradient(145deg, ${theme.primary}, ${theme.primary}aa)` : "#30244d",
+                        borderColor: lit ? theme.primary : theme.muted,
                         boxShadow: isActive ? `0 0 28px ${theme.primary}99` : undefined,
                       }}
                     >
-                      {item.type === "module" ? DEFAULT_MODULE_ICON : completed ? "✓" : isActive ? "▶" : "○"}
+                      {item.type === "module" ? DEFAULT_MODULE_ICON : completed ? "✓" : locked ? "🔒" : isActive ? "▶" : "○"}
                     </span>
                   </button>
                 );
               })}
             </div>
           </section>
+
+          {notice && <div className="dashboard-toast" role="status">{notice}</div>}
 
           {/* Rodapé: percentual do módulo ativo e atalhos para os módulos carregados. */}
           <footer className="dashboard-footer">
@@ -443,34 +530,31 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <strong className="progress-percent" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
             </div>
             <div className="module-carousel" aria-label="Navegação entre módulos">
-              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
+              <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
               <div className="module-carousel__viewport">
                 <div className="module-carousel__track">
-                  {carouselModules.map((module, index) => {
-                    const isCurrent = index === 1;
-
-                    return (
-                      <div key={`${module.id}-${index}`} className={`module-carousel__item ${isCurrent ? "module-carousel__item--current" : ""}`}>
-                        <span className="module-carousel__name" style={{ color: isCurrent ? module.theme.primary : module.theme.muted, borderColor: isCurrent ? module.theme.primary : module.theme.muted }}>{module.title}</span>
-                        <button
-                          className="module-carousel__button"
-                          type="button"
-                          style={{
-                            background: isCurrent ? `linear-gradient(145deg, ${module.theme.primary}, ${module.theme.primary}bb)` : "transparent",
-                            borderColor: module.theme.primary,
-                            boxShadow: isCurrent ? `0 0 20px ${module.theme.primary}66` : "none",
-                          }}
-                          onClick={() => selectModule(module.id)}
-                          aria-label={`Selecionar módulo ${module.title}`}
-                        >
-                          <span className="module-carousel__icon">{DEFAULT_MODULE_ICON}</span>
-                        </button>
-                      </div>
-                    );
-                  })}
+                  {carouselItems.map(({ module, current }) => (
+                    <div key={module.id} className={`module-carousel__item ${current ? "module-carousel__item--current" : ""}`}>
+                      <span className="module-carousel__name" title={module.title} style={{ color: current ? module.theme.primary : module.theme.muted, borderColor: current ? module.theme.primary : module.theme.muted }}>{module.title}</span>
+                      <button
+                        className="module-carousel__button"
+                        type="button"
+                        style={{
+                          background: current ? `linear-gradient(145deg, ${module.theme.primary}, ${module.theme.primary}bb)` : "transparent",
+                          borderColor: module.theme.primary,
+                          boxShadow: current ? `0 0 20px ${module.theme.primary}66` : "none",
+                        }}
+                        onClick={() => selectModule(module.id)}
+                        aria-label={`Selecionar módulo ${module.title}`}
+                        aria-current={current ? "true" : undefined}
+                      >
+                        <span className="module-carousel__icon">{DEFAULT_MODULE_ICON}</span>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
+              <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
             </div>
           </footer>
         </main>
@@ -482,6 +566,19 @@ export default function Dashboard({ courseId }: DashboardProps) {
         onFechar={() => setLousaAberta((aberta) => !aberta)}
         cor={activeTheme.primary}
       />
+
+      {course && openLesson && (
+        <LessonModal
+          key={openLesson.aula.id}
+          aula={openLesson.aula}
+          moduloTitulo={openLesson.module.title}
+          cursoId={course.id}
+          cor={openLesson.module.theme.primary}
+          jaConcluida={completedLessonIds.has(openLesson.aula.id)}
+          onFechar={() => setOpenLesson(null)}
+          onConcluida={(lessonId) => void handleLessonCompleted(lessonId)}
+        />
+      )}
     </div>
   );
 }
