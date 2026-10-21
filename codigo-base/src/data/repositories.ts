@@ -11,6 +11,8 @@ type Enums<T extends keyof Database['public']['Enums']> = Database['public']['En
 type FunctionReturn<T extends keyof Database['public']['Functions']> = Database['public']['Functions'][T]['Returns'];
 type Json = Database['public']['Tables']['questions']['Row']['config'];
 
+// entidades do banco
+
 type Usuario = Tables<'profiles'>;
 type CreateUsuarioInput = TablesInsert<'profiles'>;
 type BuscaUsuario = FunctionReturn<'search_profiles'>[number];
@@ -43,31 +45,11 @@ type Resposta = Tables<'answers'>;
 type CreateRespostaInput = TablesInsert<'answers'>;
 type ResultadoCorrecao = FunctionReturn<'grade_answer'>[number];
 
-type Conclui = Tables<'completions'>;
-type ContextoConclusao = 'course' | 'room';
-
-type Participa = Tables<'room_members'>;
-type CreateParticipaInput = TablesInsert<'room_members'>;
-
 type Aviso = Tables<'announcements'>;
 type CreateAvisoInput = TablesInsert<'announcements'>;
 
 type Missao = Tables<'missions'>;
 type CreateMissaoInput = TablesInsert<'missions'>;
-
-type ProgressoMissao = Tables<'mission_progress'>;
-type CreateProgressoMissaoInput = TablesInsert<'mission_progress'>;
-
-type Amizade = Tables<'friendships'>;
-type CreateAmizadeInput = TablesInsert<'friendships'>;
-type StatusAmizade = Enums<'friendship_status'>;
-
-type Notificacao = Tables<'notifications'>;
-
-type Medalha = Tables<'medals'>;
-type CreateMedalhaInput = TablesInsert<'medals'>;
-
-type MedalhaUsuario = Tables<'user_medals'>;
 
 type Avaliacao = Tables<'reviews'>;
 type CreateAvaliacaoInput = TablesInsert<'reviews'>;
@@ -83,6 +65,28 @@ type CreateAnotacoesInput = TablesInsert<'notebook_pages'>;
 
 type RankingGlobal = Views<'global_ranking'>;
 type RankingAmigosCurso = FunctionReturn<'friends_course_pac'>[number];
+
+type Amizade = Tables<'friendships'>;
+type CreateAmizadeInput = TablesInsert<'friendships'>;
+type StatusAmizade = Enums<'friendship_status'>;
+
+type Notificacao = Tables<'notifications'>;
+
+type Medalha = Tables<'medals'>;
+type CreateMedalhaInput = TablesInsert<'medals'>;
+
+// relacionamentos 
+
+type ProgressoMissao = Tables<'mission_progress'>;
+type CreateProgressoMissaoInput = TablesInsert<'mission_progress'>;
+
+type MedalhaUsuario = Tables<'user_medals'>;
+
+type Conclui = Tables<'completions'>;
+type ContextoConclusao = 'course' | 'room';
+
+type Participa = Tables<'room_members'>;
+type CreateParticipaInput = TablesInsert<'room_members'>;
 
 // Id do usuário logado (usado pelos atalhos que gravam em nome de quem está autenticado).
 async function obterIdUsuarioAtual(): Promise<string> {
