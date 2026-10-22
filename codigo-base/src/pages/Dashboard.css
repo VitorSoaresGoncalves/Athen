@@ -1,13 +1,3 @@
-/* ---------------------------------------------------------------------------
-   Dashboard (trilha de aprendizagem)
-   A SidebarLeft é "fixed" com 230px, então o conteúdo precisa do mesmo recuo.
-   --------------------------------------------------------------------------- */
-.tela {
-  display: flex;
-  width: 100%;
-  min-height: 100svh;
-}
-
 .tela > .sidebarL {
   box-shadow: 8px 0 22px #05041252;
 }
@@ -22,31 +12,11 @@
   content: "";
   background: linear-gradient(90deg, #0e14209e 0%, #0e14204d 42%, #0e142014 76%, transparent 100%);
 }
-
-.dashboard {
-  position: relative;
-  z-index: 0;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 100svh;
-  margin-left: 230px;
-  overflow: hidden;
-  color: #f4eeff;
-  /* O :root do projeto define line-height: 150%. */
-  line-height: normal;
-  transition: background 0.8s ease;
-  user-select: none;
-}
-
 .dashboard--state {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  min-height: 100svh;
+  min-height: 100vh;
   padding: 24px;
   background: #140a2b;
   color: #f4eeff;
@@ -54,89 +24,11 @@
   text-align: center;
 }
 
-.dashboard__link {
-  color: var(--amarelo-tangerina);
-  font-size: 14px;
-  text-decoration: underline;
-}
-
-/* ---------- Cabeçalho ---------- */
-.dashboard-header { flex: 0 0 auto; padding: 26px 24px 14px; text-align: center; }
-.dashboard-course-select {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  max-width: min(100%, 420px);
-  padding: 4px 10px;
-  color: var(--amarelo-tangerina);
-  background: rgba(87, 46, 151, 0.22);
-  border: 1px solid rgba(193, 150, 255, 0.34);
-  border-radius: 8px;
-}
-.dashboard-course-select__icon { flex: 0 0 auto; font-size: 15px; }
-.dashboard-course-select__field {
-  max-width: 360px;
-  padding: 2px 20px 2px 0;
-  overflow: hidden;
-  color: var(--amarelo-tangerina);
-  background: transparent;
-  border: 0;
-  outline: 0;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-}
-.dashboard-course-select__field option { color: #f4eeff; background: #1a1035; }
-.dashboard-header__title {
-  margin: 7px 0 0;
-  color: #f4eeff;
-  font-family: var(--font-display);
-  font-size: clamp(26px, 4vw, 38px);
-  font-weight: 400;
-  letter-spacing: 0.02em;
-}
-
-/* Aviso rápido (ex.: aula bloqueada). */
-.dashboard-toast {
-  position: fixed;
-  bottom: 168px;
-  left: calc(50% + 115px);
-  z-index: 20;
-  padding: 10px 18px;
-  color: #f4eeff;
-  font-size: 13px;
-  background: rgba(20, 10, 43, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(5, 2, 16, 0.5);
-  transform: translateX(-50%);
-  animation: dashboard-toast-in 0.2s ease both;
-}
-@keyframes dashboard-toast-in {
-  from { opacity: 0; transform: translate(-50%, 8px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
-}
-
-/* ---------- Trilha ---------- */
-.trail-scroll {
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  cursor: grab;
-  scrollbar-width: none;
-}
+.trail-scroll { scrollbar-width: none;}
 .trail-scroll:active { cursor: grabbing; }
 .trail-scroll::-webkit-scrollbar { display: none; }
-.trail { position: relative; height: 320px; margin: max(24px, 8vh) auto 0; }
-.trail__glow { position: absolute; inset: 0; pointer-events: none; transition: background 0.8s ease; }
-.trail__path { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
-.trail__path path { transition: stroke 0.7s ease; }
+.trail { margin: max(24px, 8vh) auto 0; }
+.trail__path path { transition: stroke 0.7s ease;}
 .trail-node { position: absolute; z-index: 1; display: block; padding: 0; background: transparent; border: 0; cursor: pointer; transition: transform 0.2s ease; }
 .trail-node:hover { transform: scale(1.1); }
 .trail-node--active { z-index: 3; animation: trail-node-pulse 1.8s ease-in-out infinite; }
@@ -151,21 +43,11 @@
 .trail-node--locked .trail-node__face { font-size: 14px; }
 @keyframes trail-node-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 
-/* ---------- Rodapé: progresso + carrossel de módulos ---------- */
-.dashboard-footer { flex: 0 0 auto; width: 100%; max-width: 960px; margin: 0 auto; padding: 8px 20px 20px; }
-.progress-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
-.progress-blocks { display: flex; align-items: center; gap: 6px; min-height: 24px; }
-.progress-block { display: block; width: 12px; height: 12px; border: 2px solid transparent; border-radius: 3px; transition: all 0.5s ease; }
 .progress-block--completed { width: 22px; height: 22px; }
-.progress-separator { font-size: 16px; font-weight: 900; }
-.progress-percent { font-family: var(--font-body); font-size: 20px; letter-spacing: 0.08em; }
 
-.module-carousel { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 16px; }
-.module-carousel__viewport { width: min(100%, 330px); overflow: hidden; }
-.module-carousel__track { display: flex; align-items: flex-end; justify-content: center; }
-.module-carousel__item { display: flex; flex: 0 0 33.3333%; flex-direction: column; align-items: center; min-width: 0; opacity: 0.62; filter: brightness(0.58) saturate(0.75); transform: scale(0.88); transition: opacity 0.3s ease, filter 0.3s ease, transform 0.3s ease; }
+.module-carousel__item { display: flex; flex-direction: column; align-items: center; min-width: 0; opacity: 0.62; filter: brightness(0.58) saturate(0.75); transform: scale(0.88); transition: opacity 0.3s ease, filter 0.3s ease, transform 0.3s ease; }
 .module-carousel__item--current { opacity: 1; filter: none; transform: scale(1); }
-.module-carousel__name { width: calc(100% - 8px); margin-bottom: 8px; overflow: hidden; padding: 4px 6px; background: transparent; border: 1px solid currentColor; border-radius: 6px; font-size: 14px; font-weight: 800; line-height: 1.2; text-align: center; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.82); white-space: nowrap; }
+.module-carousel__name { width: calc(100% - 8px); margin-bottom: 8px; overflow: hidden; padding: 4px 6px; background: transparent; border: 1px solid currentColor; border-radius: 6px; font-size: 14px; font-weight: 800; line-height: 1.2; text-align: center; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.82); white-space: nowrap;}
 .module-carousel__button { display: flex; align-items: center; justify-content: center; width: 52px; height: 44px; border: 2px solid transparent; border-radius: 14px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease; }
 .module-carousel__button:hover { transform: translateY(-3px); }
 .module-carousel__icon { font-size: 23px; line-height: 1; }
@@ -174,6 +56,7 @@
 .module-carousel__arrow:disabled { opacity: 0.3; cursor: default; transform: none; background: rgba(102, 64, 170, 0.2); }
 
 /* Responsividade restrita às larguras de desktop mais comuns. */
+
 @media (min-width: 1280px) and (max-width: 1439px) {
   .dashboard-header { padding-right: 32px; padding-left: 32px; }
   .dashboard-footer { max-width: 980px; }
@@ -211,5 +94,11 @@
   .module-carousel__icon { font-size: 24px; }
   .module-carousel__arrow { font-size: 30px; }
   .trail-node--module { width: 100px; height: 114px; }
+  .trail-node--lesson { width: 76px; height: 88px; }
   .trail-node--module .trail-node__face { width: 84px; height: 84px; border-radius: 20px; font-size: 34px; }
+  .trail-node--lesson .trail-node__face { width: 60px; height: 60px; margin: 8px; font-size: 19px; }
 }
+
+/* Aviso rápido (ex.: aula bloqueada): só a animação; o resto do estilo está em Tailwind. */
+.dashboard-toast { animation: dashboard-toast-in 0.2s ease both; }
+@keyframes dashboard-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
