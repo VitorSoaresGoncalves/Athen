@@ -119,15 +119,16 @@ export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
                 w-full
                 overflow-y-auto
                 rounded-b-[20px]
-                border
+                border-x-[2px]
+                border-b-[2px]
                 border-t-0
-                bg-transparent
-                backdrop-blur-[3px]
+                bg-[#171421]
                 transition-[border-color,box-shadow]
                 duration-700"
               style={{
-                borderColor: cor,
-                boxShadow: `0 0px 12px ${hexToRgba(cor, 0.35)}, inset 0 0 26px ${hexToRgba(cor, 0.12)}`,
+                borderColor: "#2d323a",
+                // borderColor: "#171421",
+                boxShadow: `0 5px 18px #000000, inset 0 0 30px ${hexToRgba(cor, 0.0)}`,
               }}
             >
 
@@ -199,22 +200,23 @@ export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
               className="
                 group
                 w-[88px]
+                z-5
                 flex
                 flex-none
                 items-center
                 justify-center
-                bg-transparent
-                backdrop-blur-[3px]
+                bg-[#171421]
                 rounded-b-[12px]
-                border
+                border-x-[3px]
+                border-b-[3px]
                 border-t-0
                 cursor-pointer
                 transition-[border-color,box-shadow]
                 duration-700"
               style={{ 
                 height: rebarba,
-                borderColor: cor,
-                boxShadow: `0 0px 12px ${hexToRgba(cor, 0.4)}, inset 0 -6px 14px ${hexToRgba(cor, 0.15)}`, 
+                borderColor: "#2d323a",
+                boxShadow: `0 5px 18px #000000, inset 0 0px 20px ${hexToRgba(cor, 0.00)}`, 
               }}
             >
                 <span 
