@@ -1,0 +1,58 @@
+flowchart TB
+  classDef client fill:#f3eefb,stroke:#54318c,color:#352044;
+  classDef data fill:#ffeb99,stroke:#a486d5,color:#54318c;
+  classDef remote fill:#f3f4f6,stroke:#6b7280,color:#111827;
+
+  subgraph Client["Client — codigo-base/ (Vite + React + TS)"]
+    SPA["React SPA — Main.tsx / Hub.tsx"]:::client
+    Guard["ProtectedRoute + SupabaseConnect.tsx<br/>verificação de sessão no navegador"]:::client
+    Pages["Telas React<br/>estado e composição dos dados"]:::client
+    Cache["SidebarLeft<br/>cache próprio de perfil"]:::client
+    Repos["repositories.ts + supabase.ts<br/>consultas, RPCs e SDK tipado"]:::data
+    SPA --> Guard
+    Guard -->|"rotas internas"| Pages
+    SPA -->|"rotas públicas"| Pages
+    Pages --> Repos
+    Cache --> Repos
+    Guard -->|"sessão via SDK"| Repos
+  end
+
+  subgraph Supabase["Supabase — backend gerenciado"]
+    Auth["Auth / GoTrue"]:::remote
+    REST["PostgREST API<br/>tabelas, views e chamadas RPC"]:::remote
+    Storage["Storage — avatares<br/>avatar e banner no bucket avatars"]:::remote
+    subgraph Database["PostgreSQL — migrações numeradas"]
+      Rules["RLS policies + RPC + triggers<br/>políticas e funções SQL no banco"]:::data
+      DB[("Dados persistidos")]:::remote
+      Rules --> DB
+    end
+    Edge["Edge Functions"]:::remote
+    Auth --> DB
+    REST --> Rules
+    Edge -->|"acesso a dados"| DB
+  end
+
+  subgraph External["Integrações externas"]
+    Google["Google OAuth"]:::remote
+    SMS["SMS provider (OTP)"]:::remote
+    SMTP["Resend SMTP"]:::remote
+    Mail["E-mail do destinatário — Gmail"]:::remote
+    SMTP -->|"entrega de e-mail"| Mail
+  end
+
+  subgraph CI["CI/CD — .github/workflows/ci.yml"]
+    GH["GitHub Actions"]:::remote
+    Checks["Lint, tipos, testes, build e E2E"]:::data
+    CLI["Supabase CLI / migrações"]:::data
+    GH --> Checks
+  end
+
+  Repos --> Auth
+  Repos --> REST
+  Pages -->|"Auth e Storage diretos via SDK"| Repos
+  Repos --> Storage
+  Auth -->|"OAuth"| Google
+  Auth -->|"OTP"| SMS
+  Auth -->|"e-mails de autenticação"| SMTP
+  Edge -->|"envio de e-mail"| SMTP
+  CLI -->|"aplicação de migrações"| Rules
