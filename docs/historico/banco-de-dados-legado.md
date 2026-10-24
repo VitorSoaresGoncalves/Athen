@@ -1,3 +1,7 @@
+# Banco de dados — notas históricas
+
+> Histórico: este conteúdo descreve o esquema legado com tabelas como Usuario e Curso. Não representa o modelo usado pelo cliente atual. Consulte a [referência atual](../banco-de-dados/documentacao-bd.md). O texto original foi preservado abaixo.
+
 create extension if not exists "pgcrypto";   - Adiciona a extensão que permite geração de IDs automaticamente
 
 do $$ - cria uma área com lógica de computação, para usar if, else, while etc…
@@ -23,7 +27,7 @@ create table public."Usuario" (
   "Data_Criacao" timestamptz not null default now(),
   "Data_Atualizacao" timestamptz not null default now()
 );
-crio todas as tabelas, 
+crio todas as tabelas,
 
 "ID": Nome da coluna. As aspas duplas exigem que o PostgreSQL respeite exatamente as letras maiúsculas da palavra.
 
@@ -45,7 +49,7 @@ jsonb: Tipo de dado JSON binário. Em vez de salvar apenas um texto simples, ele
 
 DEFAULT '{}'::jsonb: Define o valor padrão atribuído automaticamente caso nenhum dado seja informado no cadastro. O '{}' representa um objeto JSON vazio, e o sintaxe ::jsonb faz a conversão de tipo explícita para que o banco processe esse texto como um objeto jsonb.
 
-O uso de índices evita a leitura completa da tabela durante uma busca, otimizando o tempo de resposta do banco, o index define quais colunas devem ser consultadas. Ao adicionar o modificador desc, os dados são salvos pré-ordenados do valor mais recente para o mais antigo, permitindo que consultas por históricos ou atividades recentes entreguem o resultado instantaneamente, sem o custo computacional de reordenar as linhas na hora da execução. 
+O uso de índices evita a leitura completa da tabela durante uma busca, otimizando o tempo de resposta do banco, o index define quais colunas devem ser consultadas. Ao adicionar o modificador desc, os dados são salvos pré-ordenados do valor mais recente para o mais antigo, permitindo que consultas por históricos ou atividades recentes entreguem o resultado instantaneamente, sem o custo computacional de reordenar as linhas na hora da execução.
 Funções de Automação e Regras de Negócio (PL/pgSQL)
 O uso de blocos e funções em PL/pgSQL permite criar rotinas procedurais no banco de dados,
 algumas funções usadas: create or replace function ... security definer: Cria ou atualiza a função de gatilho e define que ela será executada com permissões de administrador. Isso garante que a atualização das tabelas ocorra com segurança, independentemente das permissões do usuário que disparou a ação.
