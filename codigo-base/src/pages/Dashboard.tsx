@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { LessonModal } from "../components/lesson/LessonModal";
 import { CursoNotebook } from "../components/notebook/CursoNotebook";
 import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
-import { aulaRepository, concluiRepository, cursoRepository, matriculaRepository, moduloRepository, salaRepository, tentativaRepository } from "../data/repositories";
+import { aulaRepository, concluiRepository, cursoRepository, matriculaRepository, moduloRepository, participaRepository, salaRepository, tentativaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
 import "./Dashboard.css";
@@ -154,9 +154,11 @@ export default function Dashboard({ courseId }: DashboardProps) {
   // Seletor de cursos/salas. "activeSalaId" é definido ao escolher uma sala: as aulas passam a contar para ela.
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [pickerTab, setPickerTab] = useState<"courses" | "rooms">("courses");
+  // Só o que o usuário tem: cursos em que está matriculado e salas em que é membro ativo.
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
   const [salas, setSalas] = useState<Sala[]>([]);
-  const [salasLoading, setSalasLoading] = useState(false);
   const [salasError, setSalasError] = useState("");
+  const [redirectToCursos, setRedirectToCursos] = useState(false);
   const [activeSalaId, setActiveSalaId] = useState<string | undefined>(undefined);
   const telaRef = useRef<HTMLDivElement>(null);
   const trailRef = useRef<HTMLDivElement>(null);
@@ -172,43 +174,79 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
   useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
 
-  // Busca os cursos do seletor e escolhe o curso inicial:
-  // o do link (?curso=), senão o matriculado mais recente, senão o primeiro publicado.
+  // Carrega o que o usuário tem: cursos em que está matriculado e salas em que é membro ativo.
+  // Curso inicial: o do link (?curso=), senão o matriculado mais recente. Sem curso e sem sala
+  // não há o que mostrar aqui, então a pessoa é levada para a página de cursos.
   useEffect(() => {
     let cancelled = false;
 
     async function loadCourses() {
+      // Quando há um curso para abrir, quem encerra o "carregando" é o effect da trilha. Assim a tela
+      // não pisca a mensagem de "sem curso" entre uma carga e outra.
+      let handedOffToTrail = false;
       setLoading(true);
       setErrorMessage("");
+      setSalasError("");
 
       try {
         const requestedCourseId = getRequestedCourseId(courseId);
         const { data: userData } = await supabase.auth.getUser();
-        const [courses, enrollments] = await Promise.all([
+        const user = userData.user;
+        if (!user) throw new Error("Você precisa estar logado para ver sua trilha.");
+
+        const [visibleCourses, enrollments] = await Promise.all([
           cursoRepository.listar(),
-          userData.user ? matriculaRepository.listarPorUsuario(userData.user.id) : Promise.resolve([]),
+          matriculaRepository.listarPorUsuario(user.id),
         ]);
 
         // As matrículas já vêm da mais recente para a mais antiga.
-        const enrolledCourse = enrollments
+        const enrolledCourses = enrollments
           .filter((enrollment) => enrollment.status !== "dropped")
-          .map((enrollment) => courses.find((item) => item.id === enrollment.course_id))
-          .find((item) => item !== undefined);
+          .map((enrollment) => visibleCourses.find((item) => item.id === enrollment.course_id))
+          .filter((item): item is Curso => item !== undefined);
 
-        const initialCourse = requestedCourseId
-          ? courses.find((item) => item.id === requestedCourseId)
-          : enrolledCourse ?? courses.find((item) => item.status === "published");
+        // Salas: só as em que o usuário é membro ativo. (Educador não entra: o servidor só credita
+        // XP de sala para membros.) Uma falha aqui não derruba o dashboard.
+        let mySalas: Sala[] = [];
+        let salasLoaded = false;
+        let salasFailure = "";
+        try {
+          const [allSalas, memberships] = await Promise.all([salaRepository.listar(), participaRepository.listarPorUsuario(user.id)]);
+          const activeRoomIds = new Set(memberships.filter((membership) => membership.status === "active").map((membership) => membership.room_id));
+          mySalas = allSalas.filter((sala) => activeRoomIds.has(sala.id));
+          salasLoaded = true;
+        } catch (error) {
+          salasFailure = error instanceof Error ? error.message : "Não foi possível carregar as salas.";
+        }
 
-        if (!initialCourse) throw new Error(requestedCourseId ? "Curso não encontrado." : "Nenhum curso publicado disponível.");
+        const requestedCourse = requestedCourseId ? visibleCourses.find((item) => item.id === requestedCourseId) : undefined;
+        if (requestedCourseId && !requestedCourse) throw new Error("Curso não encontrado.");
+
+        const initialCourse = requestedCourse ?? enrolledCourses[0];
 
         if (cancelled) return;
-        setCourses(courses);
-        setSelectedCourseId(initialCourse.id);
+
+        if (!initialCourse && salasLoaded && mySalas.length === 0) {
+          setRedirectToCursos(true);
+          return;
+        }
+
+        // "courses" guarda todo curso que a tela pode abrir (matriculados, o do link e os das salas).
+        // Quem decide o que o seletor lista é "enrolledCourseIds".
+        const roomCourses = mySalas.flatMap((sala) => visibleCourses.filter((item) => item.id === sala.course_id));
+        const knownCourses = [...new Map([...enrolledCourses, ...(requestedCourse ? [requestedCourse] : []), ...roomCourses].map((item) => [item.id, item])).values()];
+
+        setCourses(knownCourses);
+        setEnrolledCourseIds(new Set(enrolledCourses.map((item) => item.id)));
+        setSalas(mySalas);
+        setSalasError(salasFailure);
+        setSelectedCourseId(initialCourse?.id);
+        handedOffToTrail = Boolean(initialCourse);
       } catch (error) {
         if (cancelled) return;
         setErrorMessage(error instanceof Error ? error.message : "Não foi possível carregar a trilha.");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !handedOffToTrail) setLoading(false);
       }
     }
 
@@ -285,30 +323,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
   }, [coursePickerOpen]);
-
-  // Carrega as salas só quando a aba "Salas" é aberta (tabela "rooms").
-  useEffect(() => {
-    if (!coursePickerOpen || pickerTab !== "rooms" || salas.length > 0) return;
-
-    let cancelled = false;
-
-    async function loadSalas() {
-      setSalasLoading(true);
-      setSalasError("");
-
-      try {
-        const availableSalas = await salaRepository.listar();
-        if (!cancelled) setSalas(availableSalas);
-      } catch (error) {
-        if (!cancelled) setSalasError(error instanceof Error ? error.message : "Não foi possível carregar as salas.");
-      } finally {
-        if (!cancelled) setSalasLoading(false);
-      }
-    }
-
-    void loadSalas();
-    return () => { cancelled = true; };
-  }, [coursePickerOpen, pickerTab, salas.length]);
 
   // Expõe a largura real da sidebar (--sidebar-left-width) para o botão de curso e o notebook.
   useEffect(() => {
@@ -405,7 +419,32 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return normalizeColor(undefined, Math.max(0, index));
   }
 
+  // Seletor: só os cursos em que o usuário está matriculado, mais o curso aberto agora quando veio
+  // por link. Em modo sala, o curso da sala não entra na lista (a sala tem a própria aba).
+  const pickerCourses = orderedCourses.filter((item) => enrolledCourseIds.has(item.id) || (item.id === selectedCourseId && !activeSalaId));
+
   const activeSala = activeSalaId ? salas.find((sala) => sala.id === activeSalaId) : undefined;
+
+  // A trilha rola na horizontal. Converte o scroll vertical do mouse (deltaY) em rolagem
+  // horizontal, para a roda do mouse também mover o caminho. O listener não é passivo para
+  // poder chamar preventDefault e evitar rolar a página.
+  useEffect(() => {
+    const element = trailRef.current;
+    if (!element) return;
+
+    function handleWheel(event: WheelEvent) {
+      if (!element) return;
+      // Gestos horizontais nativos (trackpad) seguem o comportamento do navegador.
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      if (element.scrollWidth - element.clientWidth <= 0) return;
+      event.preventDefault();
+      element.scrollLeft += event.deltaY;
+    }
+
+    element.addEventListener("wheel", handleWheel, { passive: false });
+    return () => element.removeEventListener("wheel", handleWheel);
+    // Reanexa quando a trilha (re)monta: durante o carregamento o <section> não existe.
+  }, [loading, errorMessage, course, activeModule, trail.length]);
 
   // Centraliza o nó ativo após a troca de aula ou módulo.
   useEffect(() => {
@@ -554,8 +593,12 @@ export default function Dashboard({ courseId }: DashboardProps) {
             {/* Linhas com a altura do card (156px): com auto-rows-fr e max-h as linhas encolhiam e os cards se sobrepunham. */}
             <div className="grid max-h-[min(60vh,420px)] grid-cols-3 auto-rows-[156px] gap-3 overflow-y-auto px-1 pb-1 pt-4">
           {pickerTab === "courses" ? (
-            orderedCourses.map((availableCourse) => {
-              const isSelected = availableCourse.id === selectedCourseId;
+            pickerCourses.length === 0 ? (
+              <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">
+                Você não está matriculado em nenhum curso. <Link className="text-[var(--amarelo-tangerina)] underline" to="/cursos">Ver cursos</Link>
+              </p>
+            ) : pickerCourses.map((availableCourse) => {
+              const isSelected = availableCourse.id === selectedCourseId && !activeSalaId;
               const cardColor = getCourseColor(availableCourse.id);
 
               return (
@@ -580,12 +623,12 @@ export default function Dashboard({ courseId }: DashboardProps) {
                 </button>
               );
             })
-          ) : salasLoading ? (
-            <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">Carregando salas...</p>
           ) : salasError ? (
             <p className="col-span-3 px-2 py-6 text-center text-sm text-red-200">{salasError}</p>
           ) : salas.length === 0 ? (
-            <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">Nenhuma sala cadastrada.</p>
+            <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">
+              Você não participa de nenhuma sala. <Link className="text-[var(--amarelo-tangerina)] underline" to="/salas">Ver salas</Link>
+            </p>
           ) : (
             salas.map((sala) => {
               const salaCurso = courses.find((availableCourse) => availableCourse.id === sala.course_id);
@@ -625,6 +668,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
     </div>
   );
 
+  // Sem curso e sem sala: nada para mostrar aqui. (Fica depois de todos os hooks.)
+  if (redirectToCursos) return <Navigate to="/cursos" replace />;
+
   return (
     <div ref={telaRef} className="tela flex min-h-svh">
       <SidebarLeft />
@@ -633,9 +679,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
         <main className="dashboard dashboard--state min-w-0 flex-1" style={{ paddingLeft: "calc(var(--sidebar-left-width, 230px) + 24px)" }}>Carregando sua trilha...</main>
       ) : errorMessage || !course || !activeModule ? (
         <main className="dashboard dashboard--state relative min-w-0 flex-1 flex-col gap-4" style={{ paddingLeft: "calc(var(--sidebar-left-width, 230px) + 24px)" }}>
-          {courses.length > 0 && courseTrigger}
+          {(courses.length > 0 || salas.length > 0) && courseTrigger}
           {coursePickerModal}
-          <p>{errorMessage || "Este curso ainda não tem módulos. Selecione outro curso."}</p>
+          <p>{errorMessage || (course ? "Este curso ainda não tem módulos. Selecione outro curso." : "Escolha um curso ou uma sala no menu ≡.")}</p>
           <Link className="dashboard__link text-sm text-[var(--amarelo-tangerina)] underline" to="/cursos">Ver todos os cursos</Link>
         </main>
       ) : (
