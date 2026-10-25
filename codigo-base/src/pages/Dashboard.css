@@ -39,8 +39,9 @@
 .trail-node__face { position: absolute; display: flex; align-items: center; justify-content: center; border: 2.5px solid transparent; color: #fff; transition: all 0.3s ease; }
 .trail-node--module .trail-node__face { width: 64px; height: 64px; border-radius: 18px; font-size: 28px; }
 .trail-node--lesson .trail-node__face { width: 48px; height: 48px; margin: 8px; border-radius: 50%; font-size: 16px; font-weight: 900; }
-.trail-node--locked { cursor: not-allowed; }
-.trail-node--locked .trail-node__face { font-size: 14px; }
+.trail-node--locked { opacity: 0.55; cursor: not-allowed; }
+.trail-node--locked:hover { transform: none; }
+.trail-node--locked .trail-node__face { font-size: 14px; filter: grayscale(0.5); }
 @keyframes trail-node-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 
 .progress-block--completed { width: 22px; height: 22px; }

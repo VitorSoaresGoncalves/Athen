@@ -19,8 +19,6 @@ type LessonTrailItem = { type: "lesson"; module: DashboardModule; aula: Aula };
 type TrailItem = { type: "module"; module: DashboardModule } | LessonTrailItem;
 interface DashboardProps { courseId?: string }
 
-// O banco novo não tem mais coluna de ícone em cursos/módulos: usamos ícones padrão.
-const DEFAULT_COURSE_ICON = "📚";
 const DEFAULT_MODULE_ICON = "📘";
 const DEFAULT_SALA_ICON = "👨‍🏫";
 
@@ -31,7 +29,6 @@ function normalizeColor(color: string | null | undefined, index: number) {
   return candidate && /^#[0-9a-fA-F]{3,8}$/.test(candidate) ? candidate : FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
-// O ícone vem de modules.icon (coluna not null, default "📘"). O padrão só cobre texto vazio.
 function getModuleIcon(module: Pick<Modulo, "icon">) {
   return module.icon?.trim() || DEFAULT_MODULE_ICON;
 }
@@ -138,6 +135,57 @@ async function loadCompletedLessonIds(salaId?: string): Promise<Set<string>> {
   );
 }
 
+function getInitial(title: string | null | undefined) {
+  const first = Array.from(title?.trim() ?? "")[0];
+  return first ? first.toLocaleUpperCase("pt-BR") : "?";
+}
+
+// Quantas conclusões recentes são examinadas até achar uma que dê para abrir.
+const MAX_COMPLETIONS_CHECKED = 10;
+
+// Onde a pessoa estudou por último: a conclusão mais recente decide se abre um curso ou uma sala.
+// - Conclusão em contexto de curso: sobe aula → módulo → curso (só vale se estiver matriculado).
+// - Conclusão em contexto de sala: a tentativa guarda a sala (só vale se a sala for sua: educador ou membro ativo).
+// Conclusões que não dá para abrir (curso abandonado, sala que não é mais sua, curso invisível) são puladas.
+async function findLastActivity(
+  userId: string,
+  enrolledCourseIds: Set<string>,
+  salas: Sala[],
+  courses: Curso[],
+): Promise<{ course: Curso; salaId?: string } | undefined> {
+  const conclusions = (await concluiRepository.listarPorUsuario(userId)).slice(0, MAX_COMPLETIONS_CHECKED); // mais recente primeiro
+  let attempts: Awaited<ReturnType<typeof tentativaRepository.listarPorUsuario>> | undefined;
+  const courseIdByModule = new Map<string, string | null>();
+  const moduleIdByLesson = new Map<string, string | null>();
+
+  for (const conclusion of conclusions) {
+    if (conclusion.context === "room") {
+      if (!conclusion.attempt_id) continue;
+      attempts ??= await tentativaRepository.listarPorUsuario(userId);
+      const roomId = attempts.find((attempt) => attempt.id === conclusion.attempt_id)?.room_id;
+      const sala = salas.find((item) => item.id === roomId);
+      const course = sala ? courses.find((item) => item.id === sala.course_id) : undefined;
+      if (sala && course) return { course, salaId: sala.id };
+      continue;
+    }
+
+    if (!moduleIdByLesson.has(conclusion.lesson_id)) {
+      moduleIdByLesson.set(conclusion.lesson_id, (await aulaRepository.obterPorId(conclusion.lesson_id))?.module_id ?? null);
+    }
+    const moduleId = moduleIdByLesson.get(conclusion.lesson_id);
+    if (!moduleId) continue;
+
+    if (!courseIdByModule.has(moduleId)) {
+      courseIdByModule.set(moduleId, (await moduloRepository.obterPorId(moduleId))?.course_id ?? null);
+    }
+    const courseId = courseIdByModule.get(moduleId);
+    const course = courseId && enrolledCourseIds.has(courseId) ? courses.find((item) => item.id === courseId) : undefined;
+    if (course) return { course };
+  }
+
+  return undefined;
+}
+
 export default function Dashboard({ courseId }: DashboardProps) {
 
   const [lousaAberta, setLousaAberta] = useState(false);
@@ -151,10 +199,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  // Seletor de cursos/salas. "activeSalaId" é definido ao escolher uma sala: as aulas passam a contar para ela.
   const [coursePickerOpen, setCoursePickerOpen] = useState(false);
   const [pickerTab, setPickerTab] = useState<"courses" | "rooms">("courses");
-  // Só o que o usuário tem: cursos em que está matriculado e salas em que é membro ativo.
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
   const [salas, setSalas] = useState<Sala[]>([]);
   const [salasError, setSalasError] = useState("");
@@ -181,8 +227,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
     let cancelled = false;
 
     async function loadCourses() {
-      // Quando há um curso para abrir, quem encerra o "carregando" é o effect da trilha. Assim a tela
-      // não pisca a mensagem de "sem curso" entre uma carga e outra.
       let handedOffToTrail = false;
       setLoading(true);
       setErrorMessage("");
@@ -199,21 +243,22 @@ export default function Dashboard({ courseId }: DashboardProps) {
           matriculaRepository.listarPorUsuario(user.id),
         ]);
 
-        // As matrículas já vêm da mais recente para a mais antiga.
         const enrolledCourses = enrollments
           .filter((enrollment) => enrollment.status !== "dropped")
           .map((enrollment) => visibleCourses.find((item) => item.id === enrollment.course_id))
           .filter((item): item is Curso => item !== undefined);
 
-        // Salas: só as em que o usuário é membro ativo. (Educador não entra: o servidor só credita
-        // XP de sala para membros.) Uma falha aqui não derruba o dashboard.
+        // Salas: mesma regra da página Salas (educador ou membro ativo), da mais recente para a mais antiga.
         let mySalas: Sala[] = [];
         let salasLoaded = false;
         let salasFailure = "";
         try {
           const [allSalas, memberships] = await Promise.all([salaRepository.listar(), participaRepository.listarPorUsuario(user.id)]);
-          const activeRoomIds = new Set(memberships.filter((membership) => membership.status === "active").map((membership) => membership.room_id));
-          mySalas = allSalas.filter((sala) => activeRoomIds.has(sala.id));
+          const joinedAt = new Map(memberships.filter((membership) => membership.status === "active").map((membership) => [membership.room_id, membership.joined_at]));
+          const time = (value: string) => Date.parse(value) || 0;
+          mySalas = allSalas
+            .filter((sala) => sala.educator_id === user.id || joinedAt.has(sala.id))
+            .sort((a, b) => time(joinedAt.get(b.id) ?? b.created_at) - time(joinedAt.get(a.id) ?? a.created_at));
           salasLoaded = true;
         } catch (error) {
           salasFailure = error instanceof Error ? error.message : "Não foi possível carregar as salas.";
@@ -222,7 +267,25 @@ export default function Dashboard({ courseId }: DashboardProps) {
         const requestedCourse = requestedCourseId ? visibleCourses.find((item) => item.id === requestedCourseId) : undefined;
         if (requestedCourseId && !requestedCourse) throw new Error("Curso não encontrado.");
 
-        const initialCourse = requestedCourse ?? enrolledCourses[0];
+        // O link (?curso=) manda. Sem link, abre onde a pessoa estudou por último (curso ou sala)
+        // e, sem nenhuma conclusão aproveitável, o curso matriculado mais recente.
+        let lastActivity: Awaited<ReturnType<typeof findLastActivity>>;
+        if (!requestedCourse) {
+          try {
+            lastActivity = await findLastActivity(user.id, new Set(enrolledCourses.map((item) => item.id)), mySalas, visibleCourses);
+          } catch {
+            lastActivity = undefined; // sem essa informação, segue para o curso matriculado mais recente
+          }
+        }
+
+        const firstRoomStart = mySalas
+          .map((sala) => ({ course: visibleCourses.find((item) => item.id === sala.course_id), salaId: sala.id }))
+          .find((start): start is { course: Curso; salaId: string } => start.course !== undefined);
+
+        const start: { course?: Curso; salaId?: string } | undefined = requestedCourse
+          ? { course: requestedCourse }
+          : lastActivity ?? (enrolledCourses[0] ? { course: enrolledCourses[0] } : firstRoomStart);
+        const initialCourse = start?.course;
 
         if (cancelled) return;
 
@@ -240,6 +303,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
         setEnrolledCourseIds(new Set(enrolledCourses.map((item) => item.id)));
         setSalas(mySalas);
         setSalasError(salasFailure);
+        setActiveSalaId(start?.salaId);
         setSelectedCourseId(initialCourse?.id);
         handedOffToTrail = Boolean(initialCourse);
       } catch (error) {
@@ -611,7 +675,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   aria-pressed={isSelected}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{DEFAULT_COURSE_ICON}</span>
+                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl font-bold text-[#f4eeff] shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{getInitial(availableCourse.title)}</span>
                     {isSelected
                       ? <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>
                       : availableCourse.status !== "published" && <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Rascunho</span>}
@@ -648,7 +712,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   aria-label={`Abrir a sala ${sala.name}`}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{DEFAULT_SALA_ICON}</span>
+                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl font-bold text-[#f4eeff] shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{getInitial(salaCurso?.title ?? sala.name)}</span>
                     {isSalaAtiva
                       ? <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>
                       : <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Sala</span>}
