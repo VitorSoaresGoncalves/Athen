@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { LessonModal } from "../components/lesson/LessonModal";
 import { CursoNotebook } from "../components/notebook/CursoNotebook";
-import { SidebarLeft } from "../components/sidebar/SidebarLeft";
+import { PageLayout } from "../components/layout/PageLayout";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
 import { aulaRepository, concluiRepository, cursoRepository, matriculaRepository, moduloRepository, participaRepository, salaRepository, tentativaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
@@ -206,7 +206,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [salasError, setSalasError] = useState("");
   const [redirectToCursos, setRedirectToCursos] = useState(false);
   const [activeSalaId, setActiveSalaId] = useState<string | undefined>(undefined);
-  const telaRef = useRef<HTMLDivElement>(null);
   const trailRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0, moved: false });
   const noticeTimer = useRef<number | undefined>(undefined);
@@ -390,7 +389,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
   // Expõe a largura real da sidebar (--sidebar-left-width) para o botão de curso e o notebook.
   useEffect(() => {
-    const tela = telaRef.current;
+    const tela = document.querySelector<HTMLElement>(".tela");
     const sidebar = tela?.querySelector<HTMLElement>(".sidebarL");
     if (!(tela && sidebar)) return;
 
@@ -628,7 +627,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
       }}
     >
       <section
-        className="w-full max-w-2xl rounded-2xl border border-[rgba(193,150,255,0.38)] bg-[#1a1035] p-5 text-[#f4eeff] shadow-2xl shadow-black/50"
+        className="w-full max-w-[22rem] min-[900px]:max-w-[30rem] min-[1200px]:max-w-[36rem] min-[1500px]:max-w-2xl rounded-2xl border border-[rgba(193,150,255,0.38)] bg-[#1a1035] p-5 text-[#f4eeff] shadow-2xl shadow-black/50"
         role="dialog"
         aria-modal="true"
         aria-label="Selecionar curso ou sala"
@@ -736,20 +735,30 @@ export default function Dashboard({ courseId }: DashboardProps) {
   if (redirectToCursos) return <Navigate to="/cursos" replace />;
 
   return (
-    <div ref={telaRef} className="tela flex min-h-svh">
-      <SidebarLeft />
-
+    <PageLayout
+      variant="bare"
+      offset={false}
+      className="tela"
+      mainClassName="flex min-h-svh min-w-0"
+      overlay={
+        <SidebarRight
+          aberta={lousaAberta}
+          onFechar={() => setLousaAberta((aberta) => !aberta)}
+          cor={activeTheme.primary}
+        />
+      }
+    >
       {loading ? (
-        <main className="dashboard dashboard--state min-w-0 flex-1" style={{ paddingLeft: "calc(var(--sidebar-left-width, 230px) + 24px)" }}>Carregando sua trilha...</main>
+        <div className="dashboard dashboard--state min-w-0 flex-1" style={{ paddingLeft: "calc(var(--sidebar-left-width, 230px) + 24px)" }}>Carregando sua trilha...</div>
       ) : errorMessage || !course || !activeModule ? (
-        <main className="dashboard dashboard--state relative min-w-0 flex-1 flex-col gap-4" style={{ paddingLeft: "calc(var(--sidebar-left-width, 230px) + 24px)" }}>
+        <div className="dashboard dashboard--state relative min-w-0 flex-1 flex-col gap-4" style={{ paddingLeft: "calc(var(--sidebar-left-width, 230px) + 24px)" }}>
           {(courses.length > 0 || salas.length > 0) && courseTrigger}
           {coursePickerModal}
           <p>{errorMessage || (course ? "Este curso ainda não tem módulos. Selecione outro curso." : "Escolha um curso ou uma sala no menu ≡.")}</p>
           <Link className="dashboard__link text-sm text-[var(--amarelo-tangerina)] underline" to="/cursos">Ver todos os cursos</Link>
-        </main>
+        </div>
       ) : (
-        <main className="dashboard relative z-0 flex min-h-svh min-w-0 flex-1 flex-col overflow-hidden select-none leading-[normal] text-[#f4eeff] transition-[background] duration-700" style={{ background: activeTheme.background, color: "#f4eeff" }}>
+        <div className="dashboard relative z-0 flex min-h-svh min-w-0 flex-1 flex-col overflow-hidden select-none leading-[normal] text-[#f4eeff] transition-[background] duration-700" style={{ background: activeTheme.background, color: "#f4eeff" }}>
 
           <header className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
             {courseTrigger}
@@ -884,15 +893,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
             </div>
           </footer>
-        </main>
+        </div>
       )}
-
-      {/* A aba da própria sidebar abre e fecha o painel, por isso onFechar alterna o estado. */}
-      <SidebarRight
-        aberta={lousaAberta}
-        onFechar={() => setLousaAberta((aberta) => !aberta)}
-        cor={activeTheme.primary}
-      />
 
       {course && openLesson && (
         <LessonModal
@@ -907,6 +909,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
           onConcluida={(lessonId) => void handleLessonCompleted(lessonId)}
         />
       )}
-    </div>
+    </PageLayout>
   );
 }
