@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { SidebarLeft } from "../components/sidebar/SidebarLeft";
+import { PageLayout } from "../components/layout/PageLayout";
 import { anotacoesRepository, cursoRepository, notebookRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -13,10 +13,12 @@ type NotebookComCurso = {
   curso: Curso | null;
 };
 
-// ATENÇÃO: a tabela "notebooks" não tem mais course_id. O caderno de um curso é identificado
-// pelo título (notebooks.title === courses.title), convenção usada também no CursoNotebook.
-// Se o aluno renomear o caderno, ele deixa de aparecer ligado ao curso.
-// O ideal é adicionar uma coluna course_id em notebooks.
+// ATENÇÃO: a tabela "notebooks" não tem mais course_id (chave estrangeira para courses).
+// Antes o caderno se ligava ao curso por essa FK; hoje a ligação é feita apenas pelo título
+// (notebooks.title === courses.title), convenção usada também no CursoNotebook.
+// Isso é frágil: se o aluno renomear o caderno, ele deixa de aparecer ligado ao curso.
+// TODO: reintroduzir a coluna course_id em notebooks (FK -> courses.id) e voltar a casar por ela,
+// como era antes, em vez de depender do título.
 function cursoDoNotebook(notebook: Notebook, cursos: Curso[]): Curso | null {
   return cursos.find((curso) => curso.title === notebook.title) ?? null;
 }
@@ -32,6 +34,15 @@ function ordenarPaginas(paginas: Anotacao[]) {
 
 function dataFormatada(data: string) {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(data));
+}
+
+// Deixa o texto comparável na busca: minúsculo e sem acentos. Assim "pratica" encontra
+// "Prática" (e vice-versa). NFD separa a letra do acento; o regex remove os diacríticos.
+function normalizarBusca(texto: string) {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase();
 }
 
 function NotebookCard({ item, onOpen }: { item: NotebookComCurso; onOpen: () => void }) {
@@ -76,11 +87,11 @@ export default function NotebookPage() {
   const selectedNotebook = notebooks.find(({ notebook }) => notebook.id === selectedId) ?? null;
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
 
-  // A pesquisa procura pelo nome do notebook ou pelo curso.
+  // A pesquisa procura pelo nome do notebook ou pelo curso, ignorando acentos.
   const notebooksVisiveis = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase();
+    const term = normalizarBusca(search.trim());
     if (!term) return notebooks;
-    return notebooks.filter(({ notebook, curso }) => `${notebook.title} ${curso?.title ?? ""}`.toLocaleLowerCase().includes(term));
+    return notebooks.filter(({ notebook, curso }) => normalizarBusca(`${notebook.title} ${curso?.title ?? ""}`).includes(term));
   }, [notebooks, search]);
 
   useEffect(() => {
@@ -272,24 +283,26 @@ export default function NotebookPage() {
   }
 
   return (
-    <div className="min-h-svh bg-[#141322] font-body text-[#f4eeff]">
-      <SidebarLeft />
-      <main className="min-h-svh pl-[230px]">
-        <div className="mx-auto min-h-svh max-w-[1700px] px-6 pb-12 pt-8 min-[1440px]:px-10">
+    <PageLayout variant="bare">
+      <div className="min-h-svh bg-[#140a2b] font-body text-ink">
+        <main className="relative isolate min-h-svh">
+          <div className="pointer-events-none fixed -right-[120px] -top-[200px] -z-10 h-[560px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(120,63,220,0.2),rgba(20,10,43,0)_68%)]" />
+
+          <div className="mx-auto max-w-[1700px] px-[56px] pb-[48px] pt-[42px] max-[760px]:px-[20px] max-[760px]:pt-[28px]">
           {/* Estante: pesquisa e cards em ordem alfabética. */}
           {!selectedNotebook && (
             <>
-              <header className="mx-auto max-w-[1180px] border-b border-[#a486d5]/15 pb-6">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#a486d5]">Área de estudos</p>
-                <h1 className="mt-2 font-display text-3xl text-[#f4eeff] min-[1280px]:text-4xl">Minha estante</h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b8aacb]">Escolha um caderno para abrir suas anotações. Os cadernos são organizados em ordem alfabética.</p>
+              <header className="mb-[32px]">
+                <p className="mb-[10px] text-[10px] font-bold uppercase tracking-[1.4px] text-violet-pale/50">PLATAFORMA / <span className="text-gold">NOTEBOOK</span></p>
+                <h1 className="font-display text-[36px] leading-[1.05] tracking-[-0.8px] text-ink min-[760px]:text-[46px]">Notebook</h1>
+                <p className="mt-[9px] text-[14px] text-muted">Escolha um caderno para abrir suas anotações e acompanhar seus estudos.</p>
               </header>
 
-              {loading && <p className="mx-auto mt-10 max-w-[1180px] text-center text-sm text-[#b8aacb]">Carregando seus cadernos...</p>}
+              {loading && <p className="mt-10 text-sm text-muted">Carregando seus cadernos...</p>}
               {error && <p className="mt-8 rounded-lg border border-[#c2455a]/40 bg-[#3a1522] px-4 py-3 text-sm text-[#f2b4bd]">{error}</p>}
-              {!loading && !error && notebooks.length === 0 && <div className="mx-auto mt-10 max-w-[1180px] rounded-xl border border-dashed border-[#a486d5]/35 bg-[#1d1a31]/70 px-6 py-16 text-center"><p className="text-4xl">📖</p><h2 className="mt-3 font-display text-xl">Sua estante está vazia</h2><p className="mt-2 text-sm text-[#a99bbb]">Crie um notebook dentro de um curso para ele aparecer aqui.</p></div>}
+              {!loading && !error && notebooks.length === 0 && <div className="mt-10 rounded-xl border border-dashed border-violet-mid/35 bg-[#1d1a31]/70 px-6 py-16 text-center"><p className="text-4xl">📖</p><h2 className="mt-3 font-display text-xl">Sua estante está vazia</h2><p className="mt-2 text-sm text-muted">Crie um notebook dentro de um curso para ele aparecer aqui.</p></div>}
 
-              {!loading && notebooks.length > 0 && <div className="mx-auto mt-8 max-w-[1180px]"><label htmlFor="notebook-search" className="sr-only">Pesquisar notebooks</label><input id="notebook-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar por caderno ou curso..." className="mb-7 w-full rounded-lg border border-[#a486d5]/30 bg-[#1d1a31] px-4 py-3 text-sm text-[#f4eeff] outline-none placeholder:text-[#8f829f] focus:border-[#a486d5] focus:ring-2 focus:ring-[#a486d5]/25" /><div className="grid grid-cols-1 gap-7 min-[900px]:grid-cols-2">{notebooksVisiveis.map((item) => <NotebookCard key={item.notebook.id} item={item} onOpen={() => void abrirNotebook(item.notebook.id)} />)}</div>{notebooksVisiveis.length === 0 && <p className="rounded-lg border border-dashed border-[#a486d5]/30 px-5 py-10 text-center text-sm text-[#a99bbb]">Nenhum notebook encontrado.</p>}</div>}
+              {!loading && notebooks.length > 0 && <div className="mt-8"><label htmlFor="notebook-search" className="sr-only">Pesquisar notebooks</label><input id="notebook-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pesquisar por caderno ou curso..." className="mb-7 w-full rounded-lg border border-violet-mid/30 bg-[#1d1a31] px-4 py-3 text-sm text-ink outline-none placeholder:text-[#8f829f] focus:border-violet-mid focus:ring-2 focus:ring-violet-mid/25" /><div className="grid grid-cols-1 gap-7 min-[900px]:grid-cols-2">{notebooksVisiveis.map((item) => <NotebookCard key={item.notebook.id} item={item} onOpen={() => void abrirNotebook(item.notebook.id)} />)}</div>{notebooksVisiveis.length === 0 && <p className="rounded-lg border border-dashed border-violet-mid/30 px-5 py-10 text-center text-sm text-muted">Nenhum notebook encontrado.</p>}</div>}
             </>
           )}
 
@@ -308,7 +321,8 @@ export default function NotebookPage() {
             </section>
           </div>}
         </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </PageLayout>
   );
 }
