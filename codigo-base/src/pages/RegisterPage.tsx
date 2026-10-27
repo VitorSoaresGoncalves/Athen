@@ -29,7 +29,7 @@ export function RegisterPage() {
       password,
       options: {
         data: {
-          cargo: cargo.trim(),
+          role: cargo,
           username: nomeUsuario.trim(),
         },
       },
