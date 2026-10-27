@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { PageLayout } from "../components/layout/PageLayout";
 import { LessonModal } from "../components/lesson/LessonModal";
 import { RankingPodium, type PodiumHeight, type PodiumPlayer, type Tier } from "../components/ranking/RankingPodium";
-import { SidebarLeft } from "../components/sidebar/SidebarLeft";
 import {
   aulaRepository,
   avisoRepository,
@@ -1013,9 +1013,8 @@ export default function Salas() {
   }
 
   return (
+    <PageLayout variant="bare">
     <div className="salas">
-      <SidebarLeft />
-
       <main className="salas__main">
         <div className="salas__brilho" />
 
@@ -1165,5 +1164,6 @@ export default function Salas() {
         />
       )}
     </div>
+    </PageLayout>
   );
 }
