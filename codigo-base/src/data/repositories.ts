@@ -110,6 +110,13 @@ export const usuarioRepository = {
     return data;
   },
 
+  async listarPorIds(ids: string[]): Promise<Usuario[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase.from('profiles').select('*').in('id', ids);
+    if (error) throw new Error(`Erro ao listar perfis: ${error.message}`);
+    return data || [];
+  },
+
   async obterPorUsername(username: string): Promise<Usuario | null> {
     const { data, error } = await supabase.from('profiles').select('*').eq('username', username).single();
     if (error) return null;
@@ -1207,6 +1214,18 @@ export const medalhaUsuarioRepository = {
       .from('user_medals')
       .select('*')
       .eq('user_id', idUsuario)
+      .eq('featured', true)
+      .order('acquired_at', { ascending: false });
+    if (error) throw new Error(`Erro ao listar medalhas em destaque: ${error.message}`);
+    return data || [];
+  },
+
+  async listarEmDestaquePorUsuarios(idsUsuarios: string[]): Promise<MedalhaUsuario[]> {
+    if (idsUsuarios.length === 0) return [];
+    const { data, error } = await supabase
+      .from('user_medals')
+      .select('*')
+      .in('user_id', idsUsuarios)
       .eq('featured', true)
       .order('acquired_at', { ascending: false });
     if (error) throw new Error(`Erro ao listar medalhas em destaque: ${error.message}`);
