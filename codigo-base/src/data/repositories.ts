@@ -871,6 +871,20 @@ export const missaoRepository = {
     return data || [];
   },
 
+  // Missoes publicadas e ainda no prazo. O RLS ja limita as salas do usuario logado.
+  async listarAtivas(limite = 3): Promise<Missao[]> {
+    const { data, error } = await supabase
+      .from('missions')
+      .select('*')
+      .eq('status', 'published')
+      .or(`deadline.is.null,deadline.gte.${new Date().toISOString()}`)
+      .order('deadline', { ascending: true, nullsFirst: false })
+      .limit(limite);
+    if (error) throw new Error(`Erro ao listar missões ativas: ${error.message}`);
+    return data || [];
+  },
+
+
   async obterPorId(id: string): Promise<Missao | null> {
     const { data, error } = await supabase.from('missions').select('*').eq('id', id).single();
     if (error) return null;
