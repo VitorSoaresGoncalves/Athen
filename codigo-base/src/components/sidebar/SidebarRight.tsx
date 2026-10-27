@@ -25,14 +25,6 @@ function Mensagem({ children }: { children: React.ReactNode }) {
 }
 
 
-const quest = {
-    titulo: "Complete 3 aulas hoje", 
-    xp: 150, 
-    feito: 1, 
-    total: 3
-};
-
-
 function Bloco({ cor, titulo, children }: BlocoProps) {
     return (
         <div
@@ -68,9 +60,9 @@ function Bloco({ cor, titulo, children }: BlocoProps) {
 
 export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProps) {
     const painelRef = useRef<HTMLDivElement>(null);
-    const { ranking, carregando, erroRanking } = useTopDownDados(cursoId);
+    const { ranking, missoes, carregando, erroRanking, erroMissoes } = useTopDownDados(cursoId);
     const temAmigos = ranking.some((amigo) => !amigo.is_self);
-    const progresso = Math.round((quest.feito / quest.total) * 100);
+    
 
     useEffect(() => {
         if (!aberta) return;
@@ -162,39 +154,59 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
                 </Bloco>
 
                     
-                {/* Quest diaria */}
-                <Bloco cor={cor} titulo="Quest diária">
-                    <div className="flex items-start justify-between gap-3">
-                        <strong className="text-sm leading-snug text-[#f4eeff]">
-                            {quest.titulo}
-                        </strong>
-                    
-                        <span
-                            className="flex-none rounded-full border px-2 py-0.5 text-[11px] font-bold"
-                            style={{ borderColor: hexToRgba(cor, 0.6), color: cor }}
-                        >
-                            +{quest.xp} XP
-                        </span>
-                    </div>
-                    
-                    <div
-                        className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
-                        style={{ backgroundColor: hexToRgba(cor, 0.15) }}
-                    >
-                        <div
-                            className="h-full rounded-full transition-[width] duration-500"
-                            style={{
-                                width: `${progresso}%`,
-                                backgroundColor: cor,
-                                boxShadow: `0 0 10px ${hexToRgba(cor, 0.8)}`,
-                            }}
-                        />
-                    </div>
-                        
-                    <span className="mt-2 block text-xs" style={{ color: hexToRgba(cor, 0.9) }}>
-                        {quest.feito}/{quest.total} concluídas
-                    </span>
+                {/* Missoes ativas */}
+                <Bloco cor={cor} titulo="Missões">
+                    {carregando ? (
+                        <Mensagem>Carregando...</Mensagem>
+                    ) : erroMissoes ? (
+                        <Mensagem>{erroMissoes}</Mensagem>
+                    ) : missoes.length === 0 ? (
+                        <Mensagem>Nenhuma missão ativa nas suas salas.</Mensagem>
+                    ) : (
+                        <ul className="m-0 flex list-none flex-col gap-4 p-0">
+                            {missoes.map((missao) => {
+                                const progresso = missao.concluida ? 100 : Math.round(missao.progresso);
+                            
+                                return (
+                                    <li key={missao.id}>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <strong className="text-sm leading-snug text-[#f4eeff]">
+                                                {missao.title}
+                                            </strong>
+                                
+                                            <span
+                                                className="flex-none rounded-full border px-2 py-0.5 text-[11px] font-bold"
+                                                style={{ borderColor: hexToRgba(cor, 0.6), color: cor }}
+                                            >
+                                                +{missao.reward_xp} XP
+                                            </span>
+                                        </div>
+                                
+                                        <div
+                                            className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
+                                            style={{ backgroundColor: hexToRgba(cor, 0.15) }}
+                                        >
+                                            <div
+                                                className="h-full rounded-full transition-[width] duration-500"
+                                                style={{
+                                                    width: `${progresso}%`,
+                                                    backgroundColor: cor,
+                                                    boxShadow: `0 0 10px ${hexToRgba(cor, 0.8)}`,
+                                                }}
+                                            />
+                                        </div>
+                                            
+                                        <span className="mt-2 block text-xs" style={{ color: hexToRgba(cor, 0.9) }}>
+                                            {missao.concluida ? "Concluída" : `${progresso}% concluído`}
+                                            {missao.deadline && ` · até ${new Date(missao.deadline).toLocaleDateString("pt-BR")}`}
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </Bloco>
+
             </aside>
 
             {/* rebarba da janela TopDown */}
@@ -206,7 +218,6 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
               className="
                 group
                 w-[88px]
-                z-5
                 flex
                 flex-none
                 items-center
