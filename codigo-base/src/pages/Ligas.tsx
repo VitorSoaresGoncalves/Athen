@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { SidebarLeft } from "../components/sidebar/SidebarLeft";
+import { PageLayout } from "../components/layout/PageLayout";
 import {
   RankBadge,
   RankingPodium,
@@ -142,9 +142,8 @@ export default function Ligas() {
   const faltam = Math.max(0, fimNivel - meusPontos);
 
   return (
+    <PageLayout variant="bare">
     <div className="ligas">
-      <SidebarLeft />
-
       <main className="ligas__main">
         <div className="ligas__brilho" />
 
@@ -283,5 +282,6 @@ export default function Ligas() {
         )}
       </main>
     </div>
+    </PageLayout>
   );
 }
