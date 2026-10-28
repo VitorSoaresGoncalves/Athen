@@ -1,6 +1,16 @@
-import { logoColor, logoGhost } from "../data";
+import { useNavigate } from "react-router-dom";
+import { ROUTES, logoColor, logoGhost } from "../data";
+import { useGuardedNavigate } from "../navigation";
 
-export default function CtaSection() {
+interface CtaSectionProps {
+  students: number;
+  loggedIn: boolean;
+}
+
+export default function CtaSection({ students, loggedIn }: CtaSectionProps) {
+  const navigate = useNavigate();
+  const goTo = useGuardedNavigate();
+
   return (
     <section
       className="mx-4 md:mx-16 mb-16 rounded-3xl px-8 py-20 flex flex-col items-center text-center relative overflow-hidden"
@@ -30,13 +40,16 @@ export default function CtaSection() {
         Pronto para começar sua jornada?
       </h2>
       <p className="text-base mb-10 max-w-md relative z-10" style={{ color: "#F4EEFF", fontFamily: "var(--font-body)" }}>
-        Junte-se a mais de 48.000 alunos e criadores que estão transformando a forma de aprender.
+        {students > 1
+          ? `Junte-se a ${students.toLocaleString("pt-BR")} alunos e criadores que estão transformando a forma de aprender.`
+          : "Entre agora e ajude a construir a comunidade que está transformando a forma de aprender."}
       </p>
       <button
+        onClick={() => (loggedIn ? void goTo(ROUTES.explore) : navigate(ROUTES.register))}
         className="text-base font-semibold px-10 py-4 rounded-full transition-transform hover:scale-105 relative z-10"
         style={{ background: "#FFCC00", color: "#54318C", fontFamily: "var(--font-ui)" }}
       >
-        Criar minha conta grátis →
+        {loggedIn ? "Explorar cursos →" : "Criar minha conta grátis →"}
       </button>
     </section>
   );
