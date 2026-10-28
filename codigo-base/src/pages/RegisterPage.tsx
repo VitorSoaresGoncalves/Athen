@@ -48,13 +48,14 @@ export function RegisterPage() {
 
   if (registered) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <div className="w-full max-w-[350px] rounded-[10px] border border-[#ddd] p-[30px]">
-          <h1 className="mb-[25px] text-center text-2xl font-bold">Cadastro</h1>
-          <p className="mb-4">{message}</p>
+      <main className="flex min-h-svh items-center justify-center bg-[#141322] px-4 font-body text-[#f4eeff]">
+        <div className="w-full max-w-[400px] rounded-2xl border border-[#a486d5]/25 bg-[#1d1a31] p-8 text-center shadow-2xl shadow-black/40">
+          <p className="font-display text-[32px] tracking-[5px] text-gold">ATHEN</p>
+          <h1 className="mt-3 font-display text-2xl text-[#f4eeff]">Cadastro</h1>
+          <p className="mt-4 text-sm text-[#d8c9f2]">{message}</p>
           <Link
             to="/login-page"
-            className="text-blue-600 underline hover:text-blue-800"
+            className="mt-6 inline-block w-full rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-[#211029] transition hover:bg-gold-light"
           >
             Ir para o login
           </Link>
@@ -64,13 +65,17 @@ export function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-[350px] rounded-[10px] border border-[#ddd] p-[30px]">
-        <h1 className="mb-[25px] text-center text-2xl font-bold">Cadastro</h1>
+    <main className="flex min-h-svh items-center justify-center bg-[#141322] px-4 py-10 font-body text-[#f4eeff]">
+      <div className="w-full max-w-[400px] rounded-2xl border border-[#a486d5]/25 bg-[#1d1a31] p-8 shadow-2xl shadow-black/40">
+        <div className="mb-8 text-center">
+          <p className="font-display text-[32px] tracking-[5px] text-gold">ATHEN</p>
+          <h1 className="mt-3 font-display text-2xl text-[#f4eeff]">Criar conta</h1>
+          <p className="mt-1 text-sm text-[#b8aacb]">Comece sua jornada de estudos.</p>
+        </div>
 
         <form onSubmit={(event) => void handleRegister(event)}>
           <div className="mb-5 flex flex-col">
-            <label htmlFor="email" className="mb-[5px]">
+            <label htmlFor="email" className="mb-1.5 text-sm font-bold text-[#d8c9f2]">
               E-mail
             </label>
             <input
@@ -80,12 +85,12 @@ export function RegisterPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              className="rounded-[5px] border border-[#ccc] p-[10px]"
+              className="rounded-lg border border-[#a486d5]/40 bg-[#171628] px-3.5 py-2.5 text-sm text-[#f4eeff] outline-none transition placeholder:text-[#8f829f] focus:border-gold focus:ring-2 focus:ring-gold/25"
             />
           </div>
 
           <div className="mb-5 flex flex-col">
-            <label htmlFor="senha" className="mb-[5px]">
+            <label htmlFor="senha" className="mb-1.5 text-sm font-bold text-[#d8c9f2]">
               Senha
             </label>
             <div className="relative flex">
@@ -97,12 +102,12 @@ export function RegisterPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 minLength={6}
-                className="min-w-0 flex-1 rounded-[5px] border border-[#ccc] p-[10px] pr-[70px]"
+                className="min-w-0 flex-1 rounded-lg border border-[#a486d5]/40 bg-[#171628] px-3.5 py-2.5 pr-[76px] text-sm text-[#f4eeff] outline-none transition placeholder:text-[#8f829f] focus:border-gold focus:ring-2 focus:ring-gold/25"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 border-0 bg-transparent px-2 py-1 text-[0.85rem] text-[#555] cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded-md px-2 py-1 text-xs font-bold text-[#a486d5] hover:text-gold"
               >
                 {showPassword ? "Ocultar" : "Mostrar"}
               </button>
@@ -110,7 +115,7 @@ export function RegisterPage() {
           </div>
 
           <div className="mb-5 flex flex-col">
-            <label htmlFor="cargo" className="mb-[5px]">
+            <label htmlFor="cargo" className="mb-1.5 text-sm font-bold text-[#d8c9f2]">
               Cargo
             </label>
             <select
@@ -120,7 +125,7 @@ export function RegisterPage() {
                 setCargo(event.target.value as "student" | "educator" | "")
               }
               required
-              className="rounded-[5px] border border-[#ccc] p-[10px]"
+              className="rounded-lg border border-[#a486d5]/40 bg-[#171628] px-3.5 py-2.5 text-sm text-[#f4eeff] outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/25"
             >
               <option value="" disabled>
                 Selecione seu cargo
@@ -131,7 +136,7 @@ export function RegisterPage() {
           </div>
 
           <div className="mb-5 flex flex-col">
-            <label htmlFor="nomeUsuario" className="mb-[5px]">
+            <label htmlFor="nomeUsuario" className="mb-1.5 text-sm font-bold text-[#d8c9f2]">
               Nome de usuário
             </label>
             <input
@@ -141,26 +146,26 @@ export function RegisterPage() {
               value={nomeUsuario}
               onChange={(event) => setNomeUsuario(event.target.value)}
               required
-              className="rounded-[5px] border border-[#ccc] p-[10px]"
+              className="rounded-lg border border-[#a486d5]/40 bg-[#171628] px-3.5 py-2.5 text-sm text-[#f4eeff] outline-none transition placeholder:text-[#8f829f] focus:border-gold focus:ring-2 focus:ring-gold/25"
             />
           </div>
 
-          {message && <p className="mb-4">{message}</p>}
+          {message && <p className="mb-4 text-center text-sm text-[#d8c9f2]">{message}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full cursor-pointer rounded-[5px] border-0 p-[10px] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full cursor-pointer rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-[#211029] transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Criando..." : "Cadastrar"}
           </button>
         </form>
 
-        <p className="mt-5">
+        <p className="mt-6 text-center text-sm text-[#b8aacb]">
           Já tem conta?{" "}
           <Link
             to="/login-page"
-            className="text-blue-600 underline hover:text-blue-800"
+            className="font-bold text-gold hover:text-gold-light hover:underline"
           >
             Entrar
           </Link>
