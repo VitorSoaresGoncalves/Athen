@@ -1,9 +1,16 @@
-import { logoGhost } from "../data";
+import { logoGhost, type Learner } from "../data";
 import LevelCard from "./LevelCard";
 
 const TAGS = ["⚡ XP & Níveis", "🏅 Medalhas", "🏆 Rankings", "🔓 Conquistas", "🎯 Desafios diários"];
 
-export default function GamificationSection() {
+interface GamificationSectionProps {
+  learner: Learner | null; // usuário logado ou, para visitantes, o líder do ranking
+  leaderXp: number;
+  isMine: boolean;
+  loading: boolean;
+}
+
+export default function GamificationSection({ learner, leaderXp, isMine, loading }: GamificationSectionProps) {
   return (
     <section className="relative px-6 md:px-16 py-24 flex flex-col lg:flex-row items-center gap-16 overflow-hidden">
       <img
@@ -14,16 +21,10 @@ export default function GamificationSection() {
         style={{ width: 420, height: 420, top: "50%", left: "50%", transform: "translate(-50%, -50%)", opacity: 0.07 }}
       />
       <div className="flex-1">
-        <span
-          className="text-xs uppercase tracking-widest mb-4 block"
-          style={{ color: "#FFCC00", fontFamily: "var(--font-ui)" }}
-        >
+        <span className="text-xs uppercase tracking-widest mb-4 block" style={{ color: "#FFCC00", fontFamily: "var(--font-ui)" }}>
           Gamificação real
         </span>
-        <h2
-          className="text-4xl md:text-5xl leading-tight mb-6"
-          style={{ fontFamily: "var(--font-display)", color: "#F4EEFF" }}
-        >
+        <h2 className="text-4xl md:text-5xl leading-tight mb-6" style={{ fontFamily: "var(--font-display)", color: "#F4EEFF" }}>
           Aprender nunca foi
           <br />
           <span style={{ color: "#FFCC00" }}>tão viciante.</span>
@@ -44,9 +45,8 @@ export default function GamificationSection() {
         </div>
       </div>
 
-      {/* mock level card */}
       <div className="flex-1 flex justify-center">
-        <LevelCard />
+        <LevelCard learner={learner} leaderXp={leaderXp} isMine={isMine} loading={loading} />
       </div>
     </section>
   );
