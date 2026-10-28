@@ -11,7 +11,7 @@ const LIGA_ROUTE = '/ligas';
 const AMIGOS_ROUTE = '/amigos';
 const NOTEBOOK_ROUTE = '/caderno';
 const CONFIG_ROUTE = '/configuracoes';
-const CATALAGO_ROUTE = '/catalago';
+const CATALOGO_ROUTE = '/catalogo';
 
 /** Evento disparado pelo Profile depois de salvar, para a sidebar recarregar o perfil. */
 export const PROFILE_UPDATED_EVENT = 'athen:profile-updated';
@@ -29,7 +29,7 @@ type PerfilUser = {
 
 const itens: SidebarItem[] = [
     { text: "Início", to: DASHBOARD_ROUTE },
-    { text: "Catalago", to: CATALAGO_ROUTE },
+    { text: "Catálogo", to: CATALOGO_ROUTE },
     { text: "Salas", to: SALAS_ROUTE },
     { text: "Ligas", to: LIGA_ROUTE },
     { text: "Amigos", to: AMIGOS_ROUTE },

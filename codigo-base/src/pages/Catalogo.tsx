@@ -13,7 +13,7 @@ import {
 } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
-import "./Catalago.css";
+import "./Catalogo.css";
 
 type Curso = Database["public"]["Tables"]["courses"]["Row"];
 type Modulo = Database["public"]["Tables"]["modules"]["Row"];

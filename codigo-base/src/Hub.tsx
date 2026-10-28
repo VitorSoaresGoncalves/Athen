@@ -11,7 +11,8 @@ import Profile  from './pages/profile/Profile';
 import ConfigPage from './pages/ConfigPage'
 import Amigos from './pages/Amigos';
 import NotebookPage from './pages/Notebook';
-import Catalago from './pages/Catalago';
+import Catalogo from './pages/Catalogo';
+import CriarCurso from './pages/criar-curso/CriarCurso';
 
 export default function Hub() {
   return (
@@ -28,7 +29,8 @@ export default function Hub() {
         <Route path="/configuracoes" element={<ConfigPage />} />
         <Route path="/amigos" element={<Amigos />} />
         <Route path="/caderno" element={<NotebookPage />} />
-        <Route path="/catalago" element={<ProtectedRoute><Catalago /></ProtectedRoute>} />
+        <Route path="/catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
+        <Route path="/criar-curso" element={<ProtectedRoute><CriarCurso /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )
