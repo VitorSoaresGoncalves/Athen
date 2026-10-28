@@ -21,8 +21,6 @@ export function useTopDownDados(cursoId?: string) {
     const [erroMissoes, setErroMissoes] = useState("");
 
     useEffect(() => {
-        if (!cursoId) return;
-
         const idCurso = cursoId;
         let cancelado = false;
 
@@ -30,10 +28,29 @@ export function useTopDownDados(cursoId?: string) {
             setCarregando(true);
             setErroRanking("");
             setErroMissoes("");
+            setRanking([]);
+            setMissoes([]);
 
-            const { data } = await supabase.auth.getUser();
+            if (!idCurso) {
+                setCarregando(false);
+                return;
+            }
 
-            if (!data.user) {
+            let usuario;
+            try {
+                const { data, error } = await supabase.auth.getUser();
+                if (error) throw error;
+                usuario = data.user;
+            } catch (error) {
+                if (cancelado) return;
+                const mensagem = mensagemDeErro(error, "Não foi possível verificar sua sessão.");
+                setErroRanking(mensagem);
+                setErroMissoes(mensagem);
+                setCarregando(false);
+                return;
+            }
+
+            if (!usuario) {
                 if (cancelado) return;
                 setRanking([]);
                 setMissoes([]);
@@ -46,7 +63,7 @@ export function useTopDownDados(cursoId?: string) {
             const [amigos, ativas, progressos] = await Promise.allSettled([
                 rankingRepository.listarAmigosPorCurso(idCurso),
                 missaoRepository.listarAtivas(),
-                progressoMissaoRepository.listarPorUsuario(data.user.id),
+                progressoMissaoRepository.listarPorUsuario(usuario.id),
             ]);
 
             if (cancelado) return;
@@ -58,8 +75,8 @@ export function useTopDownDados(cursoId?: string) {
                 setErroRanking(mensagemDeErro(amigos.reason, "Não foi possível carregar o rank."));
             }
 
-            if (ativas.status === "fulfilled") {
-                const lista = progressos.status === "fulfilled" ? progressos.value : [];
+            if (ativas.status === "fulfilled" && progressos.status === "fulfilled") {
+                const lista = progressos.value;
                 const porMissao = new Map(lista.map((item) => [item.mission_id, item]));
 
                 setMissoes(ativas.value.map((missao) => ({
@@ -69,7 +86,8 @@ export function useTopDownDados(cursoId?: string) {
                 })));
             } else {
                 setMissoes([]);
-                setErroMissoes(mensagemDeErro(ativas.reason, "Não foi possível carregar as missões."));
+                const motivo = ativas.status === "rejected" ? ativas.reason : progressos.status === "rejected" ? progressos.reason : undefined;
+                setErroMissoes(mensagemDeErro(motivo, "Não foi possível carregar as missões e seu progresso."));
             }
 
             setCarregando(false);
