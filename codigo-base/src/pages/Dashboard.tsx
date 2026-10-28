@@ -745,6 +745,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           aberta={lousaAberta}
           onFechar={() => setLousaAberta((aberta) => !aberta)}
           cor={activeTheme.primary}
+          cursoId={course?.id}
         />
       }
     >
