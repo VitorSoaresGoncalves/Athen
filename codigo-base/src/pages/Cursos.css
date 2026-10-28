@@ -3,7 +3,8 @@
 
 /* ---------- Base ---------- */
 .cursos {
-  @apply flex min-h-screen w-full overflow-hidden font-body text-[#f4eeff];
+  @apply flex min-h-screen w-full font-body text-[#f4eeff];
+  overflow-x: clip; 
   background: #140a2b;
   /* O :root do projeto define line-height: 150%, que seria herdado como 27px. */
   line-height: normal;
