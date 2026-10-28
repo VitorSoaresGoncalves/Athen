@@ -452,6 +452,7 @@ export default function Catalogo() {
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState("");
+  const [somenteMatriculados, setSomenteMatriculados] = useState(false);
   const [cursoAberto, setCursoAberto] = useState<CursoComMeta | null>(null);
   const [recarregarToken, setRecarregarToken] = useState(0);
 
@@ -486,7 +487,7 @@ export default function Catalogo() {
               educador: educador?.display_name || "Educador",
               nota: media.media,
               avaliacoes: media.total,
-              matriculado: Boolean(matricula),
+              matriculado: matricula?.status === "active" || matricula?.status === "completed",
             };
           }),
         );
@@ -515,11 +516,12 @@ export default function Catalogo() {
   const termo = normalizar(busca.trim());
   const itensFiltrados = useMemo(
     () => itens.filter(
-      ({ curso }) =>
+      ({ curso, matriculado }) =>
         (!termo || normalizar(curso.title).includes(termo) || normalizar(curso.category ?? "").includes(termo))
-        && (!categoria || curso.category === categoria),
+        && (!categoria || curso.category === categoria)
+        && (!somenteMatriculados || matriculado),
     ),
-    [itens, termo, categoria],
+    [itens, termo, categoria, somenteMatriculados],
   );
 
   return (
@@ -558,6 +560,15 @@ export default function Catalogo() {
                 {categorias.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
               </select>
             </label>
+            <button
+              type="button"
+              className={`catalogo__botao-filtro${somenteMatriculados ? " catalogo__botao-filtro--ativo" : ""}`}
+              aria-pressed={somenteMatriculados}
+              onClick={() => setSomenteMatriculados((atual) => !atual)}
+            >
+              <Icone nome="check" tamanho={16} />
+              Meus cursos
+            </button>
           </section>
 
           <p className="catalogo__contador">
@@ -571,7 +582,11 @@ export default function Catalogo() {
           ) : itens.length === 0 ? (
             <p className="catalogo__estado">Nenhum curso publicado ainda.</p>
           ) : itensFiltrados.length === 0 ? (
-            <p className="catalogo__estado">Nenhum curso encontrado para a busca.</p>
+            <p className="catalogo__estado">
+              {somenteMatriculados && !busca && !categoria
+                ? "Você ainda não está matriculado em nenhum curso."
+                : "Nenhum curso encontrado para a busca."}
+            </p>
           ) : (
             <section className="catalogo__grade">
               {itensFiltrados.map((item) => {

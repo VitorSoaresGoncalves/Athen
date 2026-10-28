@@ -526,3 +526,17 @@
   .catalogo__modal-banner { @apply h-[124px]; }
   .catalogo__identidade { @apply min-h-[100px]; }
 }
+
+.catalogo__botao-filtro {
+  @apply inline-flex h-[48px] cursor-pointer items-center gap-[8px] px-[18px] text-[13px] text-[#f4eeff];
+  font-weight: 700;
+  background: rgba(47, 27, 79, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.catalogo__botao-filtro:hover { border-color: rgba(255, 255, 255, 0.3); }
+.catalogo__botao-filtro--ativo {
+  @apply bg-gold text-[#211029];
+  border-color: transparent;
+}
