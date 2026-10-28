@@ -1507,6 +1507,11 @@ export const rankingRepository = {
 
 // Regras de domínio calculadas no banco (XP, nível, PAC, divisão e correção de respostas).
 export const dominioRepository = {
+  async concluirAulaSemQuestoes(idAula: string): Promise<void> {
+    const { error } = await supabase.rpc('complete_empty_lesson', { p_lesson_id: idAula });
+    if (error) throw new Error(`Erro ao concluir aula sem questões: ${error.message}`);
+  },
+
   async xpPorTipoQuestao(tipo: TipoQuestao): Promise<number> {
     const { data, error } = await supabase.rpc('xp_from_question', { p_type: tipo });
     if (error) throw new Error(`Erro ao obter XP do tipo de questão: ${error.message}`);

@@ -309,6 +309,8 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<ResultadoTentativa | null>(null);
+  const [questoesCarregadas, setQuestoesCarregadas] = useState(false);
+  const [concluidaSemQuestoes, setConcluidaSemQuestoes] = useState(false);
 
   // Mantém o handler mais recente sem religar os listeners do teclado.
   const fecharRef = useRef(onFechar);
@@ -341,6 +343,7 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
         const lista = await questaoRepository.listarPorAula(aula.id);
         if (cancelado) return;
         setQuestoes(lista);
+        setQuestoesCarregadas(true);
       } catch (error) {
         if (!cancelado) setErro(mensagemDoErro(error));
       } finally {
@@ -373,6 +376,23 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
       setTentativaId(tentativa.id);
       irParaQuestao(0);
       setFase("questoes");
+    } catch (error) {
+      setErro(mensagemDoErro(error));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  // A RPC valida acesso e ausência de questões e persiste a conclusão sem XP.
+  async function concluirSemQuestoes() {
+    if (ocupado || !questoesCarregadas || questoes.length > 0 || salaId) return;
+    setOcupado(true);
+    setErro("");
+    try {
+      await dominioRepository.concluirAulaSemQuestoes(aula.id);
+      setConcluidaSemQuestoes(true);
+      setFase("resultado");
+      onConcluida(aula.id);
     } catch (error) {
       setErro(mensagemDoErro(error));
     } finally {
@@ -474,7 +494,7 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
 
               {questoes.length > 0
                 ? <p className="lesson-modal__resumo">{questoes.length} {questoes.length === 1 ? "questão" : "questões"} · até {xpTotal} XP</p>
-                : <p className="lesson-modal__aviso">Esta aula ainda não tem atividades, então ela não pode ser concluída por enquanto.</p>}
+                : <p className="lesson-modal__resumo">{!questoesCarregadas ? "Não foi possível carregar as atividades." : salaId ? "Esta aula não tem atividades. A conclusão sem questões está disponível no contexto de curso." : "Esta aula não tem atividades. Você pode marcá-la como concluída (sem XP)."}</p>}
             </>
           )}
 
@@ -514,15 +534,15 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
             </>
           )}
 
-          {fase === "resultado" && resultado && (
+          {fase === "resultado" && (resultado || concluidaSemQuestoes) && (
             <div className="lesson-modal__resultado">
               <div className="lesson-modal__selo-grande" aria-hidden="true">✓</div>
               <h3 className="lesson-modal__resultado-titulo">Aula concluída!</h3>
-              <div className="lesson-modal__numeros">
+              {concluidaSemQuestoes ? <p className="lesson-modal__resumo">Esta aula não tinha atividades, então não vale XP.</p> : resultado && <div className="lesson-modal__numeros">
                 <div><strong>{resultado.correct_count}/{resultado.total_count}</strong><span>acertos</span></div>
                 <div><strong>{pac}%</strong><span>de aproveitamento</span></div>
                 <div><strong>+{resultado.xp_earned}</strong><span>XP</span></div>
-              </div>
+              </div>}
             </div>
           )}
 
@@ -536,10 +556,10 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
               <button
                 className="lesson-modal__botao-primario"
                 type="button"
-                disabled={ocupado || questoes.length === 0}
-                onClick={() => void comecar()}
+                disabled={ocupado || !questoesCarregadas || (questoes.length === 0 && Boolean(salaId))}
+                onClick={() => void (questoes.length === 0 ? concluirSemQuestoes() : comecar())}
               >
-                {ocupado ? "Iniciando..." : jaConcluida ? "Refazer atividade" : "Começar atividade"}
+                {ocupado ? "Processando..." : questoes.length === 0 ? "Marcar como concluída" : jaConcluida ? "Refazer atividade" : "Começar atividade"}
               </button>
             </>
           )}
