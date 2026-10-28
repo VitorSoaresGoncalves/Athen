@@ -39,6 +39,9 @@
 .trail-node__face { position: absolute; display: flex; align-items: center; justify-content: center; border: 2.5px solid transparent; color: #fff; transition: all 0.3s ease; }
 .trail-node--module .trail-node__face { width: 64px; height: 64px; border-radius: 18px; font-size: 28px; }
 .trail-node--lesson .trail-node__face { width: 48px; height: 48px; margin: 8px; border-radius: 50%; font-size: 16px; font-weight: 900; }
+.trail-node--locked { opacity: 0.55; cursor: not-allowed; }
+.trail-node--locked:hover { transform: none; }
+.trail-node--locked .trail-node__face { font-size: 14px; filter: grayscale(0.5); }
 @keyframes trail-node-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 
 .progress-block--completed { width: 22px; height: 22px; }
@@ -51,6 +54,8 @@
 .module-carousel__icon { font-size: 23px; line-height: 1; }
 .module-carousel__arrow { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 28px; height: 42px; padding: 0; color: #d8c9f2; background: rgba(102, 64, 170, 0.2); border: 1px solid rgba(201, 184, 232, 0.42); border-radius: 10px; cursor: pointer; font-size: 28px; line-height: 1; transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease; }
 .module-carousel__arrow:hover { color: #fff; background: rgba(255, 255, 255, 0.14); transform: scale(1.05); }
+.module-carousel__arrow:disabled { opacity: 0.3; cursor: default; transform: none; background: rgba(102, 64, 170, 0.2); }
+
 /* Responsividade restrita às larguras de desktop mais comuns. */
 
 @media (min-width: 1280px) and (max-width: 1439px) {
@@ -90,5 +95,11 @@
   .module-carousel__icon { font-size: 24px; }
   .module-carousel__arrow { font-size: 30px; }
   .trail-node--module { width: 100px; height: 114px; }
+  .trail-node--lesson { width: 76px; height: 88px; }
   .trail-node--module .trail-node__face { width: 84px; height: 84px; border-radius: 20px; font-size: 34px; }
+  .trail-node--lesson .trail-node__face { width: 60px; height: 60px; margin: 8px; font-size: 19px; }
 }
+
+/* Aviso rápido (ex.: aula bloqueada): só a animação; o resto do estilo está em Tailwind. */
+.dashboard-toast { animation: dashboard-toast-in 0.2s ease both; }
+@keyframes dashboard-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

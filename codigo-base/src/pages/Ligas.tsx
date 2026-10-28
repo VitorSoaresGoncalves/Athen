@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { SidebarLeft } from "../components/sidebar/SidebarLeft";
+import { useEffect, useMemo, useState } from "react";
+import { PageLayout } from "../components/layout/PageLayout";
 import {
   RankBadge,
   RankingPodium,
@@ -7,41 +7,23 @@ import {
   type PodiumPlayer,
   type Tier,
 } from "../components/ranking/RankingPodium";
+import { rankingRepository } from "../data/repositories";
+import { supabase } from "../lib/supabase";
+import type { Database } from "../types/database";
 import "./Ligas.css";
 
-// ---------------------------------------------------------------------------
-// Ícones (só os que esta página usa)
-// ---------------------------------------------------------------------------
-type NomeIcone = "subir" | "descer";
-
-const caminhos: Record<NomeIcone, ReactNode> = {
-  subir: <path d="M12 19V5M6 11l6-6 6 6" />,
-  descer: <path d="M12 5v14M6 13l6 6 6-6" />,
-};
-
-function Icone({ nome, tamanho = 18 }: { nome: NomeIcone; tamanho?: number }) {
-  return (
-    <svg
-      width={tamanho}
-      height={tamanho}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {caminhos[nome]}
-    </svg>
-  );
-}
+type RankingGlobal = Database["public"]["Views"]["global_ranking"]["Row"];
 
 // ---------------------------------------------------------------------------
-// Dados de exemplo — trocar pelas consultas ao Supabase depois
+// Ligas
+//
+// O banco não tem uma tabela de ligas. Aqui cada liga corresponde a um NÍVEL do jogador
+// (profiles.level, calculado no servidor a partir do XP):
+//   nível 1 = Bronze, 2 = Prata, 3 = Ouro, 4 = Platina, 5 = Diamante, 6 = Mestre, 7 ou mais = Lendário.
+// A classificação de cada liga é o ranking global (XP acumulado) só dos jogadores daquele nível.
+// Não há ranking semanal, promoção nem rebaixamento: o nível sobe sozinho ao atingir o XP necessário.
 // ---------------------------------------------------------------------------
-type Jogador = { nome: string; pontos: number; voce: boolean };
-type Zona = "promocao" | "rebaixamento" | null;
+type Jogador = { id: string; nome: string; pontos: number; voce: boolean };
 
 const ligas: { tier: Tier; nome: string }[] = [
   { tier: "bronze", nome: "Bronze" },
@@ -55,40 +37,16 @@ const ligas: { tier: Tier; nome: string }[] = [
 
 const nomeDaLiga = Object.fromEntries(ligas.map((liga) => [liga.tier, liga.nome])) as Record<Tier, string>;
 
-const LIGA_ATUAL: Tier = "platinum";
-const VOCE = "Marina Alves";
-const QTD_ZONA = 3; // quantos ficam na zona de promoção e na de rebaixamento
+const nivelParaLiga = (nivel: number): Tier =>
+  ligas[Math.min(Math.max(nivel, 1), ligas.length) - 1].tier;
 
-const NOMES = ["Helena", "Beatriz", "Ravi", "Caio", "Lia", "Mateus", "Sofia", VOCE, "Davi", "Aurora", "Pedro", "Bruno"];
+// XP em que cada nível começa. Espelha level_for_xp() do banco (0010_domain_functions.sql):
+// L1 0, L2 100, L3 250, L4 500, L5 1000, L6 2000 e, daí em diante, +2000 por nível.
+const XP_INICIO_NIVEL = [0, 0, 100, 250, 500, 1000, 2000]; // o índice é o nível
+const xpInicioDoNivel = (nivel: number) =>
+  nivel <= 1 ? 0 : nivel <= 6 ? XP_INICIO_NIVEL[nivel] : 2000 + (nivel - 6) * 2000;
 
-// Monta uma classificação de exemplo para cada liga.
-function criarLiga(tier: Tier): Jogador[] {
-  const indice = ligas.findIndex((liga) => liga.tier === tier);
-  const ehMinhaLiga = tier === LIGA_ATUAL;
-
-  // Nas outras ligas a lista gira para a classificação mudar e o usuário não aparece.
-  const base = ehMinhaLiga ? NOMES : NOMES.filter((nome) => nome !== VOCE);
-  const giro = ehMinhaLiga ? 0 : (indice * 3) % base.length;
-  const nomes = [...base.slice(giro), ...base.slice(0, giro)];
-
-  const topo = 900 + indice * 420;
-  return nomes.map((nome, posicao) => ({
-    nome,
-    pontos: Math.round(topo * (1 - posicao * 0.052)),
-    voce: ehMinhaLiga && nome === VOCE,
-  }));
-}
-
-const classificacoes = Object.fromEntries(ligas.map((liga) => [liga.tier, criarLiga(liga.tier)])) as Record<
-  Tier,
-  Jogador[]
->;
-
-function zonaDe(posicao: number, total: number, tier: Tier): Zona {
-  if (tier !== "legendary" && posicao <= QTD_ZONA) return "promocao";
-  if (tier !== "bronze" && posicao > total - QTD_ZONA) return "rebaixamento";
-  return null;
-}
+const errMsg = (error: unknown, fallback = "Erro desconhecido.") => (error instanceof Error ? error.message : fallback);
 
 const formatarXp = (pontos: number) => `${pontos.toLocaleString("pt-BR")} XP`;
 
@@ -116,27 +74,76 @@ function montarPodio(jogadores: Jogador[], tier: Tier): PodiumPlayer[] {
 // Página
 // ---------------------------------------------------------------------------
 export default function Ligas() {
-  const [ligaSelecionada, setLigaSelecionada] = useState<Tier>(LIGA_ATUAL);
+  const [ranking, setRanking] = useState<RankingGlobal[]>([]);
+  const [meuId, setMeuId] = useState("");
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  // null = ainda não escolheu: mostra a liga do próprio usuário.
+  const [ligaSelecionada, setLigaSelecionada] = useState<Tier | null>(null);
 
-  const jogadores = classificacoes[ligaSelecionada];
-  const podio = useMemo(() => montarPodio(jogadores, ligaSelecionada), [jogadores, ligaSelecionada]);
+  useEffect(() => {
+    let cancelado = false;
 
-  // Resumo do usuário (sempre da liga dele, não da liga que está sendo exibida).
-  const minhaClassificacao = classificacoes[LIGA_ATUAL];
-  const meuIndice = minhaClassificacao.findIndex((jogador) => jogador.voce);
-  const minhaPosicao = meuIndice + 1;
-  const meusPontos = minhaClassificacao[meuIndice]?.pontos ?? 0;
-  const pontosDeCorte = minhaClassificacao[QTD_ZONA - 1]?.pontos ?? 0;
-  const faltam = Math.max(0, pontosDeCorte - meusPontos + 1);
-  const naZonaDePromocao = minhaPosicao > 0 && minhaPosicao <= QTD_ZONA;
-  const progresso = naZonaDePromocao ? 100 : Math.min(100, Math.round((meusPontos / pontosDeCorte) * 100));
-  const indiceLigaAtual = ligas.findIndex((liga) => liga.tier === LIGA_ATUAL);
-  const proximaLiga = ligas[indiceLigaAtual + 1]?.nome;
+    async function carregar() {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const lista = await rankingRepository.listarGlobal(1000); // já vem ordenado por XP
+        if (cancelado) return;
+        setMeuId(data.user?.id ?? "");
+        setRanking(lista);
+      } catch (error) {
+        if (!cancelado) setErro(errMsg(error, "Erro ao carregar as ligas."));
+      } finally {
+        if (!cancelado) setCarregando(false);
+      }
+    }
+
+    void carregar();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Separa o ranking global por liga, mantendo a ordem de XP dentro de cada uma.
+  const classificacoes = useMemo(() => {
+    const mapa = Object.fromEntries(ligas.map((liga) => [liga.tier, [] as Jogador[]])) as Record<Tier, Jogador[]>;
+    for (const linha of ranking) {
+      if (!linha.user_id) continue;
+      mapa[nivelParaLiga(linha.level ?? 1)].push({
+        id: linha.user_id,
+        nome: linha.display_name || linha.username || "Usuário",
+        pontos: linha.xp_global ?? 0,
+        voce: linha.user_id === meuId,
+      });
+    }
+    return mapa;
+  }, [ranking, meuId]);
+
+  // Dados do usuário logado (a liga dele, não a que está sendo exibida).
+  const minhaLinha = ranking.find((linha) => linha.user_id === meuId);
+  const meuNivel = minhaLinha?.level ?? 1;
+  const meusPontos = minhaLinha?.xp_global ?? 0;
+  const minhaLiga = nivelParaLiga(meuNivel);
+  const indiceMinhaLiga = ligas.findIndex((liga) => liga.tier === minhaLiga);
+  const proximaLiga = ligas[indiceMinhaLiga + 1]?.nome;
+
+  const ligaExibida = ligaSelecionada ?? minhaLiga;
+  const jogadores = classificacoes[ligaExibida];
+  const podio = montarPodio(jogadores, ligaExibida);
+
+  const minhaClassificacao = classificacoes[minhaLiga];
+  const minhaPosicao = minhaClassificacao.findIndex((jogador) => jogador.voce) + 1;
+
+  // Progresso até a próxima liga = progresso até o próximo nível.
+  const ehUltimaLiga = !proximaLiga;
+  const inicioNivel = xpInicioDoNivel(meuNivel);
+  const fimNivel = xpInicioDoNivel(meuNivel + 1);
+  const progresso = ehUltimaLiga ? 100 : Math.min(100, Math.max(0, Math.round(((meusPontos - inicioNivel) / (fimNivel - inicioNivel)) * 100)));
+  const faltam = Math.max(0, fimNivel - meusPontos);
 
   return (
+    <PageLayout variant="bare">
     <div className="ligas">
-      <SidebarLeft />
-
       <main className="ligas__main">
         <div className="ligas__brilho" />
 
@@ -148,128 +155,133 @@ export default function Ligas() {
           </div>
         </header>
 
-        {/* Seletor de ligas */}
-        <section className="ligas__seletor" aria-label="Escolher liga">
-          {ligas.map((liga) => {
-            const ativa = liga.tier === ligaSelecionada;
-            return (
-              <button
-                key={liga.tier}
-                type="button"
-                className={`ligas__liga${ativa ? " ligas__liga--ativa" : ""}`}
-                aria-pressed={ativa}
-                onClick={() => setLigaSelecionada(liga.tier)}
-              >
-                {liga.tier === LIGA_ATUAL && <span className="ligas__liga-tag">SUA LIGA</span>}
-                <RankBadge tier={liga.tier} size={44} />
-                <span className="ligas__liga-nome">{liga.nome}</span>
-              </button>
-            );
-          })}
-        </section>
+        {carregando ? (
+          <p className="ligas__subtitulo">Carregando ligas...</p>
+        ) : erro ? (
+          <p className="ligas__subtitulo">{erro}</p>
+        ) : (
+          <>
+            {/* Seletor de ligas */}
+            <section className="ligas__seletor" aria-label="Escolher liga">
+              {ligas.map((liga) => {
+                const ativa = liga.tier === ligaExibida;
+                return (
+                  <button
+                    key={liga.tier}
+                    type="button"
+                    className={`ligas__liga${ativa ? " ligas__liga--ativa" : ""}`}
+                    aria-pressed={ativa}
+                    onClick={() => setLigaSelecionada(liga.tier)}
+                  >
+                    {minhaLinha && liga.tier === minhaLiga && <span className="ligas__liga-tag">SUA LIGA</span>}
+                    <RankBadge tier={liga.tier} size={44} />
+                    <span className="ligas__liga-nome">{liga.nome}</span>
+                  </button>
+                );
+              })}
+            </section>
 
-        <div className="ligas__colunas">
-          {/* Pódio da liga */}
-          <section className="ligas__painel ligas__podio">
-            <div className="ligas__painel-cabecalho">
-              <div>
-                <p className="ligas__rotulo">LIGA {nomeDaLiga[ligaSelecionada].toUpperCase()}</p>
-                <h2 className="ligas__painel-titulo">Top 5 da liga</h2>
-              </div>
-              <span className="ligas__painel-resumo">{jogadores.length} participantes</span>
-            </div>
-            <RankingPodium players={podio} ariaLabel={`Top 5 da liga ${nomeDaLiga[ligaSelecionada]}`} />
-          </section>
-
-          {/* Resumo do usuário */}
-          <aside className="ligas__painel ligas__resumo">
-            <p className="ligas__rotulo">SUA JORNADA</p>
-            <div className="ligas__resumo-liga">
-              <RankBadge tier={LIGA_ATUAL} size={44} />
-              <div>
-                <h2 className="ligas__painel-titulo">Liga {nomeDaLiga[LIGA_ATUAL]}</h2>
-                {proximaLiga && <p className="ligas__resumo-proxima">Próxima liga: {proximaLiga}</p>}
-              </div>
-            </div>
-
-            <div className="ligas__numeros">
-              <div>
-                <span className="ligas__numero-rotulo">POSIÇÃO</span>
-                <strong className="ligas__numero-valor">{minhaPosicao}º</strong>
-                <span className="ligas__numero-detalhe">de {minhaClassificacao.length}</span>
-              </div>
-              <div>
-                <span className="ligas__numero-rotulo">PONTOS</span>
-                <strong className="ligas__numero-valor">{meusPontos.toLocaleString("pt-BR")}</strong>
-                <span className="ligas__numero-detalhe">XP acumulados</span>
-              </div>
-            </div>
-
-            <div className="ligas__progresso-topo">
-              <span>Rumo à zona de promoção</span>
-              <strong>{progresso}%</strong>
-            </div>
-            <div className="ligas__barra"><span style={{ width: `${progresso}%` }} /></div>
-            <p className="ligas__progresso-texto">
-              {naZonaDePromocao
-                ? "Você está na zona de promoção. Continue assim para subir de liga."
-                : `Faltam ${faltam.toLocaleString("pt-BR")} XP para entrar no top ${QTD_ZONA}.`}
-            </p>
-          </aside>
-        </div>
-
-        {/* Classificação completa */}
-        <section className="ligas__painel ligas__tabela">
-          <div className="ligas__painel-cabecalho">
-            <div>
-              <p className="ligas__rotulo">CLASSIFICAÇÃO COMPLETA</p>
-              <h2 className="ligas__painel-titulo">Liga {nomeDaLiga[ligaSelecionada]}</h2>
-            </div>
-            <div className="ligas__legenda">
-              {ligaSelecionada !== "legendary" && (
-                <span className="ligas__legenda-item ligas__legenda-item--promocao">
-                  <Icone nome="subir" tamanho={14} />Promoção
-                </span>
-              )}
-              {ligaSelecionada !== "bronze" && (
-                <span className="ligas__legenda-item ligas__legenda-item--rebaixamento">
-                  <Icone nome="descer" tamanho={14} />Rebaixamento
-                </span>
-              )}
-            </div>
-          </div>
-
-          <ol className="ligas__lista">
-            {jogadores.map((jogador, indice) => {
-              const posicao = indice + 1;
-              const zona = zonaDe(posicao, jogadores.length, ligaSelecionada);
-
-              return (
-                <li
-                  key={jogador.nome}
-                  className={[
-                    "ligas__linha",
-                    zona ? `ligas__linha--${zona}` : "",
-                    jogador.voce ? "ligas__linha--voce" : "",
-                  ].join(" ").trim()}
-                >
-                  <span className="ligas__linha-posicao">{posicao}º</span>
-                  <span className="ligas__linha-avatar" aria-hidden="true">{jogador.nome.charAt(0)}</span>
-                  <span className="ligas__linha-nome">
-                    {jogador.nome}
-                    {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
+            <div className="ligas__colunas">
+              {/* Pódio da liga */}
+              <section className="ligas__painel ligas__podio">
+                <div className="ligas__painel-cabecalho">
+                  <div>
+                    <p className="ligas__rotulo">LIGA {nomeDaLiga[ligaExibida].toUpperCase()}</p>
+                    <h2 className="ligas__painel-titulo">Top 5 da liga</h2>
+                  </div>
+                  <span className="ligas__painel-resumo">
+                    {jogadores.length} {jogadores.length === 1 ? "participante" : "participantes"}
                   </span>
-                  <span className="ligas__linha-zona">
-                    {zona === "promocao" && <Icone nome="subir" tamanho={16} />}
-                    {zona === "rebaixamento" && <Icone nome="descer" tamanho={16} />}
-                  </span>
-                  <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
+                </div>
+                {podio.length > 0 ? (
+                  <RankingPodium players={podio} ariaLabel={`Top 5 da liga ${nomeDaLiga[ligaExibida]}`} />
+                ) : (
+                  <p className="ligas__subtitulo">Ninguém chegou a esta liga ainda.</p>
+                )}
+              </section>
+
+              {/* Resumo do usuário */}
+              <aside className="ligas__painel ligas__resumo">
+                <p className="ligas__rotulo">SUA JORNADA</p>
+                {minhaLinha ? (
+                  <>
+                    <div className="ligas__resumo-liga">
+                      <RankBadge tier={minhaLiga} size={44} />
+                      <div>
+                        <h2 className="ligas__painel-titulo">Liga {nomeDaLiga[minhaLiga]}</h2>
+                        {proximaLiga && <p className="ligas__resumo-proxima">Próxima liga: {proximaLiga}</p>}
+                      </div>
+                    </div>
+
+                    <div className="ligas__numeros">
+                      <div>
+                        <span className="ligas__numero-rotulo">POSIÇÃO</span>
+                        <strong className="ligas__numero-valor">{minhaPosicao}º</strong>
+                        <span className="ligas__numero-detalhe">de {minhaClassificacao.length}</span>
+                      </div>
+                      <div>
+                        <span className="ligas__numero-rotulo">PONTOS</span>
+                        <strong className="ligas__numero-valor">{meusPontos.toLocaleString("pt-BR")}</strong>
+                        <span className="ligas__numero-detalhe">XP acumulados</span>
+                      </div>
+                    </div>
+
+                    <div className="ligas__progresso-topo">
+                      <span>{ehUltimaLiga ? "Liga mais alta" : `Rumo à liga ${proximaLiga}`}</span>
+                      <strong>{progresso}%</strong>
+                    </div>
+                    <div className="ligas__barra"><span style={{ width: `${progresso}%` }} /></div>
+                    <p className="ligas__progresso-texto">
+                      {ehUltimaLiga
+                        ? "Você está na liga mais alta. Continue acumulando XP."
+                        : `Faltam ${faltam.toLocaleString("pt-BR")} XP para chegar à liga ${proximaLiga}.`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="ligas__progresso-texto">
+                    Você ainda não aparece na classificação. Faça login e conclua uma aula para ganhar XP.
+                  </p>
+                )}
+              </aside>
+            </div>
+
+            {/* Classificação completa */}
+            <section className="ligas__painel ligas__tabela">
+              <div className="ligas__painel-cabecalho">
+                <div>
+                  <p className="ligas__rotulo">CLASSIFICAÇÃO COMPLETA</p>
+                  <h2 className="ligas__painel-titulo">Liga {nomeDaLiga[ligaExibida]}</h2>
+                </div>
+                <span className="ligas__painel-resumo">Ordenado por XP acumulado</span>
+              </div>
+
+              {jogadores.length === 0 ? (
+                <p className="ligas__subtitulo">Nenhum participante nesta liga ainda.</p>
+              ) : (
+                <ol className="ligas__lista">
+                  {jogadores.map((jogador, indice) => (
+                    <li
+                      key={jogador.id}
+                      className={["ligas__linha", jogador.voce ? "ligas__linha--voce" : ""].join(" ").trim()}
+                    >
+                      <span className="ligas__linha-posicao">{indice + 1}º</span>
+                      <span className="ligas__linha-avatar" aria-hidden="true">{jogador.nome.charAt(0)}</span>
+                      <span className="ligas__linha-nome">
+                        {jogador.nome}
+                        {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
+                      </span>
+                      {/* Coluna mantida vazia só para preservar a grade do CSS (antes mostrava promoção/rebaixamento). */}
+                      <span className="ligas__linha-zona" aria-hidden="true" />
+                      <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          </>
+        )}
       </main>
     </div>
+    </PageLayout>
   );
 }

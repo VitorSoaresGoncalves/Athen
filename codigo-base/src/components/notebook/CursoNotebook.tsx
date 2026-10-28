@@ -348,7 +348,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       <button
         type="button"
         data-toggle-notebook="true"
-        className="fixed bottom-6 left-[calc(var(--sidebar-left-width,230px)+64px)] z-20 inline-flex h-[84px] w-[84px] items-center justify-center rounded-[18px] border-2 border-[#8d6cb5]/60 bg-[#182335] text-4xl leading-none text-[#f4eeff] shadow-lg shadow-black/25 transition-transform transition-colors hover:scale-105 hover:border-[#c19cff] hover:bg-[#24314a] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 disabled:cursor-wait disabled:opacity-60"
+        className="fixed bottom-6 left-[calc(var(--sidebar-left-width,230px)+16px)] z-20 inline-flex h-14 w-14 items-center justify-center rounded-[18px] border-2 border-[#8d6cb5]/60 bg-[#182335] text-2xl leading-none text-[#f4eeff] shadow-lg shadow-black/25 transition-transform transition-colors hover:scale-105 hover:border-[#c19cff] hover:bg-[#24314a] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 disabled:cursor-wait disabled:opacity-60 min-[1200px]:left-[calc(var(--sidebar-left-width,230px)+40px)] min-[1200px]:h-16 min-[1200px]:w-16 min-[1200px]:text-3xl min-[1500px]:left-[calc(var(--sidebar-left-width,230px)+64px)] min-[1500px]:h-[84px] min-[1500px]:w-[84px] min-[1500px]:text-4xl"
         onClick={notebook ? openNotebook : createNotebook}
         disabled={loading || saving}
         aria-label={actionLabel}
