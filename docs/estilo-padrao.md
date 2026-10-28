@@ -61,6 +61,8 @@ Nas seis páginas da família Catálogo/Salas/Amigos/Ranking/Notificações/Conf
 
 A trilha tem geometria, rolagem horizontal e ajustes voltados a desktop. As regras de viewport das listagens não comprovam adaptação móvel da trilha nem da sidebar fixa.
 
+O dashboard segue a composição de `embertoni/Athen-Teste`, branch `sprint04`, commit [59bfd13](https://github.com/embertoni/Athen-Teste/commit/59bfd138bc79fb3ce6513e04a645de2fa64c4c1a): deslocamento de 230px pelo `PageLayout`, seletor fixo com `top-6` e recuo de 64px após esse deslocamento, botão do caderno de 84px com `bottom-6` e carrossel em três posições, com o módulo atual ao centro. `top-6` e `bottom-6` usam a escala em rem do Tailwind; com a raiz de 18px, correspondem a 27px. A `SidebarRight` mantém sua apresentação própria, com ranking e missões reais, como exceção explícita à referência. A indicação da sala ativa é acessível sem acrescentar uma linha visível ao cabeçalho.
+
 ## Superfícies, ações e campos
 
 - **Cartões e listas:** a base recorrente é `surface`, borda `line` e cantos arredondados. Os cartões comuns usam raios próximos de 12–16px; perfil e página inicial também usam raios maiores e cápsulas. Cadernos mantêm seus cantos e sombras de papel.
