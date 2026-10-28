@@ -8,7 +8,7 @@ const PROFILE_ROUTE = '/profile';
 const LOGIN_ROUTE = '/login-page';
 const DASHBOARD_ROUTE = '/dashboard';
 const SALAS_ROUTE = '/salas';
-const RANKING_ROUTE = '/ranking';
+const RANKING_ROUTE = '/ligas';
 const AMIGOS_ROUTE = '/amigos';
 const NOTEBOOK_ROUTE = '/caderno';
 const NOTIFICACOES_ROUTE = '/notificacoes';
@@ -48,7 +48,7 @@ const itens: SidebarItem[] = [
     { text: "Início", to: DASHBOARD_ROUTE },
     { text: "Catálogo", to: CATALOGO_ROUTE },
     { text: "Salas", to: SALAS_ROUTE },
-    { text: "Ranking", to: RANKING_ROUTE },
+    { text: "Ligas", to: RANKING_ROUTE },
     { text: "Amigos", to: AMIGOS_ROUTE },
     { text: "Cadernos", to: NOTEBOOK_ROUTE },
     { text: "Notificações", to: NOTIFICACOES_ROUTE },
