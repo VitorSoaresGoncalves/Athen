@@ -12,6 +12,8 @@ Referência da arquitetura do projeto. O [diagrama atual](diagramas/arquitetura-
 
 A proteção de rota verifica sessão, não permissão de administrador. A autorização de dados deve ser conferida no SQL; ocultar uma ação na tela não substitui essa autorização.
 
+No dashboard, a ausência de matrícula e sala mantém a pessoa na página e apresenta o aviso de matrícula com um link para `/catalogo`. Uma sala com curso disponível pode fornecer a trilha inicial mesmo sem matrícula individual. Links para explorar cursos também usam a rota `/catalogo`, definida em `Hub.tsx`.
+
 ## Onde localizar uma mudança
 
 Caminhos abaixo são relativos a `codigo-base/`.

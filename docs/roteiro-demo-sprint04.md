@@ -23,7 +23,7 @@ O percurso principal começa sem contas ou conteúdo preparados e usa apenas dua
 | Nome de exibição | Educador Demo | Estudante Demo |
 | Uso | Criar cursos/salas; também estudar para comparar PAC | Matricular-se, estudar, avaliar, entrar na sala |
 
-**Navegação importante:** o login envia para `/dashboard`; uma conta sem matrícula/sala pode ser redirecionada para `/cursos`, rota inexistente nesta base. Após o primeiro login, digitar **`/catalogo` na barra de endereço**. Não usar os links `/cursos` do dashboard. Usar as rotas reais da sidebar: `/catalogo`, `/salas`, `/ligas`, `/amigos`, `/caderno`, `/notificacoes` e `/configuracoes`.
+**Navegação importante:** o login envia para `/dashboard`. Na versão atual, uma conta sem matrícula/sala permanece no dashboard e vê “Você ainda não está matriculado em nenhum curso. Escolha um no Catálogo.” Usar **Ver todos os cursos** para abrir `/catalogo`. Esta correção é posterior ao commit-base do roteiro. As demais rotas da sidebar são `/salas`, `/ligas`, `/amigos`, `/caderno`, `/notificacoes` e `/configuracoes`.
 
 Fontes: [rotas](../codigo-base/src/Hub.tsx), [login](../codigo-base/src/pages/LoginPage.tsx), [dashboard](../codigo-base/src/pages/Dashboard.tsx), [banco atual](banco-de-dados/documentacao-bd.md), [Storage](../codigo-base/supabase/avatars/supabase-avatars), [dados públicos](../codigo-base/supabase/home_public_data.sql), [testes e limites do ambiente](testes.md).
 
@@ -34,7 +34,7 @@ Fontes: [rotas](../codigo-base/src/Hub.tsx), [login](../codigo-base/src/pages/Lo
 | 1 | A, sem login | Abrir `/`; percorrer hero, indicadores, categorias, cursos em destaque, funcionamento, gamificação, comunidade/depoimentos e rodapé. Usar **Ver como funciona**. | Página pública e rolagem para a seção correspondente; dados ou estados vazios reais. |
 | 2 | A | Selecionar uma categoria dos destaques e voltar à seleção geral. | Cursos exibidos filtrados, se houver conteúdo no ambiente. Repetir ao fim, quando os cursos da demo existirem. |
 | 3 | A | Usar **Criar conta** ou **Começar grátis**. Preencher e-mail, senha de ao menos seis caracteres, **Cargo → Educador** e username A. Alternar **Mostrar/Ocultar** e cadastrar. | Mensagem de cadastro realizado e **Ir para o login**. |
-| 4 | A | Confirmar o e-mail se o ambiente exigir; usar **Ir para o login**, informar e-mail e senha. Após entrar, abrir `/catalogo` diretamente. | Sessão A ativa. Não confundir o desvio para `/cursos` com falha de autenticação. |
+| 4 | A | Confirmar o e-mail se o ambiente exigir; usar **Ir para o login**, informar e-mail e senha. Após entrar, conferir o aviso de ausência de matrícula e usar **Ver todos os cursos**. | Sessão A ativa; dashboard permanece acessível e o link abre o Catálogo. |
 | 5 | B | Repetir cadastro e login, escolhendo **Cargo → Estudante** e username B. Abrir `/catalogo`. | Segunda sessão independente. |
 | 6 | Ambas | Abrir o menu do cartão inferior da sidebar e **Ver perfil**. Conferir estado inicial de XP, nível, sequência, cursos e conquistas. | Identidades distintas; sem progresso artificial. |
 | 7 | Ambas | **Editar perfil**: preencher nome de exibição, bio e manter o username planejado. Usar **Trocar foto**, **Trocar banner**, conferir previews e **Salvar**. | Perfil e cartão da sidebar atualizados. Recarregar para comprovar persistência. |

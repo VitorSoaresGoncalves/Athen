@@ -5,7 +5,7 @@ const courseId = '22222222-2222-4222-8222-222222222222'
 const lessonId = '33333333-3333-4333-8333-333333333333'
 const moduleId = '44444444-4444-4444-8444-444444444444'
 
-async function prepareDashboard(page: Page, options: { questionsFail?: boolean; completionFail?: boolean; progressFail?: boolean; moduleCount?: number } = {}) {
+async function prepareDashboard(page: Page, options: { questionsFail?: boolean; completionFail?: boolean; progressFail?: boolean; moduleCount?: number; noEnrollment?: boolean; roomOnly?: boolean } = {}) {
   const requests: { path: string; query: URLSearchParams; body: unknown }[] = []
   let completed = false
   const user = { id: userId, aud: 'authenticated', role: 'authenticated', email: 'aluno@example.test', user_metadata: {}, app_metadata: {} }
@@ -26,7 +26,9 @@ async function prepareDashboard(page: Page, options: { questionsFail?: boolean; 
     if (path === 'user') data = user
     if (path === 'profiles') data = { id: userId, display_name: 'Aluno', username: 'aluno', streak_count: 0 }
     if (path === 'courses') data = request.headers()['accept']?.includes('object') ? course : [course]
-    if (path === 'enrollments') data = [{ id: 'enrollment', course_id: courseId, user_id: userId, status: 'active', created_at: '2026-10-01T12:00:00Z' }]
+    if (path === 'enrollments' && !options.noEnrollment) data = [{ id: 'enrollment', course_id: courseId, user_id: userId, status: 'active', created_at: '2026-10-01T12:00:00Z' }]
+    if (path === 'rooms' && options.roomOnly) data = [{ id: 'room-demo', course_id: courseId, name: 'Sala de referência', educator_id: 'educator-demo', created_at: '2026-10-01T12:00:00Z' }]
+    if (path === 'room_members' && options.roomOnly) data = [{ room_id: 'room-demo', user_id: userId, status: 'active', joined_at: '2026-10-01T12:00:00Z' }]
     if (path === 'modules') data = Array.from({ length: options.moduleCount ?? 1 }, (_, index) => ({ id: index === 0 ? moduleId : `module-${index}`, course_id: courseId, title: index === 0 ? 'Módulo inicial' : `Módulo ${index + 1}`, position: index, color: '#06b6d4', icon: '📘' }))
     if (path === 'lessons' && url.searchParams.get('module_id') === 'eq.' + moduleId) data = [{ id: lessonId, module_id: moduleId, title: 'Leitura introdutória', content: 'Leia este material antes de continuar.', position: 0 }]
     if (path === 'completions' && completed) data = [{ user_id: userId, lesson_id: lessonId, context: 'course' }]
@@ -41,11 +43,34 @@ async function prepareDashboard(page: Page, options: { questionsFail?: boolean; 
     }
     await route.fulfill({ status, contentType: 'application/json', body: status === 204 ? '' : JSON.stringify(data) })
   })
-  await page.goto((process.env.DASHBOARD_REFERENCE_URL ?? '') + '/dashboard?curso=' + courseId)
-  await expect(page.getByRole('heading', { name: /Leitura introdutória|Módulo inicial/ })).toBeVisible()
+  await page.goto((process.env.DASHBOARD_REFERENCE_URL ?? '') + '/dashboard' + (options.noEnrollment ? '' : '?curso=' + courseId))
+  if (options.noEnrollment && !options.roomOnly) {
+    await expect(page.getByText('Você ainda não está matriculado em nenhum curso. Escolha um no Catálogo.', { exact: true })).toBeVisible()
+  } else {
+    await expect(page.getByRole('heading', { name: /Leitura introdutória|Módulo inicial/ })).toBeVisible()
+  }
   await page.addStyleTag({ content: '.trail-node--active { animation: none !important; } .trail-node, .trail-node__face { transition: none !important; }' })
   return requests
 }
+
+test('sem matrícula ou sala mantém o aviso do fork no dashboard e oferece o Catálogo', async ({ page }, testInfo) => {
+  await prepareDashboard(page, { noEnrollment: true })
+  await expect(page).toHaveURL(/\/dashboard$/)
+  const catalog = page.getByRole('link', { name: 'Ver todos os cursos', exact: true })
+  await expect(catalog).toHaveAttribute('href', '/catalogo')
+  await page.screenshot({ path: testInfo.outputPath('dashboard-sem-cursos.png'), animations: 'disabled' })
+  await catalog.click()
+  await expect(page).toHaveURL(/\/catalogo$/)
+  await expect(page.getByRole('heading', { name: 'Catálogo', exact: true })).toBeVisible()
+})
+
+test('sem matrícula abre a trilha da sala quando há participação ativa', async ({ page }) => {
+  await prepareDashboard(page, { noEnrollment: true, roomOnly: true })
+  await expect(page).toHaveURL(/\/dashboard$/)
+  await page.getByRole('button', { name: 'Abrir seletor de cursos e salas', exact: true }).click()
+  await page.getByRole('button', { name: 'Cursos', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'Ver cursos', exact: true })).toHaveAttribute('href', '/catalogo')
+})
 
 test('conclui aula sem questões pela RPC e atualiza o progresso', async ({ page }) => {
   const requests = await prepareDashboard(page)

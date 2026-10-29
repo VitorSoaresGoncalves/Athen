@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { LessonModal } from "../components/lesson/LessonModal";
 import { CursoNotebook } from "../components/notebook/CursoNotebook";
 import { PageLayout } from "../components/layout/PageLayout";
@@ -200,7 +200,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set());
   const [salas, setSalas] = useState<Sala[]>([]);
   const [salasError, setSalasError] = useState("");
-  const [redirectToCursos, setRedirectToCursos] = useState(false);
   const [activeSalaId, setActiveSalaId] = useState<string | undefined>(undefined);
   const trailRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0, moved: false });
@@ -217,7 +216,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
   // Carrega o que o usuário tem: cursos em que está matriculado e salas em que é membro ativo.
   // Curso inicial: o do link (?curso=), senão o matriculado mais recente. Sem curso e sem sala
-  // não há o que mostrar aqui, então a pessoa é levada para a página de cursos.
+  // mostra o aviso de matrícula com um link para o Catálogo, sem sair do dashboard.
   useEffect(() => {
     let cancelled = false;
 
@@ -285,7 +284,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
         if (cancelled) return;
 
         if (!initialCourse && salasLoaded && mySalas.length === 0) {
-          setRedirectToCursos(true);
+          setErrorMessage("Você ainda não está matriculado em nenhum curso. Escolha um no Catálogo.");
           return;
         }
 
@@ -622,7 +621,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           {pickerTab === "courses" ? (
             pickerCourses.length === 0 ? (
               <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">
-                Você não está matriculado em nenhum curso. <Link className="text-[var(--amarelo-tangerina)] underline" to="/cursos">Ver cursos</Link>
+                Você não está matriculado em nenhum curso. <Link className="text-[var(--amarelo-tangerina)] underline" to="/catalogo">Ver cursos</Link>
               </p>
             ) : pickerCourses.map((availableCourse, index) => {
               const isSelected = availableCourse.id === selectedCourseId && !activeSalaId;
@@ -695,9 +694,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
     </div>
   );
 
-  // Sem curso e sem sala: nada para mostrar aqui. (Fica depois de todos os hooks.)
-  if (redirectToCursos) return <Navigate to="/cursos" replace />;
-
   return (
     <PageLayout
       variant="bare"
@@ -718,7 +714,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           {(courses.length > 0 || salas.length > 0) && courseTrigger}
           {coursePickerModal}
           <p>{errorMessage || (course ? "Este curso ainda não tem módulos. Selecione outro curso." : "Escolha um curso ou uma sala no menu ≡.")}</p>
-          <Link className="dashboard__link text-sm text-[var(--amarelo-tangerina)] underline" to="/cursos">Ver todos os cursos</Link>
+          <Link className="dashboard__link text-sm text-[var(--amarelo-tangerina)] underline" to="/catalogo">Ver todos os cursos</Link>
         </div>
       ) : (
         <div className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
