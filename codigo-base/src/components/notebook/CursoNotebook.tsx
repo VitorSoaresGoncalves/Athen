@@ -3,42 +3,35 @@ import { anotacoesRepository, notebookRepository } from "../../data/repositories
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
 
-type Curso = Database["public"]["Tables"]["Curso"]["Row"];
-type Notebook = Database["public"]["Tables"]["Notebook"]["Row"];
-type Anotacao = Database["public"]["Tables"]["Anotacoes"]["Row"];
+type Curso = Database["public"]["Tables"]["courses"]["Row"];
+type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
+type Anotacao = Database["public"]["Tables"]["notebook_pages"]["Row"];
 
 type CourseNotebookProps = {
   course: Curso;
 };
 
-type NoteContent = {
-  text?: string;
-};
-
 type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
-function getSavedText(content: Anotacao["Conteudo"]): string {
-  if (typeof content === "string") return content;
-  if (content && typeof content === "object" && !Array.isArray(content) && "text" in content) {
-    return typeof content.text === "string" ? content.text : "";
-  }
-  return "";
-}
+// ATENÇÃO: a tabela "notebooks" não tem mais course_id. O caderno de um curso é identificado
+// pelo título (notebooks.title === courses.title), mesma convenção da NotebookPage.
+// O ideal é adicionar uma coluna course_id em notebooks e filtrar por ela.
+const notebookTitleFor = (course: Curso) => course.title;
 
 function sortPages(pages: Anotacao[]): Anotacao[] {
   return [...pages].sort((first, second) => {
-    const firstTitle = first.Titulo.trim() || "Sem título";
-    const secondTitle = second.Titulo.trim() || "Sem título";
+    const firstTitle = first.title.trim() || "Sem título";
+    const secondTitle = second.title.trim() || "Sem título";
     return firstTitle.localeCompare(secondTitle, "pt-BR", { sensitivity: "base" });
   });
 }
 
 export function CursoNotebook({ course }: CourseNotebookProps) {
+  const courseTitle = notebookTitleFor(course);
   const [userId, setUserId] = useState<string | null>(null);
   const [notebook, setNotebook] = useState<Notebook | null>(null);
   const [pages, setPages] = useState<Anotacao[]>([]);
   const [annotation, setAnnotation] = useState<Anotacao | null>(null);
-  const [notebookName, setNotebookName] = useState("Anotações");
   const [pageTitle, setPageTitle] = useState("");
   const [savedPageTitle, setSavedPageTitle] = useState("");
   const [editingPageTitle, setEditingPageTitle] = useState(false);
@@ -70,10 +63,9 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         return;
       }
 
-      const notebooks = await notebookRepository.listar();
-      const courseNotebook = notebooks.find((item) => item.ID_Curso === course.ID && item.ID_Usuario === currentUserId) ?? null;
+      const notebooks = await notebookRepository.listarPorUsuario(currentUserId);
+      const courseNotebook = notebooks.find((item) => item.title === courseTitle) ?? null;
       setNotebook(courseNotebook);
-      setNotebookName(courseNotebook?.Nome || "Anotações");
 
       if (!courseNotebook) {
         setPages([]);
@@ -81,12 +73,12 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         return;
       }
 
-      const loadedPages = sortPages(await anotacoesRepository.listarPorNotebook(courseNotebook.ID));
+      const loadedPages = sortPages(await anotacoesRepository.listarPorNotebook(courseNotebook.id));
       const firstPage = loadedPages[0] ?? null;
       setPages(loadedPages);
       setAnnotation(firstPage);
-      const loadedTitle = firstPage?.Titulo || "";
-      const loadedText = firstPage ? getSavedText(firstPage.Conteudo) : "";
+      const loadedTitle = firstPage?.title || "";
+      const loadedText = firstPage?.content ?? "";
       setPageTitle(loadedTitle);
       setSavedPageTitle(loadedTitle);
       setNoteText(loadedText);
@@ -96,7 +88,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     } finally {
       setLoading(false);
     }
-  }, [course.ID]);
+  }, [courseTitle]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -190,8 +182,8 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   function setPageState(nextPage: Anotacao | null) {
     setAnnotation(nextPage);
     setEditingPageTitle(false);
-    const nextTitle = nextPage?.Titulo || "";
-    const nextText = nextPage ? getSavedText(nextPage.Conteudo) : "";
+    const nextTitle = nextPage?.title || "";
+    const nextText = nextPage?.content ?? "";
     setPageTitle(nextTitle);
     setSavedPageTitle(nextTitle);
     setNoteText(nextText);
@@ -203,7 +195,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   }
 
   function selectPage(nextPage: Anotacao) {
-    if (nextPage.ID === annotation?.ID) return;
+    if (nextPage.id === annotation?.id) return;
     if (hasUnsavedChanges()) {
       const discardChanges = window.confirm("Existem alterações não salvas. Deseja trocar de página e descartá-las?");
       if (!discardChanges) return;
@@ -212,7 +204,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   }
 
   function handlePageTabClick(page: Anotacao) {
-    if (page.ID === annotation?.ID && editingPageTitle) {
+    if (page.id === annotation?.id && editingPageTitle) {
       setEditingPageTitle(false);
       return;
     }
@@ -221,7 +213,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   }
 
   function handlePageTabDoubleClick(page: Anotacao) {
-    if (page.ID === annotation?.ID && !minimumNotebook) {
+    if (page.id === annotation?.id && !minimumNotebook) {
       setEditingPageTitle(true);
     }
   }
@@ -236,17 +228,13 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     setError("");
     try {
       const createdNotebook = await notebookRepository.criar({
-        Nome: notebookName || "Anotações",
-        ID_Curso: course.ID,
-        ID_Usuario: userId,
-        ID_Modulo: null,
-        ID_Sala: null,
+        title: notebookTitleFor(course),
+        user_id: userId,
       });
       setNotebook(createdNotebook);
-      setNotebookName(createdNotebook.Nome);
       setPages([]);
       setPageState(null);
-      await createPage(createdNotebook.ID);
+      await createPage(createdNotebook.id, []);
       openNotebook();
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Não foi possível criar o notebook.");
@@ -255,18 +243,19 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
-  async function createPage(notebookId = notebook?.ID) {
+  async function createPage(notebookId = notebook?.id, currentPages = pages) {
     if (!notebookId) return;
 
     setSaving(true);
     setError("");
     try {
       const createdPage = await anotacoesRepository.criar({
-        ID_Notebook: notebookId,
-        Titulo: "Nova página",
-        Conteudo: { text: "" },
+        notebook_id: notebookId,
+        title: "Nova página",
+        content: "",
+        position: currentPages.length,
       });
-      const nextPages = sortPages([...pages, createdPage]);
+      const nextPages = sortPages([...currentPages, createdPage]);
       setPages(nextPages);
       setPageState(createdPage);
       if (!minimumNotebook) setEditingPageTitle(true);
@@ -277,6 +266,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
+  // Salva a página atual (o título do notebook é o do curso e não é editado aqui).
   async function saveNotebook() {
     if (!notebook || !annotation) return;
 
@@ -284,17 +274,14 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     setError("");
     try {
       const title = pageTitle.trim() || "Sem título";
-      const updatedNotebook = await notebookRepository.atualizar(notebook.ID, { Nome: notebookName || "Anotações" });
-      const content: NoteContent = { text: noteText };
-      const updatedPage = await anotacoesRepository.atualizar(annotation.ID, { Titulo: title, Conteudo: content });
-      setNotebook(updatedNotebook);
-      setPages(sortPages(pages.map((page) => page.ID === updatedPage.ID ? updatedPage : page)));
+      const updatedPage = await anotacoesRepository.atualizar(annotation.id, { title, content: noteText });
+      setPages(sortPages(pages.map((page) => page.id === updatedPage.id ? updatedPage : page)));
       setAnnotation(updatedPage);
       setPageTitle(title);
       setSavedPageTitle(title);
       setEditingPageTitle(false);
-      setNoteText(getSavedText(updatedPage.Conteudo));
-      setSavedNoteText(getSavedText(updatedPage.Conteudo));
+      setNoteText(updatedPage.content ?? "");
+      setSavedNoteText(updatedPage.content ?? "");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar o notebook.");
     } finally {
@@ -310,8 +297,8 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     setSaving(true);
     setError("");
     try {
-      await anotacoesRepository.deletar(annotation.ID);
-      const remainingPages = sortPages(pages.filter((page) => page.ID !== annotation.ID));
+      await anotacoesRepository.deletar(annotation.id);
+      const remainingPages = sortPages(pages.filter((page) => page.id !== annotation.id));
       setPages(remainingPages);
       setPageState(remainingPages[0] ?? null);
     } catch (deleteError) {
@@ -329,8 +316,8 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     setSaving(true);
     setError("");
     try {
-      await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.ID)));
-      await notebookRepository.deletar(notebook.ID);
+      await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.id)));
+      await notebookRepository.deletar(notebook.id);
       setNotebook(null);
       setPages([]);
       setPageState(null);
@@ -391,14 +378,14 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
             <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto px-2 py-1.5">
               {sortPages(pages).map((page) => (
                 <button
-                  key={page.ID}
+                  key={page.id}
                   type="button"
                   onClick={() => handlePageTabClick(page)}
                   onDoubleClick={() => handlePageTabDoubleClick(page)}
-                  className={`max-w-[150px] shrink-0 truncate rounded px-2 py-1 text-[11px] transition ${page.ID === annotation?.ID ? "bg-[#80602b] font-bold text-[#fff8dc]" : "text-[#806a3d] hover:bg-[#d9bc70]/60"}`}
-                  title={page.Titulo || "Sem título"}
+                  className={`max-w-[150px] shrink-0 truncate rounded px-2 py-1 text-[11px] transition ${page.id === annotation?.id ? "bg-[#80602b] font-bold text-[#fff8dc]" : "text-[#806a3d] hover:bg-[#d9bc70]/60"}`}
+                  title={page.title || "Sem título"}
                 >
-                  {page.Titulo || "Sem título"}
+                  {page.title || "Sem título"}
                 </button>
               ))}
             </div>
@@ -436,7 +423,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
                   />
                 ) : (
                   <>
-                    <p className={`${compactNotebook ? "mb-1 h-3 text-[10px] leading-3" : "mb-2 h-4 text-xs leading-4"} truncate overflow-hidden text-[#806a3d]`}>{course.Titulo}</p>
+                    <p className={`${compactNotebook ? "mb-1 h-3 text-[10px] leading-3" : "mb-2 h-4 text-xs leading-4"} truncate overflow-hidden text-[#806a3d]`}>{course.title}</p>
                     <textarea
                       value={noteText}
                       onChange={(event) => setNoteText(event.target.value)}

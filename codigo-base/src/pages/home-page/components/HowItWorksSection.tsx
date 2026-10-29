@@ -3,6 +3,7 @@ import { HOW_IT_WORKS } from "../data";
 export default function HowItWorksSection() {
   return (
     <section
+      id="como-funciona"
       className="px-6 md:px-16 py-24 my-8 mx-4 md:mx-16 rounded-3xl"
       style={{ background: "linear-gradient(135deg, #1A0F35 0%, #2D1A52 100%)", border: "1px solid rgba(164,134,213,0.2)" }}
     >

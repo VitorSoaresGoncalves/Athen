@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { useTopDownDados } from "./top-down-dados";
 import { hexToRgba } from "./topDownColor";
+
 
 const rebarba = 28;
 
@@ -7,13 +9,8 @@ type SidebarRightProps = {
     aberta: boolean;
     onFechar: () => void;
     cor: string;
+    cursoId?: string;
 }
-
-type Amigo = {
-    nome: string;
-    xp: number;
-    eu?: boolean;
-};
 
 type BlocoProps = {
     cor: string;
@@ -21,21 +18,11 @@ type BlocoProps = {
     children: React.ReactNode;
 };
 
-const amigos: Amigo[] = [
-    { nome: "Luna Silva", xp: 2340 },
-    { nome: "Pedro Costa", xp: 1890 },
-    { nome: "Ana Reis", xp: 1450 },
-    { nome: "Você", xp: 1120, eu: true },
-];
-
 const medalhas = ["🥇", "🥈", "🥉"];
 
-const quest = {
-    titulo: "Complete 3 aulas hoje", 
-    xp: 150, 
-    feito: 1, 
-    total: 3
-};
+function Mensagem({ children }: { children: React.ReactNode }) {
+    return <p className="m-0 text-xs text-[#a0a0b8]">{children}</p>;
+}
 
 
 function Bloco({ cor, titulo, children }: BlocoProps) {
@@ -71,9 +58,11 @@ function Bloco({ cor, titulo, children }: BlocoProps) {
     );
 }
 
-export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
+export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProps) {
     const painelRef = useRef<HTMLDivElement>(null);
-    const progresso = Math.round((quest.feito / quest.total) * 100);
+    const { ranking, missoes, carregando, erroRanking, erroMissoes } = useTopDownDados(cursoId);
+    const temAmigos = ranking.some((amigo) => !amigo.is_self);
+    
 
     useEffect(() => {
         if (!aberta) return;
@@ -103,7 +92,7 @@ export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
             flex-col
             items-center
             transition-transform
-            duration-[320ms]
+            duration-320ms
             ease-in-out"
         style={{transform: aberta ? "translateY(0)" : `translateY(calc(-100% + ${rebarba}px))`}}
         >
@@ -119,75 +108,105 @@ export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
                 w-full
                 overflow-y-auto
                 rounded-b-[20px]
-                border
+                border-x-[2px]
+                border-b-[2px]
                 border-t-0
-                bg-transparent
-                backdrop-blur-[3px]
+                bg-[#171421]
                 transition-[border-color,box-shadow]
                 duration-700"
               style={{
-                borderColor: cor,
-                boxShadow: `0 0px 12px ${hexToRgba(cor, 0.35)}, inset 0 0 26px ${hexToRgba(cor, 0.12)}`,
+                borderColor: "#2d323a",
+                // borderColor: "#171421",
+                boxShadow: `0 5px 18px #000000, inset 0 0 30px ${hexToRgba(cor, 0.0)}`,
               }}
             >
 
                 {/* Rank de amigos */}
                 <Bloco cor={cor} titulo="Rank de amigos">
-                    <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
-                        {amigos.map((amigo, index) => (
-                            <li key={amigo.nome} className="flex items-center gap-2.5 text-sm">
-                                <span className="w-5 flex-none text-center text-base">
-                                    {medalhas[index] ?? index + 1}
-                                </span>
-                        
-                                <span
-                                    className={`min-w-0 flex-1 truncate ${amigo.eu ? "font-bold" : ""}`}
-                                    style={{ color: amigo.eu ? cor : "#eaf2ff" }}
-                                >
-                                    {amigo.nome}
-                                </span>
-                        
-                                <span className="flex-none text-xs tabular-nums" style={{ color: hexToRgba(cor, 0.95) }}>
-                                    {amigo.xp.toLocaleString("pt-BR")} xp
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    {carregando ? (
+                        <Mensagem>Carregando...</Mensagem>
+                    ) : erroRanking ? (
+                        <Mensagem>{erroRanking}</Mensagem>
+                    ) : !temAmigos ? (
+                        <Mensagem>Adicione amigos para competir nesse curso.</Mensagem>
+                    ) : (
+                        <ul className="m-0 flex list-none flex-col gap-2.5 p-0">
+                            {ranking.map((amigo, index) => (
+                                <li key={amigo.user_id} className="flex items-center gap-2.5 text-sm">
+                                    <span className="w-5 flex-none text-center text-base">
+                                        {medalhas[index] ?? index + 1}
+                                    </span>
+
+                                    <span
+                                        className={`min-w-0 flex-1 truncate ${amigo.is_self ? "font-bold" : ""}`}
+                                        style={{ color: amigo.is_self ? cor : "#eaf2ff" }}
+                                    >
+                                        {amigo.is_self ? "Você" : amigo.display_name || amigo.username}
+                                    </span>
+                            
+                                    <span className="flex-none text-xs tabular-nums" style={{ color: hexToRgba(cor, 0.95) }}>
+                                        {Math.round(Number(amigo.pac))}% PAC
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </Bloco>
+
                     
-                {/* Quest diaria */}
-                <Bloco cor={cor} titulo="Quest diária">
-                    <div className="flex items-start justify-between gap-3">
-                        <strong className="text-sm leading-snug text-[#f4eeff]">
-                            {quest.titulo}
-                        </strong>
-                    
-                        <span
-                            className="flex-none rounded-full border px-2 py-0.5 text-[11px] font-bold"
-                            style={{ borderColor: hexToRgba(cor, 0.6), color: cor }}
-                        >
-                            +{quest.xp} XP
-                        </span>
-                    </div>
-                    
-                    <div
-                        className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
-                        style={{ backgroundColor: hexToRgba(cor, 0.15) }}
-                    >
-                        <div
-                            className="h-full rounded-full transition-[width] duration-500"
-                            style={{
-                                width: `${progresso}%`,
-                                backgroundColor: cor,
-                                boxShadow: `0 0 10px ${hexToRgba(cor, 0.8)}`,
-                            }}
-                        />
-                    </div>
-                        
-                    <span className="mt-2 block text-xs" style={{ color: hexToRgba(cor, 0.9) }}>
-                        {quest.feito}/{quest.total} concluídas
-                    </span>
+                {/* Missoes ativas */}
+                <Bloco cor={cor} titulo="Missões">
+                    {carregando ? (
+                        <Mensagem>Carregando...</Mensagem>
+                    ) : erroMissoes ? (
+                        <Mensagem>{erroMissoes}</Mensagem>
+                    ) : missoes.length === 0 ? (
+                        <Mensagem>Nenhuma missão ativa nas suas salas.</Mensagem>
+                    ) : (
+                        <ul className="m-0 flex list-none flex-col gap-4 p-0">
+                            {missoes.map((missao) => {
+                                const progresso = missao.concluida ? 100 : Math.round(missao.progresso);
+                            
+                                return (
+                                    <li key={missao.id}>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <strong className="text-sm leading-snug text-[#f4eeff]">
+                                                {missao.title}
+                                            </strong>
+                                
+                                            <span
+                                                className="flex-none rounded-full border px-2 py-0.5 text-[11px] font-bold"
+                                                style={{ borderColor: hexToRgba(cor, 0.6), color: cor }}
+                                            >
+                                                +{missao.reward_xp} XP
+                                            </span>
+                                        </div>
+                                
+                                        <div
+                                            className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
+                                            style={{ backgroundColor: hexToRgba(cor, 0.15) }}
+                                        >
+                                            <div
+                                                className="h-full rounded-full transition-[width] duration-500"
+                                                style={{
+                                                    width: `${progresso}%`,
+                                                    backgroundColor: cor,
+                                                    boxShadow: `0 0 10px ${hexToRgba(cor, 0.8)}`,
+                                                }}
+                                            />
+                                        </div>
+                                            
+                                        <span className="mt-2 block text-xs" style={{ color: hexToRgba(cor, 0.9) }}>
+                                            {missao.concluida ? "Concluída" : `${progresso}% concluído`}
+                                            {missao.deadline && ` · até ${new Date(missao.deadline).toLocaleDateString("pt-BR")}`}
+                                        </span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </Bloco>
+
             </aside>
 
             {/* rebarba da janela TopDown */}
@@ -203,18 +222,18 @@ export function SidebarRight({ aberta, onFechar, cor}: SidebarRightProps) {
                 flex-none
                 items-center
                 justify-center
-                bg-transparent
-                backdrop-blur-[3px]
+                bg-[#171421]
                 rounded-b-[12px]
-                border
+                border-x-[3px]
+                border-b-[3px]
                 border-t-0
                 cursor-pointer
                 transition-[border-color,box-shadow]
                 duration-700"
               style={{ 
                 height: rebarba,
-                borderColor: cor,
-                boxShadow: `0 0px 12px ${hexToRgba(cor, 0.4)}, inset 0 -6px 14px ${hexToRgba(cor, 0.15)}`, 
+                borderColor: "#2d323a",
+                boxShadow: `0 5px 18px #000000, inset 0 0px 20px ${hexToRgba(cor, 0.00)}`, 
               }}
             >
                 <span 

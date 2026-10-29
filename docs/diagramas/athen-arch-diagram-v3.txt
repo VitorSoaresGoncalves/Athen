@@ -1,0 +1,42 @@
+network "Athen — Arquitetura (React + Supabase)"
+  layout: tiered
+
+  zone client "Client — codigo-base/ (Vite + React + TS)" {
+    pc browser "React SPA — Main.tsx / Hub.tsx" tier: edge
+    server guard "ProtectedRoute + SupabaseConnect.tsx" tier: edge
+    server repos "repositories.ts + supabase.ts" tier: edge
+  }
+  zone supabase "Supabase — backend gerenciado" {
+    server auth "Auth / GoTrue" tier: distribution
+    server postgrest "PostgREST API" tier: distribution
+    database pg "PostgreSQL — migrações numeradas" tier: access
+    server rls "RLS policies + RPC + triggers" tier: access
+    storage store "Storage — avatares" tier: access
+    server edge "Edge Functions" tier: access
+  }
+  zone providers "Integrações externas" {
+    cloud google "Google OAuth" tier: edge
+    cloud sms "SMS provider (OTP)" tier: edge
+    cloud resend "Resend SMTP" tier: edge
+    internet mail "E-mail do destinatário" tier: edge
+  }
+  zone cicd "CI/CD — .github/workflows/ci.yml" {
+    server gh "GitHub Actions" tier: access
+    container migr "Supabase CLI / migrações" tier: access
+  }
+
+  browser -- guard
+  browser -- repos
+  repos -- auth
+  repos -- postgrest
+  repos -- store
+  auth -- pg
+  postgrest -- rls
+  rls -- pg
+  edge -- pg
+  auth -- google
+  auth -- sms
+  edge -- resend
+  resend -- mail
+  gh -- migr
+  migr -- pg

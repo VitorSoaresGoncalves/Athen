@@ -14,7 +14,7 @@
     "test:check": "tsc -p tsconfig.test.json --noEmit",
     "test:e2e": "playwright test",
     "preview": "vite preview",
-    "prepare": "cd .. && husky codigo-base/.husky"
+    "prepare": "cd .. && husky codigo-base/.husky && node scripts/link-skills.mjs"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint --fix"
@@ -26,7 +26,8 @@
     "pg": "^8.23.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "supabase": "^2.121.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

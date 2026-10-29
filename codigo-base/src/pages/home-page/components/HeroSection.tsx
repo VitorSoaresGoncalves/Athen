@@ -1,8 +1,31 @@
 import { useState } from "react";
-import { STATS, logoColor, logoGhost } from "../data";
+import { useNavigate } from "react-router-dom";
+import { ROUTES, logoColor, logoGhost, type HomeStats } from "../data";
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  stats: HomeStats | null;
+  loading: boolean;
+  loggedIn: boolean;
+}
+
+const formatNumber = (value: number) => value.toLocaleString("pt-BR");
+
+export default function HeroSection({ stats, loading, loggedIn }: HeroSectionProps) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
+
+  const placeholder = loading ? "…" : "—";
+  const statItems = [
+    { label: "Alunos cadastrados", value: stats ? formatNumber(stats.students) : placeholder },
+    { label: "Cursos publicados", value: stats ? formatNumber(stats.courses) : placeholder },
+    { label: "Categorias", value: stats ? formatNumber(stats.categories) : placeholder },
+    {
+      label: "Avaliação média",
+      value: stats?.avgRating != null ? `${stats.avgRating.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5` : placeholder,
+    },
+  ];
+
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   return (
     <section className="relative flex flex-col items-center text-center px-6 pt-24 pb-32 overflow-hidden">
@@ -55,26 +78,43 @@ export default function HeroSection() {
       </p>
 
       <div className="flex flex-col sm:flex-row items-center gap-4 mb-14">
-        <div
-          className="flex items-center gap-2 rounded-full overflow-hidden pl-5 pr-2 py-2"
-          style={{ background: "#1A0F35", border: "1px solid rgba(164,134,213,0.3)" }}
-        >
-          <input
-            type="email"
-            placeholder="Seu e-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="bg-transparent outline-none text-sm w-48"
-            style={{ fontFamily: "var(--font-ui)", color: "#F4EEFF" }}
-          />
+        {loggedIn ? (
           <button
-            className="text-sm font-semibold px-5 py-2 rounded-full transition-transform hover:scale-105"
+            onClick={() => scrollTo("cursos")}
+            className="text-sm font-semibold px-6 py-3 rounded-full transition-transform hover:scale-105"
             style={{ background: "#FFCC00", color: "#54318C", fontFamily: "var(--font-ui)" }}
           >
-            Entrar
+            Explorar cursos
           </button>
-        </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate(ROUTES.register, { state: { email: email.trim() } });
+            }}
+            className="flex items-center gap-2 rounded-full overflow-hidden pl-5 pr-2 py-2"
+            style={{ background: "#1A0F35", border: "1px solid rgba(164,134,213,0.3)" }}
+          >
+            <input
+              type="email"
+              placeholder="Seu e-mail"
+              aria-label="Seu e-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-transparent outline-none text-sm w-48"
+              style={{ fontFamily: "var(--font-ui)", color: "#F4EEFF" }}
+            />
+            <button
+              type="submit"
+              className="text-sm font-semibold px-5 py-2 rounded-full transition-transform hover:scale-105"
+              style={{ background: "#FFCC00", color: "#54318C", fontFamily: "var(--font-ui)" }}
+            >
+              Criar conta
+            </button>
+          </form>
+        )}
         <button
+          onClick={() => scrollTo("como-funciona")}
           className="text-sm flex items-center gap-2 transition-opacity hover:opacity-75"
           style={{ color: "#A486D5", fontFamily: "var(--font-ui)" }}
         >
@@ -84,7 +124,7 @@ export default function HeroSection() {
 
       {/* stats row */}
       <div className="flex flex-wrap justify-center gap-8">
-        {STATS.map((s) => (
+        {statItems.map((s) => (
           <div key={s.label} className="flex flex-col items-center">
             <span
               className="text-2xl md:text-3xl font-bold"

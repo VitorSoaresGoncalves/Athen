@@ -1,19 +1,68 @@
+// Conteúdo ESTÁTICO da home (identidade visual, navegação e textos editoriais).
+// Tudo que é dado de verdade (cursos, categorias, números, ranking) vem do Supabase via services.ts.
+
 export const logoColor = "/Athen.png";
 export const logoGhost = "/Athen_ghost.png";
 
+// Ajuste aqui se as rotas do seu app forem diferentes.
+export const ROUTES = {
+  login: "/login-page",
+  register: "/register-page",
+  explore: "/explorar",
+  course: (slug: string) => `/curso/${slug}`,
+};
+
+// ---------------------------------------------------------------------------
+// Tipos usados pelos componentes (já no formato da UI, não no formato das tabelas)
+// ---------------------------------------------------------------------------
+
+export interface HomeStats {
+  students: number;
+  courses: number;
+  categories: number;
+  avgRating: number | null;
+}
+
 export interface Category {
+  label: string; // valor real de courses.category (usado no filtro)
   icon: string;
-  label: string;
+  count: number;
 }
 
 export interface Course {
+  id: string;
+  slug: string;
   title: string;
-  author: string;
+  author: string | null;
+  category: string | null;
+  coverUrl: string | null;
   xp: number;
   students: number;
   badge: string;
   bg: string;
   accent: string;
+}
+
+export interface Learner {
+  id: string;
+  name: string;
+  username: string;
+  bio: string | null;
+  level: number;
+  xp: number;
+  rank: number | null;
+}
+
+export interface Testimonial {
+  id: string;
+  text: string | null;
+  name: string;
+  username: string;
+  level: number;
+  xp: number;
+  rating: number | null; // nota da avaliação (null quando vem do ranking)
+  courseTitle: string | null;
+  rank: number | null;
 }
 
 export interface HowItWorksStep {
@@ -22,76 +71,23 @@ export interface HowItWorksStep {
   desc: string;
 }
 
-export interface Stat {
-  value: string;
-  label: string;
-}
+// ---------------------------------------------------------------------------
+// Estático
+// ---------------------------------------------------------------------------
 
-export interface Testimonial {
-  name: string;
-  handle: string;
-  avatar: string;
-  text: string;
-  xp: string;
-}
-
-export const NAV_LINKS = ["Explorar", "Comunidade", "Ranking", "Criar Curso"];
-
-export const CATEGORIES: Category[] = [
-  { icon: "🧬", label: "Ciências" },
-  { icon: "🎨", label: "Arte & Design" },
-  { icon: "💻", label: "Tecnologia" },
-  { icon: "📚", label: "Literatura" },
-  { icon: "🎵", label: "Música" },
-  { icon: "🌍", label: "Idiomas" },
-  { icon: "🧮", label: "Matemática" },
-  { icon: "🏛️", label: "História" },
-];
-
-export const COURSES: Course[] = [
-  {
-    title: "Introdução à Astronomia",
-    author: "stella_cosmo",
-    xp: 1200,
-    students: 3847,
-    badge: "⭐ Em Alta",
-    bg: "#54318C",
-    accent: "#FFCC00",
-  },
-  {
-    title: "Python para Iniciantes",
-    author: "dev_lucas",
-    xp: 950,
-    students: 7210,
-    badge: "🔥 Popular",
-    bg: "#FFCC00",
-    accent: "#54318C",
-  },
-  {
-    title: "História da Arte Medieval",
-    author: "arte_viva",
-    xp: 780,
-    students: 2103,
-    badge: "🆕 Novo",
-    bg: "#A486D5",
-    accent: "#FFEB99",
-  },
-  {
-    title: "Lógica e Pensamento Crítico",
-    author: "filosofia_on",
-    xp: 1100,
-    students: 5589,
-    badge: "🏆 Top Avaliado",
-    bg: "#FFDE5C",
-    accent: "#54318C",
-  },
+// Ajuste os destinos conforme as rotas reais do app. Todos exigem login (ver navigation.ts).
+export const NAV_LINKS = [
+  { label: "Explorar", to: ROUTES.explore },
+  { label: "Comunidade", to: "/comunidade" },
+  { label: "Ranking", to: "/ranking" },
+  { label: "Criar Curso", to: "/criar-curso" },
 ];
 
 export const HOW_IT_WORKS: HowItWorksStep[] = [
   {
     step: "01",
     title: "Explore cursos da comunidade",
-    desc: "Descubra milhares de cursos criados por pessoas apaixonadas pelos seus temas.",
+    desc: "Descubra cursos criados por pessoas apaixonadas pelos seus temas.",
   },
   {
     step: "02",
@@ -110,33 +106,23 @@ export const HOW_IT_WORKS: HowItWorksStep[] = [
   },
 ];
 
-export const STATS: Stat[] = [
-  { value: "48.000+", label: "Alunos ativos" },
-  { value: "12.500+", label: "Cursos criados" },
-  { value: "320+", label: "Categorias" },
-  { value: "99%", label: "Satisfação" },
+// Paleta dos cards de curso (cicla pelo índice)
+export const COURSE_PALETTE = [
+  { bg: "#54318C", accent: "#FFCC00" },
+  { bg: "#FFCC00", accent: "#54318C" },
+  { bg: "#A486D5", accent: "#FFEB99" },
+  { bg: "#FFDE5C", accent: "#54318C" },
 ];
 
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    name: "Marina Souza",
-    handle: "@marinasouza",
-    avatar: "M",
-    text: "Comecei como aluna e em três meses já lancei meu primeiro curso sobre permacultura. A comunidade é incrível!",
-    xp: "Nível 12 · 8.400 XP",
-  },
-  {
-    name: "Carlos Henrique",
-    handle: "@carlosdev",
-    avatar: "C",
-    text: "A gamificação faz toda a diferença. Nunca aprendi tanto em tão pouco tempo. Virei viciado em subir de nível.",
-    xp: "Nível 18 · 15.200 XP",
-  },
-  {
-    name: "Fernanda Lima",
-    handle: "@fernandalima",
-    avatar: "F",
-    text: "O que me surpreendeu foi a qualidade dos cursos feitos por pessoas comuns. Muito melhor que plataformas tradicionais.",
-    xp: "Nível 9 · 5.800 XP",
-  },
+// Ícone da categoria a partir do nome (as categorias são texto livre em courses.category)
+export const CATEGORY_ICONS: [RegExp, string][] = [
+  [/cienc|biolog|quimic|fisic|astronom/, "🧬"],
+  [/arte|design|desenho|foto/, "🎨"],
+  [/tecnolog|program|desenvolv|dados|data|comput|python|web|java|react/, "💻"],
+  [/literat|leitura|escrita|portugues|redacao/, "📚"],
+  [/music/, "🎵"],
+  [/idioma|ingles|espanhol|frances|lingua/, "🌍"],
+  [/matemat|calcul|logica|estatist/, "🧮"],
+  [/histor|filosof|geograf|sociolog/, "🏛️"],
 ];
+export const DEFAULT_CATEGORY_ICON = "📘";

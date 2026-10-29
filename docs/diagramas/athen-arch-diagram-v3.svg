@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="sx-net" role="img" aria-label="Athen — Arquitetura (React + Supabase)" width="2435.88" height="676.5" viewBox="-1 -1 2435.88 676.5" data-diagram-type="network"><title>Network diagram — Athen — Arquitetura (React + Supabase)</title>
+<desc>15 devices, 15 links, 4 boundaries. Topology: hierarchical. Links: 15 copper.</desc><rect width="100%" height="100%" fill="#ffffff" data-sx-export-background="true"/>
+<style>.sx-net { font-family: Inter, "Helvetica Neue", sans-serif; }
+.sx-net-body { fill: #f8fafc; stroke: #334155; stroke-width: 1.4; }
+.sx-net-detail { fill: none; stroke: #334155; stroke-width: 1; }
+.sx-net-glyph { fill: #256b8a; stroke: none; }
+.sx-net-glyph-line { fill: none; stroke: #256b8a; stroke-width: 1.4; }
+.sx-net-icontext { font: 700 8px Inter, "Helvetica Neue", sans-serif; fill: #256b8a; }
+.sx-net-icontag { font: 700 8px Inter, "Helvetica Neue", sans-serif; fill: #64748b; paint-order: stroke; stroke: #ffffff; stroke-width: 2.5px; stroke-linejoin: round; }
+.sx-net-symbol { stroke-linecap: round; stroke-linejoin: round; }
+.sx-net-bezel { stroke-width: 1; }
+.sx-net-panel { fill: #e0e4e8; stroke-width: 1; }
+.sx-net-screen { fill: #e0e4e8; stroke: none; }
+.sx-net-port-solid { fill: #334155; }
+.sx-net-ink-line { stroke-width: 1.4; }
+.sx-net-cloud-body { fill: #ffffff; stroke: #334155; stroke-width: 1.4; }
+.sx-net-cloudtext { font: 600 13px Inter, "Helvetica Neue", sans-serif; fill: #0f172a; }
+.sx-net-bus { stroke: #334155; stroke-width: 4; stroke-linecap: round; }
+.sx-net-label { font: 12px Inter, "Helvetica Neue", sans-serif; fill: #0f172a; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
+.sx-net-sublabel { font: 10px Inter, "Helvetica Neue", sans-serif; fill: #64748b; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
+.sx-net-link { fill: none; stroke-width: 1.4; }
+.sx-net-link-wireless, .sx-net-link-vpn { stroke-dasharray: 5 4; }
+.sx-net-link-lag { stroke-width: 3; }
+.sx-net-linklabel { font: 9px Inter, "Helvetica Neue", sans-serif; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
+.sx-net-port { font: 8px Inter, "Helvetica Neue", sans-serif; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 2.5px; stroke-linejoin: round; }
+.sx-net-boundary-site { fill: none; stroke: #334155; stroke-width: 1.5; }
+.sx-net-boundary-rack { fill: none; stroke: #334155; stroke-width: 1.5; stroke-dasharray: 1 2; }
+.sx-net-boundary-subnet, .sx-net-boundary-vlan { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.sx-net-boundary-vlan { stroke-dasharray: none; }
+.sx-net-boundary-zone, .sx-net-boundary-dmz { fill: none; stroke: #dc2626; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.sx-net-boundary-label { font: 600 10px Inter, "Helvetica Neue", sans-serif; }
+.sx-net-title { font: 700 16px Inter, "Helvetica Neue", sans-serif; fill: #0f172a; }</style>
+<text x="1216.94" y="21" class="sx-net-title" text-anchor="middle">Athen — Arquitetura (React + Supabase)</text>
+<g transform="translate(0, 30)"><g class="sx-net-boundaries"><g class="sx-net-boundary" data-kind="zone" data-label="Client — codigo-base/ (Vite + React + TS)"><rect class="sx-net-boundary-zone" x="30" y="172" width="562.88" height="147" rx="8" ry="8"/>
+<text class="sx-net-boundary-label" fill="#dc2626" x="42" y="185">Client — codigo-base/ (Vite + React + TS)</text></g>
+<g class="sx-net-boundary" data-kind="zone" data-label="Supabase — backend gerenciado"><rect class="sx-net-boundary-zone" x="636.88" y="308.5" width="610.32" height="306" rx="8" ry="8"/>
+<text class="sx-net-boundary-label" fill="#dc2626" x="648.88" y="321.5">Supabase — backend gerenciado</text></g>
+<g class="sx-net-boundary" data-kind="zone" data-label="Integrações externas"><rect class="sx-net-boundary-zone" x="1291.2" y="30" width="783.72" height="128" rx="8" ry="8"/>
+<text class="sx-net-boundary-label" fill="#dc2626" x="1303.2" y="43">Integrações externas</text></g>
+<g class="sx-net-boundary" data-kind="zone" data-label="CI/CD — .github/workflows/ci.yml"><rect class="sx-net-boundary-zone" x="2118.92" y="452.5" width="284.96" height="147" rx="8" ry="8"/>
+<text class="sx-net-boundary-label" fill="#dc2626" x="2130.92" y="465.5">CI/CD — .github/workflows/ci.yml</text></g></g>
+<g class="sx-net-links"><g class="sx-net-link-g" data-from="browser" data-to="guard" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="110.52,236 142.52,236 244.08,236 276.08,236"/></g>
+<g class="sx-net-link-g" data-from="browser" data-to="repos" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="110.52,236 110.52,212 110.52,196 417.12,196 417.12,212 417.12,236"/></g>
+<g class="sx-net-link-g" data-from="repos" data-to="auth" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="417.12,236 417.12,260 417.12,276 998.92,276 998.92,348.5 998.92,372.5"/></g>
+<g class="sx-net-link-g" data-from="repos" data-to="postgrest" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="417.12,236 417.12,260 417.12,276 732.52,372.5 748.52,372.5 780.52,372.5"/></g>
+<g class="sx-net-link-g" data-from="repos" data-to="store" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="417.12,236 443.09,260 694.67,492.5 720.64,516.5"/></g>
+<g class="sx-net-link-g" data-from="auth" data-to="pg" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="998.92,372.5 1005.17,396.5 1030.15,492.5 1036.4,516.5"/></g>
+<g class="sx-net-link-g" data-from="postgrest" data-to="rls" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="780.52,372.5 798.07,396.5 868.29,492.5 885.84,516.5"/></g>
+<g class="sx-net-link-g" data-from="rls" data-to="pg" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="885.84,516.5 917.84,516.5 1004.4,516.5 1036.4,516.5"/></g>
+<g class="sx-net-link-g" data-from="edge" data-to="pg" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="1174.36,516.5 1142.36,516.5 1068.4,516.5 1036.4,516.5"/></g>
+<g class="sx-net-link-g" data-from="auth" data-to="google" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="998.92,372.5 1030.92,349.65 1332.96,134 1377.78,102"/></g>
+<g class="sx-net-link-g" data-from="auth" data-to="sms" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="998.92,372.5 1030.92,357.31 1501.31,134 1568.71,102"/></g>
+<g class="sx-net-link-g" data-from="edge" data-to="resend" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="1174.36,516.5 1206.36,493.87 1715.35,134 1760.61,102"/></g>
+<g class="sx-net-link-g" data-from="resend" data-to="mail" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="1760.61,102 1824.16,102 1868.16,102 1959.54,102"/></g>
+<g class="sx-net-link-g" data-from="gh" data-to="migr" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="2332.96,516.5 2300.96,516.5 2224.48,516.5 2192.48,516.5"/></g>
+<g class="sx-net-link-g" data-from="migr" data-to="pg" data-type="copper"><polyline class="sx-net-link sx-net-link-copper" stroke="#334155" points="2192.48,516.5 2160.48,516.5 2144.48,516.5 1036.4,476.5 1036.4,492.5 1036.4,516.5"/></g></g>
+<g class="sx-net-devices"><g class="sx-net-device" data-id="browser" data-kind="pc" data-tier="edge"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="84.03" y="214.74" width="52.98" height="32.96" rx="1.77"/>
+<rect class="sx-net-body sx-net-screen" x="88.74" y="219.44" width="43.56" height="23.55"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 110.52 247.7 L 110.52 257.12 M 95.8 257.12 L 125.24 257.12" stroke-linecap="butt"/></g></g>
+<text class="sx-net-label" x="110.52" y="277" text-anchor="middle">React SPA —</text>
+<text class="sx-net-label" x="110.52" y="292" text-anchor="middle">Main.tsx / Hub.tsx</text></g>
+<g class="sx-net-device" data-id="guard" data-kind="server" data-tier="edge"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="259.26" y="214.7" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="264.31" y="222.55" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="264.31" y="235.44" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="285.05" cy="226.47" r="1.4"/>
+<circle class="sx-net-glyph" cx="285.05" cy="239.36" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 265.43 251.13 L 279.44 251.13"/></g></g>
+<text class="sx-net-label" x="276.08" y="277" text-anchor="middle">ProtectedRoute +</text>
+<text class="sx-net-label" x="276.08" y="292" text-anchor="middle">SupabaseConnect.tsx</text></g>
+<g class="sx-net-device" data-id="repos" data-kind="server" data-tier="edge"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="400.3" y="214.7" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="405.35" y="222.55" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="405.35" y="235.44" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="426.09" cy="226.47" r="1.4"/>
+<circle class="sx-net-glyph" cx="426.09" cy="239.36" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 406.47 251.13 L 420.48 251.13"/></g></g>
+<text class="sx-net-label" x="515" y="232.5" text-anchor="middle">repositories.ts +</text>
+<text class="sx-net-label" x="515" y="247.5" text-anchor="middle">supabase.ts</text></g>
+<g class="sx-net-device" data-id="auth" data-kind="server" data-tier="distribution"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="982.1" y="351.2" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="987.15" y="359.05" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="987.15" y="371.94" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="1007.89" cy="362.97" r="1.4"/>
+<circle class="sx-net-glyph" cx="1007.89" cy="375.86" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 988.27 387.63 L 1002.28 387.63"/></g></g>
+<text class="sx-net-label" x="1089.24" y="376.5" text-anchor="middle">Auth / GoTrue</text></g>
+<g class="sx-net-device" data-id="postgrest" data-kind="server" data-tier="distribution"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="763.7" y="351.2" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="768.75" y="359.05" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="768.75" y="371.94" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="789.49" cy="362.97" r="1.4"/>
+<circle class="sx-net-glyph" cx="789.49" cy="375.86" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 769.87 387.63 L 783.88 387.63"/></g></g>
+<text class="sx-net-label" x="873.72" y="376.5" text-anchor="middle">PostgREST API</text></g>
+<g class="sx-net-device" data-id="pg" data-kind="database" data-tier="access"><g class="sx-net-symbol"><g><path class="sx-net-body" d="M 1018.46 500.81 L 1018.46 532.19 A 17.94 5.61 0 0 0 1054.34 532.19 L 1054.34 500.81"/>
+<ellipse class="sx-net-body sx-net-panel" cx="1036.4" cy="500.81" rx="17.94" ry="5.61"/>
+<path class="sx-net-detail" d="M 1018.46 512.02 A 17.94 5.61 0 0 0 1054.34 512.02 M 1018.46 523.23 A 17.94 5.61 0 0 0 1054.34 523.23"/>
+<circle class="sx-net-glyph" cx="1047.61" cy="529.95" r="1.4"/></g></g>
+<text class="sx-net-label" x="1036.4" y="557.5" text-anchor="middle">PostgreSQL —</text>
+<text class="sx-net-label" x="1036.4" y="572.5" text-anchor="middle">migrações</text>
+<text class="sx-net-label" x="1036.4" y="587.5" text-anchor="middle">numeradas</text></g>
+<g class="sx-net-device" data-id="rls" data-kind="server" data-tier="access"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="869.02" y="495.2" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="874.07" y="503.05" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="874.07" y="515.94" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="894.81" cy="506.97" r="1.4"/>
+<circle class="sx-net-glyph" cx="894.81" cy="519.86" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 875.19 531.63 L 889.2 531.63"/></g></g>
+<text class="sx-net-label" x="885.84" y="557.5" text-anchor="middle">RLS policies + RPC</text>
+<text class="sx-net-label" x="885.84" y="572.5" text-anchor="middle">+ triggers</text></g>
+<g class="sx-net-device" data-id="store" data-kind="storage" data-tier="access"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="691.3" y="505.5" width="58.69" height="22.01" rx="1.57"/>
+<rect class="sx-net-body sx-net-panel" x="697.58" y="509.69" width="8.38" height="13.62"/>
+<path class="sx-net-detail" d="M 699.68 519.64 L 703.87 519.64"/>
+<rect class="sx-net-body sx-net-panel" x="709.11" y="509.69" width="8.38" height="13.62"/>
+<path class="sx-net-detail" d="M 711.21 519.64 L 715.4 519.64"/>
+<rect class="sx-net-body sx-net-panel" x="720.64" y="509.69" width="8.38" height="13.62"/>
+<path class="sx-net-detail" d="M 722.74 519.64 L 726.93 519.64"/>
+<rect class="sx-net-body sx-net-panel" x="732.17" y="509.69" width="8.38" height="13.62"/>
+<path class="sx-net-detail" d="M 734.26 519.64 L 738.46 519.64"/>
+<circle class="sx-net-glyph" cx="745.79" cy="516.5" r="1.31"/></g></g>
+<text class="sx-net-label" x="720.64" y="557.5" text-anchor="middle">Storage — avatares</text></g>
+<g class="sx-net-device" data-id="edge" data-kind="server" data-tier="access"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="1157.54" y="495.2" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="1162.59" y="503.05" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="1162.59" y="515.94" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="1183.33" cy="506.97" r="1.4"/>
+<circle class="sx-net-glyph" cx="1183.33" cy="519.86" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 1163.71 531.63 L 1177.72 531.63"/></g></g>
+<text class="sx-net-label" x="1174.36" y="557.5" text-anchor="middle">Edge Functions</text></g>
+<g class="sx-net-device" data-id="google" data-kind="cloud" data-tier="edge"><g class="sx-net-symbol"><g><path class="sx-net-cloud-body" d="M 1341.48 129.52 C 1317.08 129.52 1314.57 93.04 1337.73 89.84 C 1338.98 65.52 1369.02 62.32 1380.28 81.52 C 1400.31 67.44 1419.08 79.6 1419.08 96.24 C 1439.11 98.16 1440.36 129.52 1416.58 129.52 Z"/>
+<text class="sx-net-cloudtext" x="1377.7802" y="111.75999999999999" text-anchor="middle">Google OAuth</text></g></g></g>
+<g class="sx-net-device" data-id="sms" data-kind="cloud" data-tier="edge"><g class="sx-net-symbol"><g><path class="sx-net-cloud-body" d="M 1519.79 129.52 C 1486.89 129.52 1483.52 93.04 1514.73 89.84 C 1516.41 65.52 1556.9 62.32 1572.09 81.52 C 1599.08 67.44 1624.39 79.6 1624.39 96.24 C 1651.38 98.16 1653.07 129.52 1621.01 129.52 Z"/>
+<text class="sx-net-cloudtext" x="1568.7129999999997" y="111.75999999999999" text-anchor="middle">SMS provider (OTP)</text></g></g></g>
+<g class="sx-net-device" data-id="resend" data-kind="cloud" data-tier="edge"><g class="sx-net-symbol"><g><path class="sx-net-cloud-body" d="M 1723.75 129.52 C 1698.97 129.52 1696.43 93.04 1719.94 89.84 C 1721.21 65.52 1751.71 62.32 1763.15 81.52 C 1783.49 67.44 1802.55 79.6 1802.55 96.24 C 1822.88 98.16 1824.16 129.52 1800.01 129.52 Z"/>
+<text class="sx-net-cloudtext" x="1760.6103999999998" y="111.75999999999999" text-anchor="middle">Resend SMTP</text></g></g></g>
+<g class="sx-net-device" data-id="mail" data-kind="internet" data-tier="edge"><g class="sx-net-symbol"><g><path class="sx-net-cloud-body" d="M 1906.53 129.52 C 1870.9 129.52 1867.24 93.04 1901.05 89.84 C 1902.88 65.52 1946.74 62.32 1963.19 81.52 C 1992.43 67.44 2019.85 79.6 2019.85 96.24 C 2049.09 98.16 2050.92 129.52 2016.19 129.52 Z"/>
+<circle class="sx-net-detail" cx="1944.914736" cy="85" r="8"/>
+<ellipse class="sx-net-detail" cx="1944.914736" cy="85" rx="3" ry="8"/>
+<path class="sx-net-detail" d="M 1936.914736 85 H 1952.914736 M 1938.914736 81 H 1950.914736 M 1938.914736 89 H 1950.914736"/>
+<text class="sx-net-cloudtext" x="1959.5356" y="111.75999999999999" text-anchor="middle">E-mail do destinatário</text></g></g></g>
+<g class="sx-net-device" data-id="gh" data-kind="server" data-tier="access"><g class="sx-net-symbol"><g><rect class="sx-net-body" x="2316.14" y="495.2" width="33.63" height="42.6" rx="1.68"/>
+<rect class="sx-net-body sx-net-panel" x="2321.19" y="503.05" width="23.54" height="8.41"/>
+<rect class="sx-net-body sx-net-panel" x="2321.19" y="515.94" width="23.54" height="8.41"/>
+<circle class="sx-net-glyph" cx="2341.92" cy="506.97" r="1.4"/>
+<circle class="sx-net-glyph" cx="2341.92" cy="519.86" r="1.4"/>
+<path class="sx-net-detail sx-net-ink-line" d="M 2322.31 531.63 L 2336.32 531.63"/></g></g>
+<text class="sx-net-label" x="2332.96" y="557.5" text-anchor="middle">GitHub Actions</text></g>
+<g class="sx-net-device" data-id="migr" data-kind="container" data-tier="access"><g class="sx-net-symbol"><g><path class="sx-net-body" d="M 2171 503.68 L 2198.71 495.37 L 2213.96 504.37 L 2213.96 529.32 L 2186.24 537.63 L 2171 528.63 Z"/>
+<path class="sx-net-body sx-net-panel" d="M 2171 503.68 L 2186.24 512.69 L 2213.96 504.37 L 2198.71 495.37 Z"/>
+<path class="sx-net-detail" d="M 2186.24 512.69 L 2186.24 537.63 M 2171 503.68 L 2186.24 512.69 L 2213.96 504.37"/>
+<path class="sx-net-detail" d="M 2176.54 511.3 L 2176.54 525.85 M 2181.39 514.07 L 2181.39 528.63 M 2192.48 515.46 L 2192.48 531.4 M 2199.41 513.38 L 2199.41 529.32 M 2206.33 511.3 L 2206.33 527.24"/></g></g>
+<text class="sx-net-label" x="2192.48" y="557.5" text-anchor="middle">Supabase CLI /</text>
+<text class="sx-net-label" x="2192.48" y="572.5" text-anchor="middle">migrações</text></g></g></g></svg>

@@ -9,21 +9,32 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { SidebarLeft } from "../../components/sidebar/SidebarLeft";
+import { PROFILE_UPDATED_EVENT } from "../../components/sidebar/SidebarLeft";
+import { PageLayout } from "../../components/layout/PageLayout";
 import {
+  amizadeRepository,
   aulaRepository,
   concluiRepository,
   cursoRepository,
+  matriculaRepository,
+  medalhaRepository,
+  medalhaUsuarioRepository,
   moduloRepository,
+  usuarioRepository,
 } from "../../data/repositories";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
 import "./Profile.css";
 
-type Curso = Database["public"]["Tables"]["Curso"]["Row"];
+type Curso = Database["public"]["Tables"]["courses"]["Row"];
+type Perfil = Database["public"]["Tables"]["profiles"]["Row"];
+type Matricula = Database["public"]["Tables"]["enrollments"]["Row"];
+type Medalha = Database["public"]["Tables"]["medals"]["Row"];
+type MedalhaUsuario = Database["public"]["Tables"]["user_medals"]["Row"];
 
 type CourseProgress = {
   course: Curso;
+  enrollment: Matricula;
   total: number;
   done: number;
   percent: number;
@@ -48,33 +59,17 @@ type ImageDraft = { file: File | null; preview: string | null; remove: boolean }
 const EMPTY_DRAFT: ImageDraft = { file: null, preview: null, remove: false };
 
 // ---------------------------------------------------------------------------
-// Regras de gamificação.
-// Ainda não existe coluna de XP no banco, então o XP é derivado das aulas
-// concluídas (tabela "conclui"). Quando houver XP real, troque `totalXp`.
+// XP, nível e streak vêm prontos de "profiles" (xp_global, level, streak_count,
+// last_study_date) — são calculados no servidor.
 // ---------------------------------------------------------------------------
-const XP_POR_AULA = 20;
-const XP_POR_NIVEL = 200;
 
-// ---------------------------------------------------------------------------
-// Streak (dias seguidos estudando).
-// É calculado a partir da data de cada conclusão. Ajuste os nomes abaixo para
-// a coluna de data real da tabela "conclui". Sem data, o streak fica em 0.
-// ---------------------------------------------------------------------------
-const CONCLUI_DATE_FIELDS = ["Data_Conclusao", "Data", "created_at", "data"];
-
-// ---------------------------------------------------------------------------
-// Amigos.
-// Ajuste FRIENDS_TABLE para a tabela real de amizades. Se a consulta falhar
-// (tabela inexistente / RLS), o contador mostra 0 sem quebrar a página.
-// ---------------------------------------------------------------------------
-const FRIENDS_TABLE = "Amizade";
 const FRIENDS_ROUTE = "/amigos";
 
 // ---------------------------------------------------------------------------
 // Imagens do perfil (foto e banner).
 // Vão para o bucket público "avatars" do Supabase Storage, dentro da pasta do
 // usuário (avatars/<user_id>/...), e a URL pública é gravada em
-// user_metadata (avatar_url / banner_url).
+// profiles.avatar_url / profiles.banner_url.
 // ---------------------------------------------------------------------------
 const AVATAR_BUCKET = "avatars";
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -140,99 +135,14 @@ async function uploadImage(userId: string, kind: ImageKind, file: File) {
   return { path, url: supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path).data.publicUrl };
 }
 
-// ---------------------------------------------------------------------------
-// Streak
-// ---------------------------------------------------------------------------
-function conclusionDate(conclusion: unknown): Date | null {
-  const record = conclusion as Record<string, unknown>;
-  for (const field of CONCLUI_DATE_FIELDS) {
-    const value = record[field];
-    if (typeof value === "string" || value instanceof Date) {
-      const date = new Date(value);
-      if (!Number.isNaN(date.getTime())) return date;
-    }
-  }
-  return null;
+/** Data local de hoje/ontem no formato YYYY-MM-DD (mesmo formato de profiles.last_study_date). */
+function localDay(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return date.toLocaleDateString("sv-SE");
 }
-
-/** Número do dia (calendário local) para comparar dias consecutivos sem problema de fuso/horário de verão. */
-const dayNumber = (date: Date) =>
-  Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000);
-
-function computeStreaks(dates: Date[]) {
-  const days = [...new Set(dates.map(dayNumber))].sort((a, b) => a - b);
-  if (days.length === 0) return { current: 0, best: 0, studiedToday: false };
-
-  let best = 1;
-  let run = 1;
-  for (let i = 1; i < days.length; i++) {
-    run = days[i] === days[i - 1] + 1 ? run + 1 : 1;
-    best = Math.max(best, run);
-  }
-
-  const daySet = new Set(days);
-  const today = dayNumber(new Date());
-  const studiedToday = daySet.has(today);
-  // O streak continua vivo se a última aula foi hoje ou ontem.
-  let cursor = studiedToday ? today : today - 1;
-  let current = 0;
-  while (daySet.has(cursor)) {
-    current++;
-    cursor--;
-  }
-
-  return { current, best, studiedToday };
-}
-
-async function loadFriendsCount() {
-  try {
-    // O cast mantém o TypeScript calado até a tabela existir em types/database.
-    const { count, error } = await supabase
-      .from(FRIENDS_TABLE as "Curso")
-      .select("*", { count: "exact", head: true });
-    return error ? 0 : (count ?? 0);
-  } catch {
-    return 0;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Medalhas
-// ---------------------------------------------------------------------------
-type MedalMetrics = {
-  lessons: number;
-  started: number;
-  completed: number;
-  bestStreak: number;
-  friends: number;
-};
-
-const MEDALS: {
-  id: string;
-  icon: IconName;
-  title: string;
-  description: string;
-  metric: keyof MedalMetrics;
-  target: number;
-}[] = [
-  { id: "primeiro-passo", icon: "check", title: "Primeiro passo", description: "Conclua sua primeira aula", metric: "lessons", target: 1 },
-  { id: "mente-curiosa", icon: "book", title: "Mente curiosa", description: "Inicie 3 cursos", metric: "started", target: 3 },
-  { id: "diploma", icon: "trophy", title: "Diploma na mão", description: "Conclua um curso", metric: "completed", target: 1 },
-  { id: "maratonista", icon: "bolt", title: "Maratonista", description: "Conclua 25 aulas", metric: "lessons", target: 25 },
-  { id: "fogo-aceso", icon: "flame", title: "Fogo aceso", description: "Estude 3 dias seguidos", metric: "bestStreak", target: 3 },
-  { id: "semana-de-ouro", icon: "star", title: "Semana de ouro", description: "Estude 7 dias seguidos", metric: "bestStreak", target: 7 },
-  { id: "primeiro-amigo", icon: "users", title: "Boa companhia", description: "Adicione seu primeiro amigo", metric: "friends", target: 1 },
-  { id: "rede-de-estudo", icon: "users", title: "Rede de estudo", description: "Tenha 5 amigos", metric: "friends", target: 5 },
-];
 
 const FALLBACK_COLORS = ["#06b6d4", "#22c55e", "#a855f7", "#f97316", "#eab308"];
-
-function normalizeColor(color: string | null | undefined, index: number) {
-  const candidate = color?.trim();
-  return candidate && /^#[0-9a-fA-F]{3,8}$/.test(candidate)
-    ? candidate
-    : FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-}
 
 const ICON_PATHS: Record<IconName, ReactNode> = {
   arrow: <path d="m9 18 6-6-6-6" />,
@@ -324,6 +234,11 @@ function Icon({ name, className = "size-5" }: { name: IconName; className?: stri
   );
 }
 
+/** Ícone da medalha: usa o emoji/texto de medals.icon quando existe. */
+function MedalIcon({ medal, className = "size-5" }: { medal: Medalha; className?: string }) {
+  return medal.icon ? <span className="text-2xl leading-none">{medal.icon}</span> : <Icon name="star" className={className} />;
+}
+
 function SectionTitle({ eyebrow, title, action }: { eyebrow: string; title: string; action?: ReactNode }) {
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
@@ -339,25 +254,22 @@ function SectionTitle({ eyebrow, title, action }: { eyebrow: string; title: stri
 /**
  * Layout da página: sidebar à esquerda + conteúdo.
  * Quando o Profile é renderizado dentro do Dashboard (prop onOpenCourse),
- * o Dashboard já tem a sua própria sidebar, então não duplicamos aqui.
+ * o Dashboard já tem a sua própria sidebar, então não duplicamos aqui — o
+ * conteúdo é renderizado sem a casca. No modo normal, usa o PageLayout padrão.
  */
 function PageShell({
   children,
   withSidebar,
 }: {
   children: ReactNode;
-  avatar?: string;
   withSidebar: boolean;
 }) {
   if (!withSidebar) return <>{children}</>;
 
   return (
-    <div className="min-h-svh bg-canvas">
-      <SidebarLeft />
-      <div className="ml-57.5 min-w-0">
-        {children}
-      </div>
-    </div>
+    <PageLayout variant="bare" className="bg-canvas">
+      {children}
+    </PageLayout>
   );
 }
 
@@ -375,18 +287,20 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
     else navigate(courseId ? `/dashboard?curso=${courseId}` : "/dashboard");
   }
 
-  const [user, setUser] = useState<User | null>(null);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Perfil | null>(null);
   const [progress, setProgress] = useState<CourseProgress[]>([]);
   const [totalDoneLessons, setTotalDoneLessons] = useState(0);
-  const [streak, setStreak] = useState({ current: 0, best: 0, studiedToday: false });
   const [lastLesson, setLastLesson] = useState<LastLesson | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
+  const [medalCatalog, setMedalCatalog] = useState<Medalha[]>([]);
+  const [userMedals, setUserMedals] = useState<MedalhaUsuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
   const [courseTab, setCourseTab] = useState<"active" | "completed">("active");
 
-  // Edição do perfil (gravada em user_metadata do Supabase Auth)
+  // Edição do perfil (gravada em "profiles")
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -416,7 +330,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
     };
   }, [bannerDraft.preview]);
 
-  // Carrega usuário, cursos, progresso, conclusões, streak e amigos.
+  // Carrega perfil, matrículas, conclusões, amigos e medalhas.
   useEffect(() => {
     let cancelled = false;
 
@@ -427,55 +341,64 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
       try {
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (userError || !userData.user) {
-          if (!cancelled) setUser(null);
+          if (!cancelled) setAuthUser(null);
           return;
         }
+        const userId = userData.user.id;
 
-        const [courses, conclusions, friends] = await Promise.all([
+        const [profileRow, courses, enrollments, conclusions, friends, catalog, acquired] = await Promise.all([
+          usuarioRepository.obterPorId(userId),
           cursoRepository.listar(),
-          concluiRepository.listar(),
-          loadFriendsCount(),
+          matriculaRepository.listarPorUsuario(userId),
+          concluiRepository.listarPorUsuario(userId), // já vem ordenado: mais recente primeiro
+          amizadeRepository.listarAmigos(userId),
+          medalhaRepository.listar(),
+          medalhaUsuarioRepository.listarPorUsuario(userId),
         ]);
 
-        const doneLessonIds = new Set(conclusions.map((conclusion) => conclusion.fk_Aula_ID));
+        const doneLessonIds = new Set(
+          conclusions.filter((conclusion) => conclusion.context === "course").map((conclusion) => conclusion.lesson_id),
+        );
         const lessonIndex = new Map<string, { title: string; courseId: string; courseTitle: string }>();
 
+        // Só os cursos em que o usuário está matriculado (e não abandonou).
+        const enrolledCourses = enrollments
+          .filter((enrollment) => enrollment.status !== "dropped")
+          .flatMap((enrollment) => {
+            const course = courses.find((item) => item.id === enrollment.course_id);
+            return course ? [{ course, enrollment }] : [];
+          });
+
         const courseProgress = await Promise.all(
-          courses.map(async (course): Promise<CourseProgress> => {
-            const modules = await moduloRepository.listarPorCurso(course.ID);
+          enrolledCourses.map(async ({ course, enrollment }): Promise<CourseProgress> => {
+            const modules = await moduloRepository.listarPorCurso(course.id);
             const lessonsByModule = await Promise.all(
-              modules.map((module) => aulaRepository.listarPorModulo(module.ID)),
+              modules.map((module) => aulaRepository.listarPorModulo(module.id)),
             );
             const lessons = lessonsByModule.flat();
             lessons.forEach((lesson) => {
-              lessonIndex.set(lesson.ID, {
-                title: (lesson as { Titulo?: string }).Titulo ?? "Aula",
-                courseId: course.ID,
-                courseTitle: course.Titulo,
-              });
+              lessonIndex.set(lesson.id, { title: lesson.title, courseId: course.id, courseTitle: course.title });
             });
-            const done = lessons.filter((lesson) => doneLessonIds.has(lesson.ID)).length;
-            const percent = lessons.length > 0 ? Math.round((done / lessons.length) * 100) : 0;
-            return { course, total: lessons.length, done, percent };
+            const done = lessons.filter((lesson) => doneLessonIds.has(lesson.id)).length;
+            // o progresso (0 a 100) é calculado pelo servidor em enrollments.progress
+            const percent = Math.max(0, Math.min(100, Math.round(enrollment.progress)));
+            return { course, enrollment, total: lessons.length, done, percent };
           }),
         );
 
-        // Última aula concluída: pela data, se existir; senão, a última da lista.
-        const dated = conclusions.map((conclusion) => ({ conclusion, date: conclusionDate(conclusion) }));
-        const hasDates = dated.some((item) => item.date);
-        const ordered = hasDates
-          ? [...dated].sort((a, b) => (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0))
-          : dated;
-        const latest = ordered[ordered.length - 1];
-        const latestLesson = latest ? lessonIndex.get(latest.conclusion.fk_Aula_ID) : undefined;
+        // Última aula concluída que conseguimos identificar (as conclusões já vêm da mais recente para a mais antiga).
+        const latest = conclusions.find((conclusion) => lessonIndex.has(conclusion.lesson_id));
+        const latestLesson = latest ? lessonIndex.get(latest.lesson_id) : undefined;
 
         if (cancelled) return;
-        setUser(userData.user);
+        setAuthUser(userData.user);
+        setProfile(profileRow);
         setProgress(courseProgress);
-        setTotalDoneLessons(doneLessonIds.size);
-        setStreak(computeStreaks(dated.flatMap((item) => (item.date ? [item.date] : []))));
-        setFriendsCount(friends);
-        setLastLesson(latestLesson && latest ? { ...latestLesson, date: latest.date } : null);
+        setTotalDoneLessons(new Set(conclusions.map((conclusion) => conclusion.lesson_id)).size);
+        setFriendsCount(friends.length);
+        setMedalCatalog(catalog);
+        setUserMedals(acquired);
+        setLastLesson(latestLesson && latest ? { ...latestLesson, date: new Date(latest.completed_at) } : null);
       } catch (error) {
         if (cancelled) return;
         setErrorMessage(error instanceof Error ? error.message : "Não foi possível carregar o perfil.");
@@ -488,71 +411,46 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
     return () => { cancelled = true; };
   }, []);
 
-  // Dados do perfil vindos do cadastro (RegisterPage grava full_name e username).
-  const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
-  const text = (key: string) => (typeof metadata[key] === "string" ? (metadata[key] as string) : "");
-  const displayName = text("full_name").trim() || user?.email?.split("@")[0] || "Estudante";
-  const username = text("username").trim();
-  const bio = text("bio").trim();
-  const avatarUrl = text("avatar_url") || undefined;
-  const bannerUrl = text("banner_url") || undefined;
-  const savedFeatured = Array.isArray(metadata.featured_medals)
-    ? (metadata.featured_medals as unknown[]).filter((id): id is string => typeof id === "string")
-    : [];
+  const displayName = profile?.display_name.trim() || authUser?.email?.split("@")[0] || "Estudante";
+  const username = profile?.username.trim() ?? "";
+  const bio = profile?.bio?.trim() ?? "";
+  const avatarUrl = profile?.avatar_url || undefined;
+  const bannerUrl = profile?.banner_url || undefined;
   // Imagens exibidas: preview da nova escolha > imagem salva (a menos que marcada para remover)
   const shownAvatar = avatarDraft.preview ?? (avatarDraft.remove ? undefined : avatarUrl);
   const shownBanner = bannerDraft.preview ?? (bannerDraft.remove ? undefined : bannerUrl);
-  const memberSince = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
     : "";
 
-  // Estatísticas derivadas do banco.
+  // XP, nível e streak vêm do servidor.
+  const totalXp = profile?.xp_global ?? 0;
+  const level = profile?.level ?? 1;
+  const studiedToday = profile?.last_study_date === localDay();
+  // A sequência só continua viva se a última aula foi hoje ou ontem.
+  const streakAlive = studiedToday || profile?.last_study_date === localDay(-1);
+  const currentStreak = streakAlive ? (profile?.streak_count ?? 0) : 0;
+
   const stats = useMemo(() => {
-    // "Matriculado" = curso em que já existe alguma aula concluída.
-    const started = progress.filter((item) => item.done > 0);
-    const active = started.filter((item) => item.percent < 100).sort((a, b) => b.percent - a.percent);
-    const completed = started.filter((item) => item.percent === 100);
+    const active = progress
+      .filter((item) => item.enrollment.status === "active")
+      .sort((a, b) => b.percent - a.percent);
+    const completed = progress.filter((item) => item.enrollment.status === "completed");
+    return { active, completed };
+  }, [progress]);
 
-    const totalXp = totalDoneLessons * XP_POR_AULA;
-    const level = Math.floor(totalXp / XP_POR_NIVEL) + 1;
-    const xpInLevel = totalXp % XP_POR_NIVEL;
-
-    return {
-      started,
-      active,
-      completed,
-      totalXp,
-      level,
-      xpInLevel,
-      levelPercent: Math.round((xpInLevel / XP_POR_NIVEL) * 100),
-      xpToNext: XP_POR_NIVEL - xpInLevel,
-    };
-  }, [progress, totalDoneLessons]);
-
-  const medals = useMemo(() => {
-    const metrics: MedalMetrics = {
-      lessons: totalDoneLessons,
-      started: stats.started.length,
-      completed: stats.completed.length,
-      bestStreak: streak.best,
-      friends: friendsCount,
-    };
-    return MEDALS.map((medal) => {
-      const current = metrics[medal.metric];
-      return { ...medal, current, unlocked: current >= medal.target };
-    });
-  }, [stats, totalDoneLessons, streak.best, friendsCount]);
-
+  // Medalhas: catálogo do servidor + as que o usuário já conquistou.
+  const acquiredCodes = useMemo(() => new Set(userMedals.map((item) => item.medal_code)), [userMedals]);
+  const medals = useMemo(
+    () => medalCatalog.map((medal) => ({ ...medal, unlocked: acquiredCodes.has(medal.code) })),
+    [medalCatalog, acquiredCodes],
+  );
   const unlockedCount = medals.filter((medal) => medal.unlocked).length;
 
-  // Medalhas expostas: escolha do usuário; sem escolha salva, as 3 primeiras desbloqueadas.
-  const featuredIds = editing
-    ? formFeatured
-    : savedFeatured.length > 0
-      ? savedFeatured
-      : medals.filter((medal) => medal.unlocked).slice(0, MAX_FEATURED_MEDALS).map((medal) => medal.id);
-  const featuredMedals = featuredIds
-    .map((id) => medals.find((medal) => medal.id === id && medal.unlocked))
+  const savedFeatured = userMedals.filter((item) => item.featured).map((item) => item.medal_code);
+  const featuredCodes = editing ? formFeatured : savedFeatured;
+  const featuredMedals = featuredCodes
+    .map((code) => medals.find((medal) => medal.code === code && medal.unlocked))
     .filter((medal): medal is (typeof medals)[number] => Boolean(medal))
     .slice(0, MAX_FEATURED_MEDALS);
 
@@ -560,14 +458,10 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
   const nextGoal = stats.active[0];
 
   function startEditing() {
-    setFormName(text("full_name"));
-    setFormUsername(text("username"));
-    setFormBio(text("bio"));
-    setFormFeatured(
-      savedFeatured.length > 0
-        ? savedFeatured
-        : medals.filter((medal) => medal.unlocked).slice(0, MAX_FEATURED_MEDALS).map((medal) => medal.id),
-    );
+    setFormName(profile?.display_name ?? "");
+    setFormUsername(profile?.username ?? "");
+    setFormBio(profile?.bio ?? "");
+    setFormFeatured(savedFeatured);
     setSaveMessage("");
     setAvatarDraft(EMPTY_DRAFT);
     setBannerDraft(EMPTY_DRAFT);
@@ -614,16 +508,17 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
     else setBannerDraft(draft);
   }
 
-  function toggleFeatured(id: string) {
+  function toggleFeatured(code: string) {
     setFormFeatured((current) => {
-      if (current.includes(id)) return current.filter((item) => item !== id);
+      if (current.includes(code)) return current.filter((item) => item !== code);
       if (current.length >= MAX_FEATURED_MEDALS) return current;
-      return [...current, id];
+      return [...current, code];
     });
   }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!profile) return;
 
     if (!formName.trim() || !formUsername.trim()) {
       setSaveMessage("Preencha o nome de exibição e o nome de usuário.");
@@ -639,8 +534,8 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
 
     try {
       for (const [kind, draft] of [["avatar", avatarDraft], ["banner", bannerDraft]] as const) {
-        if (draft.file && user) {
-          const { path, url } = await uploadImage(user.id, kind, draft.file);
+        if (draft.file) {
+          const { path, url } = await uploadImage(profile.id, kind, draft.file);
           uploadedPaths.push(path);
           nextUrls[kind] = url;
         } else if (draft.remove) {
@@ -654,23 +549,37 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
       return;
     }
 
-    const { data, error } = await supabase.auth.updateUser({
-      data: {
-        full_name: formName.trim(),
+    let updatedProfile: Perfil;
+    try {
+      updatedProfile = await usuarioRepository.atualizar(profile.id, {
+        display_name: formName.trim(),
         username: formUsername.trim(),
-        bio: formBio.trim(),
-        featured_medals: formFeatured,
+        bio: formBio.trim() || null,
         ...(nextUrls.avatar !== undefined ? { avatar_url: nextUrls.avatar } : {}),
         ...(nextUrls.banner !== undefined ? { banner_url: nextUrls.banner } : {}),
-      },
-    });
-
-    setSaving(false);
-
-    if (error) {
+      });
+    } catch (error) {
       // não deixa arquivo órfão no bucket se o perfil não foi salvo
       if (uploadedPaths.length > 0) void supabase.storage.from(AVATAR_BUCKET).remove(uploadedPaths);
-      setSaveMessage(`Falha ao salvar: ${error.message}`);
+      setSaving(false);
+      setSaveMessage(`Falha ao salvar: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      return;
+    }
+
+    // medalhas em destaque: só atualiza as que mudaram
+    let nextMedals = userMedals;
+    try {
+      const changed = userMedals.filter((item) => item.featured !== formFeatured.includes(item.medal_code));
+      if (changed.length > 0) {
+        const updated = await Promise.all(
+          changed.map((item) => medalhaUsuarioRepository.atualizarDestaque(item.id, formFeatured.includes(item.medal_code))),
+        );
+        nextMedals = userMedals.map((item) => updated.find((u) => u.id === item.id) ?? item);
+      }
+    } catch (error) {
+      setSaving(false);
+      setProfile(updatedProfile);
+      setSaveMessage(`Perfil salvo, mas as medalhas em destaque falharam: ${error instanceof Error ? error.message : "erro desconhecido"}`);
       return;
     }
 
@@ -681,26 +590,30 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
     ].filter((path): path is string => Boolean(path));
     if (oldPaths.length > 0) void supabase.storage.from(AVATAR_BUCKET).remove(oldPaths);
 
-    setUser(data.user);
+    setSaving(false);
+    setProfile(updatedProfile);
+    setUserMedals(nextMedals);
     setAvatarDraft(EMPTY_DRAFT);
     setBannerDraft(EMPTY_DRAFT);
     setEditing(false);
+    // avisa a sidebar para recarregar nome/foto
+    window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
   }
 
   if (loading) {
     return (
-      <PageShell withSidebar={withSidebar} avatar={avatarUrl}>
-        <main className="grid min-h-svh min-w-0 flex-1 place-items-center bg-canvas font-body text-muted">
+      <PageShell withSidebar={withSidebar}>
+        <div className="grid min-h-svh min-w-0 flex-1 place-items-center bg-canvas font-body text-muted">
           Carregando seu perfil...
-        </main>
+        </div>
       </PageShell>
     );
   }
 
-  if (!user) {
+  if (!authUser || !profile) {
     return (
-      <PageShell withSidebar={withSidebar} avatar={avatarUrl}>
-        <main className="grid min-h-svh min-w-0 flex-1 place-items-center bg-canvas px-5 text-center font-body text-ink">
+      <PageShell withSidebar={withSidebar}>
+        <div className="grid min-h-svh min-w-0 flex-1 place-items-center bg-canvas px-5 text-center font-body text-ink">
           <div>
             <p className="text-muted">{errorMessage || "Você precisa entrar para ver seu perfil."}</p>
             <Link
@@ -710,7 +623,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
               Ir para o login
             </Link>
           </div>
-        </main>
+        </div>
       </PageShell>
     );
   }
@@ -718,8 +631,8 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
   const featuredSlots = Array.from({ length: MAX_FEATURED_MEDALS }, (_, index) => featuredMedals[index]);
 
   return (
-    <PageShell withSidebar={withSidebar} avatar={avatarUrl}>
-      <main className="min-w-0 flex-1 bg-canvas pb-20 font-body text-ink">
+    <PageShell withSidebar={withSidebar}>
+      <div className="min-w-0 flex-1 bg-canvas pb-20 font-body text-ink">
         <section className="border-b border-line">
           <form onSubmit={(event) => void handleSave(event)}>
             {/* Banner */}
@@ -773,7 +686,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
               )}
             </div>
 
-            <div className="relative mx-auto max-w-6xl px-5 pb-9 md:px-8 md:pb-12">
+            <div className="relative mx-auto max-w-6xl px-[24px] pb-9 md:px-[56px] md:pb-12">
               <div className="-mt-16 flex flex-col gap-6 md:-mt-20 md:flex-row md:items-end">
                 {/* Foto */}
                 <div className="relative w-fit shrink-0">
@@ -823,7 +736,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                       )}
                     </>
                   )}
-                  {user.email_confirmed_at && (
+                  {authUser.email_confirmed_at && (
                     <div
                       className="absolute -bottom-2 -right-2 grid size-10 place-items-center rounded-full border-4 border-canvas bg-gold text-violet"
                       title="E-mail confirmado"
@@ -893,10 +806,10 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                             Na Athen desde {memberSince}
                           </span>
                         )}
-                        {user.email && (
+                        {authUser.email && (
                           <span className="inline-flex items-center gap-2">
                             <Icon name="mail" className="size-4 text-gold" />
-                            {user.email}
+                            {authUser.email}
                           </span>
                         )}
                         <Link
@@ -916,11 +829,11 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                         {featuredSlots.map((medal, index) =>
                           medal ? (
                             <div
-                              key={medal.id}
-                              title={`${medal.title}: ${medal.description}`}
+                              key={medal.code}
+                              title={`${medal.name}: ${medal.description}`}
                               className="grid size-12 place-items-center rounded-2xl border border-gold/25 bg-gold/15 text-gold"
                             >
-                              <Icon name={medal.icon} />
+                              <MedalIcon medal={medal} />
                             </div>
                           ) : (
                             <div
@@ -974,7 +887,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
           </form>
         </section>
 
-        <div className="mx-auto max-w-6xl px-5 pt-8 md:px-8 md:pt-10">
+        <div className="mx-auto max-w-6xl px-[24px] pt-8 md:px-[56px] md:pt-10">
           {errorMessage && (
             <p className="mb-6 rounded-2xl border border-red-300/30 bg-red-300/10 px-4 py-3 font-ui text-sm text-red-200">
               {errorMessage}
@@ -988,17 +901,10 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                 <div className="grid size-11 place-items-center rounded-2xl bg-gold text-violet">
                   <Icon name="bolt" />
                 </div>
-                <span className="font-ui text-xs font-bold text-gold">NÍVEL {stats.level}</span>
+                <span className="font-ui text-xs font-bold text-gold">NÍVEL {level}</span>
               </div>
-              <div className="font-display text-3xl text-ink">{stats.totalXp.toLocaleString("pt-BR")} XP</div>
-              <div className="mt-1 font-ui text-xs text-muted">Experiência total · {XP_POR_AULA} XP por aula</div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-violet-mid/15">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-mid to-gold transition-all"
-                  style={{ width: `${stats.levelPercent}%` }}
-                />
-              </div>
-              <div className="mt-2 font-ui text-xs text-muted">{stats.xpToNext} XP para o próximo nível</div>
+              <div className="font-display text-3xl text-ink">{totalXp.toLocaleString("pt-BR")} XP</div>
+              <div className="mt-1 font-ui text-xs text-muted">Experiência total acumulada</div>
             </div>
 
             <div className="rounded-3xl border border-line bg-surface p-5">
@@ -1007,15 +913,13 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                   <Icon name="flame" />
                 </div>
                 <span className="font-ui text-xs font-bold text-violet-pale">
-                  {streak.studiedToday ? "Meta de hoje feita" : "Estude hoje"}
+                  {studiedToday ? "Meta de hoje feita" : "Estude hoje"}
                 </span>
               </div>
               <div className="font-display text-3xl text-ink">
-                {streak.current} {streak.current === 1 ? "dia" : "dias"}
+                {currentStreak} {currentStreak === 1 ? "dia" : "dias"}
               </div>
-              <div className="mt-1 font-ui text-xs text-muted">
-                Sequência atual · recorde de {streak.best} {streak.best === 1 ? "dia" : "dias"}
-              </div>
+              <div className="mt-1 font-ui text-xs text-muted">Sequência atual de estudo</div>
             </div>
 
             <div className="rounded-3xl border border-line bg-surface p-5">
@@ -1031,7 +935,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                 {totalDoneLessons} {totalDoneLessons === 1 ? "aula" : "aulas"}
               </div>
               <div className="mt-1 font-ui text-xs text-muted">
-                {stats.started.length} {stats.started.length === 1 ? "curso" : "cursos"} · {stats.completed.length}{" "}
+                {progress.length} {progress.length === 1 ? "curso" : "cursos"} · {stats.completed.length}{" "}
                 {stats.completed.length === 1 ? "concluído" : "concluídos"}
               </div>
             </div>
@@ -1077,15 +981,15 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {medals.map((medal) => {
-                const pinned = featuredIds.includes(medal.id) && medal.unlocked;
+                const pinned = featuredCodes.includes(medal.code) && medal.unlocked;
                 const selectable = editing && medal.unlocked;
 
                 return (
                   <button
-                    key={medal.id}
+                    key={medal.code}
                     type="button"
                     disabled={!selectable}
-                    onClick={() => toggleFeatured(medal.id)}
+                    onClick={() => toggleFeatured(medal.code)}
                     aria-pressed={editing && medal.unlocked ? pinned : undefined}
                     className={`flex items-center gap-4 rounded-2xl border bg-surface p-4 text-left transition ${
                       pinned ? "border-gold/60" : "border-line"
@@ -1100,15 +1004,11 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                           : "border-violet-mid/25 bg-violet-mid/10 text-violet-pale"
                       }`}
                     >
-                      <Icon name={medal.icon} />
+                      <MedalIcon medal={medal} />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-ui text-sm font-bold text-ink">{medal.title}</div>
-                      <div className="mt-1 text-xs text-muted">
-                        {medal.unlocked
-                          ? medal.description
-                          : `${medal.description} (${Math.min(medal.current, medal.target)}/${medal.target})`}
-                      </div>
+                      <div className="font-ui text-sm font-bold text-ink">{medal.name}</div>
+                      <div className="mt-1 text-xs text-muted">{medal.description}</div>
                       {pinned && <div className="mt-1 font-ui text-xs font-bold text-gold">Exposta no perfil</div>}
                     </div>
                   </button>
@@ -1178,35 +1078,43 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {visibleCourses.map(({ course, total, done, percent }, index) => {
-                  const color = normalizeColor(course.Cor_Capa, index);
-                  const remaining = total - done;
+                  const color = FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+                  const remaining = Math.max(0, total - done);
 
                   return (
                     <article
-                      key={course.ID}
+                      key={course.id}
                       className="group overflow-hidden rounded-3xl border border-line bg-surface transition hover:-translate-y-1 hover:border-violet-mid/40 hover:shadow-2xl hover:shadow-violet/20"
                     >
                       <div
                         className="relative flex h-36 items-center justify-center overflow-hidden"
-                        style={{ background: `linear-gradient(135deg, ${color}, ${color}88)` }}
+                        style={
+                          course.cover_url
+                            ? { backgroundImage: `url(${course.cover_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+                            : { background: `linear-gradient(135deg, ${color}, ${color}88)` }
+                        }
                       >
-                        <img
-                          className="absolute -right-12 -top-16 size-52 opacity-10"
-                          src="/Athen_ghost.png"
-                          alt=""
-                          aria-hidden="true"
-                        />
-                        <div className="grid size-16 place-items-center rounded-3xl border border-white/20 bg-canvas/20 text-3xl text-white backdrop-blur-sm">
-                          {course.Icone || <Icon name="book" className="size-8" />}
-                        </div>
-                        {(course.Categoria || course.Slug) && (
+                        {!course.cover_url && (
+                          <>
+                            <img
+                              className="absolute -right-12 -top-16 size-52 opacity-10"
+                              src="/Athen_ghost.png"
+                              alt=""
+                              aria-hidden="true"
+                            />
+                            <div className="grid size-16 place-items-center rounded-3xl border border-white/20 bg-canvas/20 text-3xl text-white backdrop-blur-sm">
+                              <Icon name="book" className="size-8" />
+                            </div>
+                          </>
+                        )}
+                        {(course.category || course.slug) && (
                           <span className="absolute left-4 top-4 rounded-full bg-canvas/70 px-3 py-1 font-ui text-[0.65rem] font-bold uppercase tracking-widest text-white backdrop-blur">
-                            {course.Categoria || course.Slug}
+                            {course.category || course.slug}
                           </span>
                         )}
                       </div>
                       <div className="p-5">
-                        <div className="min-h-14 font-display text-lg leading-7 text-ink">{course.Titulo}</div>
+                        <div className="min-h-14 font-display text-lg leading-7 text-ink">{course.title}</div>
                         <div className="mt-5 flex justify-between font-ui text-xs">
                           <span className="text-muted">{done} de {total} aulas</span>
                           <span className="font-bold text-gold">{percent}%</span>
@@ -1226,8 +1134,8 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                           </span>
                           <button
                             type="button"
-                            aria-label={`Continuar ${course.Titulo}`}
-                            onClick={() => openCourse(course.ID)}
+                            aria-label={`Continuar ${course.title}`}
+                            onClick={() => openCourse(course.id)}
                             className="grid size-9 place-items-center rounded-full bg-gold text-violet transition group-hover:translate-x-1 group-hover:bg-gold-light"
                           >
                             <Icon name="arrow" className="size-4" />
@@ -1257,22 +1165,22 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                 <div className="font-ui text-xs font-bold tracking-widest text-gold">PRÓXIMO OBJETIVO</div>
                 <div className="mt-1 font-display text-2xl text-ink">
                   {nextGoal
-                    ? `Conclua ${nextGoal.course.Titulo}`
+                    ? `Conclua ${nextGoal.course.title}`
                     : stats.completed.length > 0
                       ? "Escolha o próximo curso"
                       : "Comece sua primeira trilha"}
                 </div>
                 <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
                   {nextGoal
-                    ? `Faltam ${nextGoal.total - nextGoal.done} ${
+                    ? `Faltam ${Math.max(0, nextGoal.total - nextGoal.done)} ${
                         nextGoal.total - nextGoal.done === 1 ? "aula" : "aulas"
-                      } (${(nextGoal.total - nextGoal.done) * XP_POR_AULA} XP) para terminar este curso.`
+                      } para terminar este curso.`
                     : "Abra o dashboard, escolha um curso e conclua sua primeira aula para ganhar XP."}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => openCourse(nextGoal?.course.ID)}
+                onClick={() => openCourse(nextGoal?.course.id)}
                 className="relative inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-gold/50 px-5 font-ui text-sm font-bold text-gold transition hover:bg-gold hover:text-violet"
               >
                 {nextGoal ? "Continuar curso" : "Ir para o dashboard"}
@@ -1281,7 +1189,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
             </div>
           </section>
         </div>
-      </main>
+      </div>
     </PageShell>
   );
 }

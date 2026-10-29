@@ -1,3 +1,7 @@
+# Visão do projeto
+
+> Visão de produto: o texto original abaixo registra a intenção inicial, não o inventário de funcionalidades implementadas. Para o estado do código, consulte a [arquitetura atual](arquitetura.md) e as telas referenciadas. A menção a compra de trilhas é intenção original; não foi identificado um fluxo de pagamentos no código consultado.
+
 
 Nosso projeto- Athen
 

@@ -13,9 +13,7 @@
 
 /* ---------- Base ---------- */
 .salas {
-  @apply flex w-full overflow-hidden font-body text-[#f4eeff];
-  height: 100vh;
-  height: 100dvh;
+  @apply flex min-h-svh w-full overflow-hidden font-body text-[#f4eeff];
   background: #140a2b;
   /* O :root do projeto define line-height: 150%, que seria herdado como 27px. */
   line-height: normal;
@@ -33,29 +31,9 @@
 :where(.salas) :where(h1, h2, h3) { font-weight: 400; }
 :where(.salas) :where(button, input) { font: inherit; color: inherit; }
 
+/* O deslocamento da SidebarLeft é responsabilidade do PageLayout. */
 .salas__main {
-  @apply relative isolate ml-[230px] min-h-0 min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
-}
-
-/* A área principal tem a própria rolagem, sem depender de html/body/#root.
-   A barra fica sempre visível (no macOS a barra padrão some até rolar). */
-.salas__main::-webkit-scrollbar { width: 12px; }
-.salas__main::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); }
-.salas__main::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--color-violet-mid) 45%, transparent);
-  background-clip: padding-box;
-  border: 3px solid transparent;
-  border-radius: 8px;
-}
-.salas__main::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--color-violet-mid) 70%, transparent);
-  background-clip: padding-box;
-}
-@supports not selector(::-webkit-scrollbar) {
-  .salas__main {
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
-  }
+  @apply relative isolate min-h-svh min-w-0 flex-1 px-[56px] pt-[42px] pb-[48px];
 }
 
 .salas__brilho {
@@ -634,3 +612,123 @@
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 .salas__botao-aplicar { @apply h-[44px] min-w-[120px] text-[12px]; }
+/* ---------- Dados reais: adicionar sala, código, avisos e estados ---------- */
+:where(.salas) :where(select, textarea) { font: inherit; color: inherit; }
+
+.salas__botao-primario:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
+}
+.salas__botao-secundario:disabled { cursor: default; opacity: 0.5; }
+.salas__botao-pequeno { @apply h-[40px] self-start px-[16px] text-[12px]; }
+
+.salas__aviso-info {
+  @apply mb-[20px] px-[16px] py-[12px] text-[12px] text-violet-pale;
+  background: rgba(84, 49, 140, 0.28);
+  border: 1px solid rgba(201, 184, 232, 0.28);
+  border-radius: 12px;
+}
+.salas__sem-resultado--erro { color: #fecaca; }
+.salas__erro-inline { @apply text-[11px]; color: #fecaca; }
+.salas__erro-inline--largo { @apply col-span-2; }
+
+.salas__selo {
+  @apply inline-block px-[9px] py-[3px] text-[9px] tracking-[0.6px] uppercase text-violet-pale;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+.salas__selo--ativo {
+  @apply text-gold;
+  border-color: color-mix(in srgb, var(--color-gold) 55%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+
+/* Painel "Adicionar sala": entrar com código e criar sala */
+.salas__painel-acoes { @apply mb-[26px] grid grid-cols-2 gap-[14px]; }
+.salas__form {
+  @apply flex flex-col gap-[10px] p-[20px];
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(120deg, rgba(57, 34, 91, 0.75), rgba(35, 19, 61, 0.72));
+  box-shadow: 0 12px 34px rgba(6, 2, 18, 0.2);
+}
+.salas__form h2 { @apply font-display text-[20px] text-[#f4eeff]; }
+.salas__form > p { @apply mb-[2px] text-[11px] text-violet-pale/70; }
+.salas__form input,
+.salas__form select,
+.salas__form-aviso input,
+.salas__form-aviso textarea {
+  @apply min-w-0 w-full rounded-[10px] bg-[rgba(255,255,255,0.045)] px-[12px] text-[12px] text-[#f4eeff];
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  outline: 0;
+}
+.salas__form input,
+.salas__form select,
+.salas__form-aviso input { @apply h-[44px]; }
+.salas__form-aviso textarea { @apply resize-none py-[10px]; }
+.salas__form select option { color: #f4eeff; background: #1a1035; }
+.salas__form input:focus,
+.salas__form select:focus,
+.salas__form-aviso input:focus,
+.salas__form-aviso textarea:focus {
+  border-color: color-mix(in srgb, var(--color-gold) 52%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+.salas__form input::placeholder,
+.salas__form-aviso input::placeholder,
+.salas__form-aviso textarea::placeholder { @apply text-violet-pale/45; }
+.salas__campo { @apply flex flex-col gap-[5px]; }
+.salas__campo span { @apply text-[10px] text-violet-pale/70; }
+
+/* Código de acesso (visão do educador) */
+.salas__codigo-linha { @apply flex flex-wrap items-center gap-[10px]; }
+.salas__codigo {
+  @apply px-[16px] py-[9px] text-[18px] tracking-[4px] text-gold;
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--color-gold) 50%, transparent);
+  border-radius: 10px;
+  user-select: all;
+}
+
+/* Trilha da sala */
+.salas__vazio-painel { @apply py-[10px] text-[10px] text-violet-pale/60; }
+.salas__barra-progresso {
+  @apply mb-[6px] h-[5px] bg-[rgba(255,255,255,0.08)];
+  border-radius: 5px;
+}
+.salas__barra-progresso span {
+  @apply block h-full bg-gold;
+  border-radius: inherit;
+  transition: width 0.4s ease;
+}
+.salas__painel-resumo--bloco { @apply mb-[12px] block; }
+
+button.salas__aula--botao {
+  @apply w-full cursor-pointer bg-transparent text-left text-violet-pale/70;
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.055);
+}
+button.salas__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255, 255, 255, 0.04); }
+.salas__aula--concluida .salas__aula-play { @apply bg-gold text-[#211029]; }
+
+.salas__desempenho { @apply mb-[16px] pb-[4px]; }
+.salas__desempenho .salas__nota-legenda { @apply mb-[2px]; }
+
+/* Aviso novo (educador) */
+.salas__form-aviso {
+  @apply mt-[14px] flex flex-col gap-[8px] pt-[14px];
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.salas__form-aviso input { @apply h-[38px] text-[11px]; }
+.salas__form-aviso textarea { @apply text-[11px]; }
+
+@media (max-width: 900px) {
+  .salas__painel-acoes { @apply grid-cols-1; }
+  .salas__erro-inline--largo { @apply col-span-1; }
+}
