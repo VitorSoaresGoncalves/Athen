@@ -2,7 +2,7 @@
 
 ## Base e uso do roteiro
 
-Base consultada: [`sprint04`, commit `dd765f1`](https://github.com/VitorSoaresGoncalves/Athen/commit/dd765f1b3a28f6fd5b040ce3b86f1d7238347d67), incluindo o PR #43. Roteiro elaborado por leitura das rotas, telas, componentes, consultas, tipos, SQL e configuração versionados. Não representa execução integral em um banco remoto.
+Base consultada: [`sprint04`, commit `d8cb318`](https://github.com/VitorSoaresGoncalves/Athen/commit/d8cb3181a84f62baed0a2fabda4bddeb343d4036), incluindo o PR #43 e a restauração do aviso do dashboard sem cursos. Roteiro elaborado por leitura das rotas, telas, componentes, consultas, tipos, SQL e configuração versionados. Não representa execução integral em um banco remoto.
 
 O percurso principal começa sem contas ou conteúdo preparados e usa apenas duas contas. Os apêndices completam a cobertura com operações técnicas e casos que exigem repetição ou passagem de dias. Seguir os blocos na ordem: uma conta prepara os dados que a outra utilizará. Cada bloco informa ações e resultados observáveis, sem falas para apresentação.
 
@@ -23,7 +23,7 @@ O percurso principal começa sem contas ou conteúdo preparados e usa apenas dua
 | Nome de exibição | Educador Demo | Estudante Demo |
 | Uso | Criar cursos/salas; também estudar para comparar PAC | Matricular-se, estudar, avaliar, entrar na sala |
 
-**Navegação importante:** o login envia para `/dashboard`. Na versão atual, uma conta sem matrícula/sala permanece no dashboard e vê “Você ainda não está matriculado em nenhum curso. Escolha um no Catálogo.” Usar **Ver todos os cursos** para abrir `/catalogo`. Esta correção é posterior ao commit-base do roteiro. As demais rotas da sidebar são `/salas`, `/ligas`, `/amigos`, `/caderno`, `/notificacoes` e `/configuracoes`.
+**Navegação importante:** o login envia para `/dashboard`. Uma conta sem matrícula nem sala permanece nessa página e vê “Você ainda não está matriculado em nenhum curso. Escolha um no Catálogo.” Usar **Ver todos os cursos** para abrir `/catalogo`, sem precisar digitar outra rota. Se houver uma sala com curso disponível, sua trilha pode ser aberta mesmo sem matrícula individual. As demais rotas da sidebar são `/salas`, `/ligas`, `/amigos`, `/caderno`, `/notificacoes` e `/configuracoes`.
 
 Fontes: [rotas](../codigo-base/src/Hub.tsx), [login](../codigo-base/src/pages/LoginPage.tsx), [dashboard](../codigo-base/src/pages/Dashboard.tsx), [banco atual](banco-de-dados/documentacao-bd.md), [Storage](../codigo-base/supabase/avatars/supabase-avatars), [dados públicos](../codigo-base/supabase/home_public_data.sql), [testes e limites do ambiente](testes.md).
 
@@ -35,7 +35,7 @@ Fontes: [rotas](../codigo-base/src/Hub.tsx), [login](../codigo-base/src/pages/Lo
 | 2 | A | Selecionar uma categoria dos destaques e voltar à seleção geral. | Cursos exibidos filtrados, se houver conteúdo no ambiente. Repetir ao fim, quando os cursos da demo existirem. |
 | 3 | A | Usar **Criar conta** ou **Começar grátis**. Preencher e-mail, senha de ao menos seis caracteres, **Cargo → Educador** e username A. Alternar **Mostrar/Ocultar** e cadastrar. | Mensagem de cadastro realizado e **Ir para o login**. |
 | 4 | A | Confirmar o e-mail se o ambiente exigir; usar **Ir para o login**, informar e-mail e senha. Após entrar, conferir o aviso de ausência de matrícula e usar **Ver todos os cursos**. | Sessão A ativa; dashboard permanece acessível e o link abre o Catálogo. |
-| 5 | B | Repetir cadastro e login, escolhendo **Cargo → Estudante** e username B. Abrir `/catalogo`. | Segunda sessão independente. |
+| 5 | B | Repetir cadastro e login, escolhendo **Cargo → Estudante** e username B. Conferir o mesmo aviso no dashboard e clicar em **Ver todos os cursos**. | Segunda sessão independente; link abre o Catálogo sem redirecionamento automático. |
 | 6 | Ambas | Abrir o menu do cartão inferior da sidebar e **Ver perfil**. Conferir estado inicial de XP, nível, sequência, cursos e conquistas. | Identidades distintas; sem progresso artificial. |
 | 7 | Ambas | **Editar perfil**: preencher nome de exibição, bio e manter o username planejado. Usar **Trocar foto**, **Trocar banner**, conferir previews e **Salvar**. | Perfil e cartão da sidebar atualizados. Recarregar para comprovar persistência. |
 | 8 | A | Reabrir edição, alterar a bio e **Cancelar**. | Bio salva anteriormente permanece. |
@@ -103,6 +103,8 @@ Criar e **Publicar** outro curso, também público:
 **Não responder essa questão pelo Catálogo/dashboard de curso antes do bloco de sala.** A regra que impede ganhar XP repetindo acertos vale também entre contextos. O segundo curso evita que os acertos do primeiro zerem o XP interno da demo.
 
 Fontes: [criação e publicação](../codigo-base/src/pages/criar-curso/CriarCurso.tsx), [editor dos quatro tipos](../codigo-base/src/pages/criar-curso/EditarConfigQuestao.tsx), [configurações e XP](../codigo-base/src/pages/criar-curso/questionConfig.ts), [edição de conteúdo publicado](../codigo-base/supabase/migrations/0019_course_edit_gating.sql), [repetição de acertos](../codigo-base/supabase/migrations/0018_no_xp_for_already_correct.sql).
+
+Para consultar as regras de cada formato, usar [Tipos de questão](tipos-de-questao.md). Somente os quatro tipos da seção de funcionalidades implementadas entram nesta demo; as seis propostas futuras do documento não fazem parte do percurso.
 
 ## 4. Duas contas — ciclo social completo
 
@@ -348,6 +350,7 @@ Fontes do apêndice: [repositórios](../codigo-base/src/data/repositories.ts), [
 | --- | --- | --- |
 | Home com dados, filtro e seções | Blocos 2 e 10 | Links públicos sem rota e dependências das funções públicas; sem prometer depoimento específico no destaque |
 | Cadastro, cargos, login e sessão | Blocos 2 e 10 | Só e-mail/senha na interface; confirmação depende do Auth |
+| Dashboard sem matrícula nem sala e acesso ao Catálogo | Bloco 2 | Deve permanecer no dashboard com o aviso; o acesso por sala continua disponível quando houver curso vinculado |
 | Perfil, bio, avatar, banner e cancelamento | Bloco 2 | Storage precisa estar provisionado |
 | Criação de curso/módulo/aula e quatro tipos de questão | Bloco 3 | Sem edição/retomada no editor principal; sem campo de ícone de módulo ou explicação de questão nesse editor |
 | Publicação, privado/rascunho e gestão técnica | Blocos 3 e 11 | O catálogo principal só lista públicos publicados; restrições de edição pós-publicação vêm do banco |
@@ -370,6 +373,7 @@ Pagamento de cursos, chat, cronômetro de estudo, desafios diários automáticos
 ### Checklist de ensaio
 
 - [ ] As duas sessões estão separadas e a identidade foi conferida antes de cada troca.
+- [ ] Antes da primeira matrícula, ambas as contas permaneceram no dashboard com o aviso e abriram o Catálogo por **Ver todos os cursos**.
 - [ ] Slugs/usernames são exclusivos e as duas caixas de e-mail estão acessíveis.
 - [ ] A confirmou os dois cursos publicados e o curso de sala tem questões distintas.
 - [ ] B percorreu matrícula → tentativa com erro → revisão → leitura vazia → curso concluído.
