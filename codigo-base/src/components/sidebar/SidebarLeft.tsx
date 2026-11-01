@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { usuarioRepository } from '../../data/repositories';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { notificacaoRepository, usuarioRepository } from '../../data/repositories';
 import { supabase } from '../../lib/supabase';
 
 // Rotas usadas pela sidebar. Ajuste aqui se no seu router forem diferentes.
@@ -17,6 +17,10 @@ const CATALOGO_ROUTE = '/catalogo';
 
 /** Evento disparado pelo Profile depois de salvar, para a sidebar recarregar o perfil. */
 export const PROFILE_UPDATED_EVENT = 'athen:profile-updated';
+
+/** Evento que a página de notificações dispara ao marcar notificações como lidas,
+ *  para a bolha de não lidas da sidebar atualizar na hora. */
+export const NOTIFICATIONS_READ_EVENT = 'athen:notifications-read';
 
 type SidebarItem = {
     text: string;
@@ -51,8 +55,6 @@ const itens: SidebarItem[] = [
     { text: "Ligas", to: RANKING_ROUTE },
     { text: "Amigos", to: AMIGOS_ROUTE },
     { text: "Cadernos", to: NOTEBOOK_ROUTE },
-    { text: "Notificações", to: NOTIFICACOES_ROUTE },
-    { text: "Configuração", to: CONFIG_ROUTE },
 ];
 
 // ---------------------------------------------------------------------------
@@ -145,9 +147,63 @@ function useUserProfile() {
     return estado;
 }
 
+/**
+ * Quantidade de notificações não lidas do usuário, exibida como bolha no ícone de
+ * correio. É recarregada ao trocar de rota (ao sair da página de notificações, as
+ * que foram abertas já viraram lidas) e ao receber NOTIFICATIONS_READ_EVENT, que a
+ * própria página dispara quando marca tudo como lido — assim a bolha some na hora.
+ */
+function useUnreadNotifications() {
+    const { pathname } = useLocation();
+    const [naoLidas, setNaoLidas] = useState(0);
+
+    useEffect(() => {
+        let cancelado = false;
+
+        async function carregar() {
+            try {
+                const total = await notificacaoRepository.contarNaoLidas();
+                if (!cancelado) setNaoLidas(total);
+            } catch (error) {
+                console.error('Erro ao contar notificações não lidas:', error);
+                if (!cancelado) setNaoLidas(0);
+            }
+        }
+
+        void carregar();
+        window.addEventListener(NOTIFICATIONS_READ_EVENT, carregar);
+        return () => {
+            cancelado = true;
+            window.removeEventListener(NOTIFICATIONS_READ_EVENT, carregar);
+        };
+    }, [pathname]);
+
+    return naoLidas;
+}
+
+/** Ícone de correio (envelope) no padrão de SVG inline da plataforma. */
+function MailIcon({ className = 'h-5 w-5' }: { className?: string }) {
+    return (
+        <svg
+            aria-hidden="true"
+            className={className}
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+            viewBox="0 0 24 24"
+        >
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3 7 9 6 9-6" />
+        </svg>
+    );
+}
+
 export function SidebarLeft() {
     const navigate = useNavigate();
     const userSrc = useUserProfile();
+    const naoLidas = useUnreadNotifications();
     const perfil = userSrc.profile;
     const picture = perfil?.avatar_url ?? null;
     const banner = perfil?.banner_url ?? null;
@@ -184,6 +240,11 @@ export function SidebarLeft() {
         navigate(PROFILE_ROUTE);
     }
 
+    function abrirConfiguracoes() {
+        setMenuAberto(false);
+        navigate(CONFIG_ROUTE);
+    }
+
     async function sairDaConta() {
         setMenuAberto(false);
         try {
@@ -213,16 +274,38 @@ export function SidebarLeft() {
             font-body
             text-ink"
         >
-            {/* Cabeçalho: ícone do app + nome "athen" (fonte display, minúsculo) */}
-            <section className="border-b border-line px-4 py-5">
+            {/* Cabeçalho: ícone do app + nome "athen" e, à direita, atalho de correio
+                (notificações) com bolha de não lidas. */}
+            <section className="flex items-center justify-between gap-2 border-b border-line px-4 py-5">
                 <Link
                     to={DASHBOARD_ROUTE}
-                    className="flex items-center gap-3 no-underline transition-opacity hover:opacity-90"
+                    className="flex min-w-0 items-center gap-3 no-underline transition-opacity hover:opacity-90"
                     aria-label="Ir para o Dashboard"
                 >
                     <img src="/Athen.png" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-[10px] object-cover" />
                     <span className="font-display text-[28px] lowercase leading-none tracking-[2px] text-gold">athen</span>
                 </Link>
+
+                <NavLink
+                    to={NOTIFICACOES_ROUTE}
+                    className={({ isActive }) =>
+                        `relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-line transition-colors ${isActive
+                            ? 'bg-violet/40 text-ink'
+                            : 'bg-transparent text-muted hover:bg-surface hover:text-ink'
+                        }`
+                    }
+                    aria-label={naoLidas > 0 ? `Notificações, ${naoLidas} não lida(s)` : 'Notificações'}
+                >
+                    <MailIcon />
+                    {naoLidas > 0 && (
+                        <span
+                            className="absolute -right-1 -top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-canvas bg-[#c2455a] px-1 text-[11px] font-bold leading-none text-white"
+                            aria-hidden="true"
+                        >
+                            {naoLidas > 99 ? '99+' : naoLidas}
+                        </span>
+                    )}
+                </NavLink>
             </section>
 
             {/* Navegação principal */}
@@ -274,6 +357,15 @@ export function SidebarLeft() {
                         >
                             <span aria-hidden="true">👤</span>
                             Ver perfil
+                        </button>
+                        <button
+                            type="button"
+                            role="menuitem"
+                            onClick={abrirConfiguracoes}
+                            className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40"
+                        >
+                            <span aria-hidden="true">⚙️</span>
+                            Configuração
                         </button>
                         <button
                             type="button"

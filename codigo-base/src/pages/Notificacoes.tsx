@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
 import { DatabaseNotConnected } from "../components/layout/DatabaseNotConnected";
 import { notificacaoRepository } from "../data/repositories";
+import { NOTIFICATIONS_READ_EVENT } from "../components/sidebar/SidebarLeft";
 import type { Database } from "../types/database";
 import "./Notificacoes.css";
 
@@ -85,6 +86,15 @@ export default function Notificacoes() {
       try {
         const lista = await notificacaoRepository.listar();
         if (!cancelado) setNotificacoes(lista);
+
+        // Acessar a caixa conta como "ver" as notificações: marca as não lidas como
+        // lidas no servidor e avisa a sidebar para zerar a bolha de não lidas. A
+        // lista local mantém o estado recém-carregado, então o destaque de "nova"
+        // continua visível nesta visita.
+        if (lista.some((item) => !item.is_read)) {
+          await notificacaoRepository.marcarTodasComoLidas();
+          window.dispatchEvent(new Event(NOTIFICATIONS_READ_EVENT));
+        }
       } catch (error) {
         if (!cancelado) setErro(error instanceof Error ? error.message : "Não foi possível carregar as notificações.");
       } finally {
@@ -103,6 +113,7 @@ export default function Notificacoes() {
       try {
         await notificacaoRepository.marcarComoLida(notificacao.id);
         setNotificacoes((atuais) => atuais.map((item) => (item.id === notificacao.id ? { ...item, is_read: true } : item)));
+        window.dispatchEvent(new Event(NOTIFICATIONS_READ_EVENT));
       } catch (error) {
         setErro(error instanceof Error ? error.message : "Não foi possível marcar a notificação como lida.");
       }
@@ -115,6 +126,7 @@ export default function Notificacoes() {
     try {
       await notificacaoRepository.marcarTodasComoLidas();
       setNotificacoes((atuais) => atuais.map((item) => ({ ...item, is_read: true })));
+      window.dispatchEvent(new Event(NOTIFICATIONS_READ_EVENT));
     } catch (error) {
       setErro(error instanceof Error ? error.message : "Não foi possível marcar as notificações como lidas.");
     }
