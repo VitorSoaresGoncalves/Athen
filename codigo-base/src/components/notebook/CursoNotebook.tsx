@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { anotacoesRepository, notebookRepository } from "../../data/repositories";
+import { ConfirmDialog } from "../dialogbox/ConfirmDialog";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
 
@@ -43,6 +44,16 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   const [error, setError] = useState("");
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 440, height: 420 });
+
+  // Confirmação pendente (substitui o window.confirm). `tone: "danger"` deixa o
+  // botão de confirmar vermelho (usado nos apagar).
+  const [confirmacao, setConfirmacao] = useState<null | {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone?: "danger";
+    acao: () => void;
+  }>(null);
   const dragRef = useRef({ active: false, offsetX: 0, offsetY: 0 });
   const resizeRef = useRef({ active: false, direction: "se" as ResizeDirection, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 440, startHeight: 420 });
 
@@ -197,8 +208,13 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   function selectPage(nextPage: Anotacao) {
     if (nextPage.id === annotation?.id) return;
     if (hasUnsavedChanges()) {
-      const discardChanges = window.confirm("Existem alterações não salvas. Deseja trocar de página e descartá-las?");
-      if (!discardChanges) return;
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja trocar de página e descartá-las?",
+        confirmLabel: "Descartar e trocar",
+        acao: () => setPageState(nextPage),
+      });
+      return;
     }
     setPageState(nextPage);
   }
@@ -291,49 +307,74 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
 
   async function deleteCurrentPage() {
     if (!annotation) return;
-    const shouldDelete = window.confirm(`Apagar a página "${pageTitle || "Sem título"}"?`);
-    if (!shouldDelete) return;
+    const pagina = annotation;
 
-    setSaving(true);
-    setError("");
-    try {
-      await anotacoesRepository.deletar(annotation.id);
-      const remainingPages = sortPages(pages.filter((page) => page.id !== annotation.id));
-      setPages(remainingPages);
-      setPageState(remainingPages[0] ?? null);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
-    } finally {
-      setSaving(false);
-    }
+    const executar = async () => {
+      setSaving(true);
+      setError("");
+      try {
+        await anotacoesRepository.deletar(pagina.id);
+        const remainingPages = sortPages(pages.filter((page) => page.id !== pagina.id));
+        setPages(remainingPages);
+        setPageState(remainingPages[0] ?? null);
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar página",
+      message: `Tem certeza que deseja apagar a página "${pageTitle || "Sem título"}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Apagar página",
+      tone: "danger",
+      acao: () => void executar(),
+    });
   }
 
   async function deleteNotebook() {
     if (!notebook) return;
-    const shouldDelete = window.confirm("Apagar o notebook e todas as suas páginas?");
-    if (!shouldDelete) return;
+    const notebookAtual = notebook;
 
-    setSaving(true);
-    setError("");
-    try {
-      await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.id)));
-      await notebookRepository.deletar(notebook.id);
-      setNotebook(null);
-      setPages([]);
-      setPageState(null);
-      setOpen(false);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar o notebook.");
-    } finally {
-      setSaving(false);
-    }
+    const executar = async () => {
+      setSaving(true);
+      setError("");
+      try {
+        await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.id)));
+        await notebookRepository.deletar(notebookAtual.id);
+        setNotebook(null);
+        setPages([]);
+        setPageState(null);
+        setOpen(false);
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar o notebook.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar notebook",
+      message: "Tem certeza que deseja apagar o notebook? Todas as suas páginas serão apagadas junto. Esta ação não pode ser desfeita.",
+      confirmLabel: "Apagar notebook",
+      tone: "danger",
+      acao: () => void executar(),
+    });
   }
 
   function closeNotebook() {
     if (hasUnsavedChanges()) {
-      const discardChanges = window.confirm("Existem alterações não salvas. Deseja fechar e descartar essas alterações?");
-      if (!discardChanges) return;
-      setPageState(annotation);
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja fechar e descartá-las?",
+        confirmLabel: "Fechar sem salvar",
+        acao: () => {
+          setPageState(annotation);
+          setOpen(false);
+        },
+      });
+      return;
     }
 
     setOpen(false);
@@ -461,6 +502,19 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
           <button type="button" aria-label="Ajustar tamanho pelo canto inferior direito" className="absolute bottom-0 right-0 z-20 h-3 w-3 cursor-nwse-resize opacity-0" onPointerDown={(event) => startResizing(event, "se")} />
         </section>
       )}
+
+      <ConfirmDialog
+        open={confirmacao !== null}
+        title={confirmacao?.title ?? ""}
+        message={confirmacao?.message}
+        confirmLabel={confirmacao?.confirmLabel}
+        tone={confirmacao?.tone}
+        onConfirm={() => {
+          confirmacao?.acao();
+          setConfirmacao(null);
+        }}
+        onCancel={() => setConfirmacao(null)}
+      />
     </>
   );
 }
