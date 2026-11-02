@@ -284,8 +284,10 @@ export default function NotebookPage() {
     }
   }
 
-  async function salvarTudo() {
-    if (!selectedNotebook) return;
+  // Retorna a lista de páginas já com o save aplicado, para quem encadeia uma
+  // ação logo depois (ex.: "Salvar e criar") não depender do estado do closure.
+  async function salvarTudo(): Promise<Anotacao[]> {
+    if (!selectedNotebook) return pages;
     setSaving(true);
     setError("");
     try {
@@ -300,17 +302,20 @@ export default function NotebookPage() {
         setNotebooks((current) => ordenarNotebooks(current.map((item) => (item.notebook.id === updatedNotebook.id ? { ...item, notebook: updatedNotebook } : item))));
         setNotebookName(updatedNotebook.title);
       }
+      let paginasPosSave = pages;
       if (updatedPage) {
-        const updatedPages = ordenarPaginas(pages.map((page) => (page.id === updatedPage.id ? updatedPage : page)));
-        setPages(updatedPages);
+        paginasPosSave = ordenarPaginas(pages.map((page) => (page.id === updatedPage.id ? updatedPage : page)));
+        setPages(paginasPosSave);
         setPageTitle(updatedPage.title);
         setPageText(updatedPage.content ?? "");
       }
       setEditingNotebookName(false);
       setEditingPageTitle(false);
       setAvisoNovoNotebook(false);
+      return paginasPosSave;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar as alterações.");
+      return pages;
     } finally {
       setSaving(false);
     }
@@ -319,7 +324,7 @@ export default function NotebookPage() {
   async function criarPagina() {
     if (!selectedNotebook) return;
 
-    const criar = async () => {
+    const criar = async (base: Anotacao[] = pages) => {
       setSaving(true);
       setError("");
       try {
@@ -327,9 +332,9 @@ export default function NotebookPage() {
           notebook_id: selectedNotebook.notebook.id,
           title: "Nova página",
           content: "",
-          position: pages.length,
+          position: base.length,
         });
-        const updatedPages = ordenarPaginas([...pages, created]);
+        const updatedPages = ordenarPaginas([...base, created]);
         setPages(updatedPages);
         // force: já resolvemos o descarte das alterações antes de chegar aqui.
         selecionarPagina(created, updatedPages, true);
@@ -348,8 +353,8 @@ export default function NotebookPage() {
         message: "Você tem alterações não salvas. Salve ou descarte antes de criar a nova página.",
         confirmLabel: "Salvar",
         acao: async () => {
-          await salvarTudo();
-          await criar();
+          const paginasPosSave = await salvarTudo();
+          await criar(paginasPosSave);
         },
         tertiaryLabel: "Descartar",
         acaoTerciaria: () => void criar(),

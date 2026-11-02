@@ -46,13 +46,16 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   const [size, setSize] = useState({ width: 440, height: 420 });
 
   // Confirmação pendente (substitui o window.confirm). `tone: "danger"` deixa o
-  // botão de confirmar vermelho (usado nos apagar).
+  // botão de confirmar vermelho (usado nos apagar). `tertiaryLabel`/
+  // `acaoTerciaria` habilitam uma terceira opção (ex.: "Descartar").
   const [confirmacao, setConfirmacao] = useState<null | {
     title: string;
     message: string;
     confirmLabel: string;
     tone?: "danger";
     acao: () => void;
+    tertiaryLabel?: string;
+    acaoTerciaria?: () => void;
   }>(null);
   const dragRef = useRef({ active: false, offsetX: 0, offsetY: 0 });
   const resizeRef = useRef({ active: false, direction: "se" as ResizeDirection, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 440, startHeight: 420 });
@@ -282,24 +285,50 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
+  // Protege a anotação não salva antes de criar uma página pelo botão "+":
+  // deixa salvar, descartar ou cancelar, em vez de descartar em silêncio.
+  function novaPagina() {
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Você tem alterações não salvas. Salve ou descarte antes de criar a nova página.",
+        confirmLabel: "Salvar",
+        acao: async () => {
+          const paginasPosSave = await saveNotebook();
+          await createPage(notebook?.id, paginasPosSave);
+        },
+        tertiaryLabel: "Descartar",
+        acaoTerciaria: () => void createPage(),
+      });
+      return;
+    }
+
+    void createPage();
+  }
+
   // Salva a página atual (o título do notebook é o do curso e não é editado aqui).
-  async function saveNotebook() {
-    if (!notebook || !annotation) return;
+  // Retorna a lista de páginas já com o save aplicado, para quem encadeia uma
+  // ação logo depois (ex.: "Salvar e criar") não depender do closure.
+  async function saveNotebook(): Promise<Anotacao[]> {
+    if (!notebook || !annotation) return pages;
 
     setSaving(true);
     setError("");
     try {
       const title = pageTitle.trim() || "Sem título";
       const updatedPage = await anotacoesRepository.atualizar(annotation.id, { title, content: noteText });
-      setPages(sortPages(pages.map((page) => page.id === updatedPage.id ? updatedPage : page)));
+      const paginasPosSave = sortPages(pages.map((page) => page.id === updatedPage.id ? updatedPage : page));
+      setPages(paginasPosSave);
       setAnnotation(updatedPage);
       setPageTitle(title);
       setSavedPageTitle(title);
       setEditingPageTitle(false);
       setNoteText(updatedPage.content ?? "");
       setSavedNoteText(updatedPage.content ?? "");
+      return paginasPosSave;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar o notebook.");
+      return pages;
     } finally {
       setSaving(false);
     }
@@ -430,7 +459,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
                 </button>
               ))}
             </div>
-            <button type="button" className="shrink-0 border-l border-[#c29b55]/45 px-3 text-lg font-bold text-[#80602b] hover:bg-[#d9bc70]/60" onClick={() => void createPage()} disabled={saving} aria-label="Criar nova página">+</button>
+            <button type="button" className="shrink-0 border-l border-[#c29b55]/45 px-3 text-lg font-bold text-[#80602b] hover:bg-[#d9bc70]/60" onClick={() => novaPagina()} disabled={saving} aria-label="Criar nova página">+</button>
           </div>
 
           <div className={`flex min-h-0 flex-1 flex-col ${minimumNotebook ? "p-1.5" : compactNotebook ? "p-2" : "p-3"}`}>
@@ -478,7 +507,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
                 <p className="font-bold text-[#806a3d]">Nenhuma página ainda</p>
                 <p className="mt-1 text-xs text-[#a38b5c]">Crie uma página para começar suas anotações.</p>
-                <button type="button" className="mt-3 rounded bg-[#80602b] px-3 py-1.5 text-xs font-bold text-[#fff8dc]" onClick={() => void createPage()} disabled={saving}>Criar página</button>
+                <button type="button" className="mt-3 rounded bg-[#80602b] px-3 py-1.5 text-xs font-bold text-[#fff8dc]" onClick={() => novaPagina()} disabled={saving}>Criar página</button>
               </div>
             )}
 
@@ -509,6 +538,15 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         message={confirmacao?.message}
         confirmLabel={confirmacao?.confirmLabel}
         tone={confirmacao?.tone}
+        tertiaryLabel={confirmacao?.tertiaryLabel}
+        onTertiary={
+          confirmacao?.acaoTerciaria
+            ? () => {
+                confirmacao.acaoTerciaria?.();
+                setConfirmacao(null);
+              }
+            : undefined
+        }
         onConfirm={() => {
           confirmacao?.acao();
           setConfirmacao(null);
