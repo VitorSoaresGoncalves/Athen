@@ -10,7 +10,7 @@ import {
 import {
   ligaRepository,
   type CategoriaLiga,
-  type MovimentoLiga,
+  //type MovimentoLiga,
   type ParticipanteLiga,
   type ResumoLiga,
   type TemporadaFechada,
