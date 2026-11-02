@@ -16,6 +16,14 @@ export type ConfirmDialogProps = {
   /** Rótulo do botão de cancelar (padrão: "Cancelar"). */
   cancelLabel?: string;
   /**
+   * Rótulo de uma terceira ação opcional (ex.: "Descartar e criar"). Só
+   * aparece quando passado junto de onTertiary; sem ela, o diálogo fica com os
+   * dois botões de sempre.
+   */
+  tertiaryLabel?: string;
+  /** Chamado ao acionar a terceira ação. Exige tertiaryLabel para aparecer. */
+  onTertiary?: () => void;
+  /**
    * Cor do botão de confirmar:
    * - "default": ação comum (botão no gold da plataforma).
    * - "danger": ação destrutiva, como apagar (botão vermelho).
@@ -33,6 +41,8 @@ export function ConfirmDialog({
   message,
   confirmLabel = "Confirmar",
   cancelLabel = "Cancelar",
+  tertiaryLabel,
+  onTertiary,
   tone = "default",
   onConfirm,
   onCancel,
@@ -100,6 +110,15 @@ export function ConfirmDialog({
         )}
 
         <div className="mt-6 flex justify-end gap-3">
+          {tertiaryLabel && onTertiary && (
+            <button
+              type="button"
+              onClick={onTertiary}
+              className="rounded-md border border-violet-mid/40 px-4 py-2 text-sm font-bold text-violet-pale outline-none hover:bg-violet-mid/10 focus-visible:ring-2 focus-visible:ring-violet-mid"
+            >
+              {tertiaryLabel}
+            </button>
+          )}
           <button
             ref={cancelarRef}
             type="button"

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
+import { ConfirmDialog } from "../components/dialogbox/ConfirmDialog";
 import { anotacoesRepository, cursoRepository, notebookRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -84,6 +85,20 @@ export default function NotebookPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
+  // Confirmação pendente (substitui o window.confirm). Guarda os textos do
+  // diálogo e a ação a executar caso o usuário confirme. `tone: "danger"` deixa
+  // o botão de confirmar vermelho (usado no apagar página). `tertiaryLabel`/
+  // `acaoTerciaria` habilitam uma terceira opção (ex.: "Descartar e criar").
+  const [confirmacao, setConfirmacao] = useState<null | {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone?: "danger";
+    acao: () => void;
+    tertiaryLabel?: string;
+    acaoTerciaria?: () => void;
+  }>(null);
+
   const selectedNotebook = notebooks.find(({ notebook }) => notebook.id === selectedId) ?? null;
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
 
@@ -131,48 +146,88 @@ export default function NotebookPage() {
     const item = notebooks.find(({ notebook }) => notebook.id === id);
     if (!item) return;
     if (id === selectedId) return;
-    if (hasUnsavedChanges() && !window.confirm("Existem alterações não salvas. Deseja trocar de notebook e descartá-las?")) return;
 
-    setSelectedId(id);
-    setNotebookName(item.notebook.title);
-    setEditingNotebookName(false);
-    setLoadingPages(true);
-    setError("");
-    try {
-      const loadedPages = ordenarPaginas(await anotacoesRepository.listarPorNotebook(id));
-      const firstPage = loadedPages[0] ?? null;
-      setPages(loadedPages);
-      selecionarPagina(firstPage, loadedPages, true);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar as anotações.");
-    } finally {
-      setLoadingPages(false);
+    const executar = async () => {
+      setSelectedId(id);
+      setNotebookName(item.notebook.title);
+      setEditingNotebookName(false);
+      setLoadingPages(true);
+      setError("");
+      try {
+        const loadedPages = ordenarPaginas(await anotacoesRepository.listarPorNotebook(id));
+        const firstPage = loadedPages[0] ?? null;
+        setPages(loadedPages);
+        selecionarPagina(firstPage, loadedPages, true);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar as anotações.");
+      } finally {
+        setLoadingPages(false);
+      }
+    };
+
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja trocar de notebook e descartá-las?",
+        confirmLabel: "Descartar e trocar",
+        acao: () => void executar(),
+      });
+      return;
     }
+
+    await executar();
   }
 
-  // `force` pula a confirmação (usado quando acabamos de trocar de notebook, que já confirmou).
+  // `force` pula a confirmação (usado quando acabamos de trocar de notebook ou
+  // de criar uma página, casos em que a troca é a própria ação pedida).
   function selecionarPagina(page: Anotacao | null, pageList = pages, force = false) {
-    if (!force && page?.id !== selectedPageId && hasUnsavedChanges() && !window.confirm("Existem alterações não salvas. Deseja trocar de página e descartá-las?")) return;
-    setSelectedPageId(page?.id ?? null);
-    setEditingPageTitle(false);
-    setPageTitle(page?.title ?? "");
-    setPageText(page?.content ?? "");
-    if (!page && pageList.length === 0) {
-      setPageTitle("");
-      setPageText("");
+    const aplicar = () => {
+      setSelectedPageId(page?.id ?? null);
+      setEditingPageTitle(false);
+      setPageTitle(page?.title ?? "");
+      setPageText(page?.content ?? "");
+      if (!page && pageList.length === 0) {
+        setPageTitle("");
+        setPageText("");
+      }
+    };
+
+    if (!force && page?.id !== selectedPageId && hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja trocar de página e descartá-las?",
+        confirmLabel: "Descartar e trocar",
+        acao: aplicar,
+      });
+      return;
     }
+
+    aplicar();
   }
 
   function fecharNotebook() {
-    if (hasUnsavedChanges() && !window.confirm("Existem alterações não salvas. Deseja voltar e descartá-las?")) return;
-    setSelectedId(null);
-    setPages([]);
-    setSelectedPageId(null);
-    setEditingNotebookName(false);
-    setEditingPageTitle(false);
-    setPageTitle("");
-    setPageText("");
-    setError("");
+    const aplicar = () => {
+      setSelectedId(null);
+      setPages([]);
+      setSelectedPageId(null);
+      setEditingNotebookName(false);
+      setEditingPageTitle(false);
+      setPageTitle("");
+      setPageText("");
+      setError("");
+    };
+
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja voltar para a estante e descartá-las?",
+        confirmLabel: "Sair sem salvar",
+        acao: aplicar,
+      });
+      return;
+    }
+
+    aplicar();
   }
 
   // Detecta alterações antes de trocar de contexto ou fechar o editor.
@@ -247,39 +302,73 @@ export default function NotebookPage() {
 
   async function criarPagina() {
     if (!selectedNotebook) return;
-    setSaving(true);
-    setError("");
-    try {
-      const created = await anotacoesRepository.criar({
-        notebook_id: selectedNotebook.notebook.id,
-        title: "Nova página",
-        content: "",
-        position: pages.length,
+
+    const criar = async () => {
+      setSaving(true);
+      setError("");
+      try {
+        const created = await anotacoesRepository.criar({
+          notebook_id: selectedNotebook.notebook.id,
+          title: "Nova página",
+          content: "",
+          position: pages.length,
+        });
+        const updatedPages = ordenarPaginas([...pages, created]);
+        setPages(updatedPages);
+        // force: já resolvemos o descarte das alterações antes de chegar aqui.
+        selecionarPagina(created, updatedPages, true);
+      } catch (createError) {
+        setError(createError instanceof Error ? createError.message : "Não foi possível criar a página.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    // Com alterações pendentes, dá a escolha de salvar antes, descartar, ou
+    // cancelar — em vez de descartar o trabalho em silêncio.
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Você tem alterações não salvas. Salve ou descarte antes de criar a nova página.",
+        confirmLabel: "Salvar",
+        acao: async () => {
+          await salvarTudo();
+          await criar();
+        },
+        tertiaryLabel: "Descartar",
+        acaoTerciaria: () => void criar(),
       });
-      const updatedPages = ordenarPaginas([...pages, created]);
-      setPages(updatedPages);
-      selecionarPagina(created, updatedPages);
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Não foi possível criar a página.");
-    } finally {
-      setSaving(false);
+      return;
     }
+
+    await criar();
   }
 
   async function apagarPagina() {
     if (!selectedPage) return;
-    if (!window.confirm(`Apagar a página "${pageTitle || "Sem título"}"?`)) return;
-    setSaving(true);
-    try {
-      await anotacoesRepository.deletar(selectedPage.id);
-      const remaining = pages.filter((page) => page.id !== selectedPage.id);
-      setPages(remaining);
-      selecionarPagina(ordenarPaginas(remaining)[0] ?? null, remaining, true);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
-    } finally {
-      setSaving(false);
-    }
+    const pagina = selectedPage;
+
+    const executar = async () => {
+      setSaving(true);
+      try {
+        await anotacoesRepository.deletar(pagina.id);
+        const remaining = pages.filter((page) => page.id !== pagina.id);
+        setPages(remaining);
+        selecionarPagina(ordenarPaginas(remaining)[0] ?? null, remaining, true);
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar página",
+      message: `Tem certeza que deseja apagar a página "${pageTitle || "Sem título"}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Apagar página",
+      tone: "danger",
+      acao: () => void executar(),
+    });
   }
 
   return (
@@ -323,6 +412,28 @@ export default function NotebookPage() {
         </div>
         </main>
       </div>
+
+      <ConfirmDialog
+        open={confirmacao !== null}
+        title={confirmacao?.title ?? ""}
+        message={confirmacao?.message}
+        confirmLabel={confirmacao?.confirmLabel}
+        tone={confirmacao?.tone}
+        tertiaryLabel={confirmacao?.tertiaryLabel}
+        onTertiary={
+          confirmacao?.acaoTerciaria
+            ? () => {
+                confirmacao.acaoTerciaria?.();
+                setConfirmacao(null);
+              }
+            : undefined
+        }
+        onConfirm={() => {
+          confirmacao?.acao();
+          setConfirmacao(null);
+        }}
+        onCancel={() => setConfirmacao(null)}
+      />
     </PageLayout>
   );
 }
