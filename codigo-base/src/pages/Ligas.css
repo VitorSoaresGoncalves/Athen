@@ -203,3 +203,33 @@
     transition: none !important;
   }
 }
+/* ---------- Ligas semanais: atualização, avisos, histórico ---------- */
+.ligas__atualizar { @apply flex items-center gap-[12px]; }
+.ligas__atualizado { @apply text-[11px] text-violet-pale/50; }
+.ligas__botao {
+  @apply cursor-pointer bg-[rgba(255,255,255,0.06)] px-[14px] py-[8px] text-[12px] text-violet-pale;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.ligas__botao:hover { background-color: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.28); }
+
+.ligas__aviso {
+  @apply mb-[16px] bg-[rgba(244,63,94,0.1)] px-[14px] py-[10px] text-[12px] text-[#fb7185];
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  border-radius: 12px;
+}
+
+/* Categorias são informativas (não clicáveis). */
+.ligas__liga { cursor: default; }
+.ligas__liga:hover { transform: none; }
+
+.ligas__linha-foto { @apply size-full object-cover; border-radius: inherit; }
+.ligas__linha-avatar { overflow: hidden; }
+
+.ligas__historico { @apply mt-[20px]; }
+.ligas__linha--historico { grid-template-columns: 56px 34px 1fr auto auto; }
+.ligas__resultado { @apply text-[11px] text-violet-pale/70; font-weight: 700; }
+.ligas__resultado--promoted { @apply text-gold; }
+.ligas__resultado--demoted { @apply text-[#fb7185]; }
