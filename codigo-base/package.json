@@ -27,7 +27,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
-    "supabase": "^2.121.0"
+    "supabase": "^2.122.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
