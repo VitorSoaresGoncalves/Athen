@@ -20,6 +20,8 @@ type RankingPodiumProps = {
   compact?: boolean;
   width?: "default" | "compact" | "room";
   ariaLabel?: string;
+  /** Mostra o nome da liga (ex.: "Bronze") abaixo do emblema. Padrão: true. */
+  showTierLabel?: boolean;
 };
 
 type Variant = "default" | "room" | "compact";
@@ -172,9 +174,10 @@ type PodiumStepProps = {
   compact: boolean;
   metaHeight: number;
   stepHeight: number;
+  showTierLabel: boolean;
 };
 
-function PodiumStep({ player, index, compact, metaHeight, stepHeight }: PodiumStepProps) {
+function PodiumStep({ player, index, compact, metaHeight, stepHeight, showTierLabel }: PodiumStepProps) {
   const theme = tierTheme[player.tier];
   const isFirst = player.height === "first";
 
@@ -240,14 +243,16 @@ function PodiumStep({ player, index, compact, metaHeight, stepHeight }: PodiumSt
         )}
       >
         <RankBadge tier={player.tier} size={compact ? 34 : 44} />
-        <span
-          className={cx(
-            "w-full truncate text-center font-black uppercase leading-[1.2] text-(--tier)",
-            compact ? "text-[9px] tracking-[0.07em]" : "text-[10px] tracking-[0.12em]",
-          )}
-        >
-          {theme.label}
-        </span>
+        {showTierLabel ? (
+          <span
+            className={cx(
+              "w-full truncate text-center font-black uppercase leading-[1.2] text-(--tier)",
+              compact ? "text-[9px] tracking-[0.07em]" : "text-[10px] tracking-[0.12em]",
+            )}
+          >
+            {theme.label}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -264,6 +269,7 @@ export function RankingPodium({
   compact = false,
   width = "default",
   ariaLabel = "Pódio de ranking",
+  showTierLabel = true,
 }: RankingPodiumProps) {
   const variant: Variant = compact || width === "compact" ? "compact" : width;
   const config = variantConfig[variant];
@@ -322,6 +328,7 @@ export function RankingPodium({
               compact={isCompact}
               metaHeight={config.metaHeight}
               stepHeight={config.steps[player.height]}
+              showTierLabel={showTierLabel}
             />
           ))}
         </div>
