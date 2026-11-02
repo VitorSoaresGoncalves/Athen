@@ -14,7 +14,7 @@ import {
   type ParticipanteLiga,
   type ResumoLiga,
   type TemporadaFechada,
-} from "../data/ligaRepository";
+} from "../data/Ligarepository";
 import "./Ligas.css";
 
 // ---------------------------------------------------------------------------
