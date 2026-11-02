@@ -82,12 +82,6 @@ function montarPodio(grupo: ParticipanteLiga[], tier: Tier): PodiumPlayer[] {
   }));
 }
 
-const textoMovimento: Record<MovimentoLiga, string> = {
-  promoted: "Sobe",
-  demoted: "Desce",
-  stayed: "Mantém",
-};
-
 function descreverProjecao(resumo: ResumoLiga): string {
   if (!resumo.categoria) return "";
   if (resumo.projecao === "promoted" && resumo.categoriaProjetada) {
@@ -112,6 +106,7 @@ export default function Ligas() {
   const [agora, setAgora] = useState(() => Date.now());
   // Cada incremento dispara uma nova leitura (botão "Atualizar" e atualização automática).
   const [versao, setVersao] = useState(0);
+  const [atualizando, setAtualizando] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -134,7 +129,10 @@ export default function Ligas() {
         // Mantém o que já estava na tela: falha de rede não vira "0 XP".
         if (!cancelado) setErro(errMsg(error, "Erro ao carregar as ligas."));
       } finally {
-        if (!cancelado) setCarregando(false);
+        if (!cancelado) {
+          setCarregando(false);
+          setAtualizando(false);
+        }
       }
     }
 
@@ -182,8 +180,19 @@ export default function Ligas() {
           </div>
           <div className="ligas__atualizar">
             {atualizadoEm && <span className="ligas__atualizado">Atualizado às {formatarHora(atualizadoEm)}</span>}
-            <button type="button" className="ligas__botao" onClick={() => setVersao((v) => v + 1)}>
-              Atualizar
+            <button
+              type="button"
+              className="ligas__botao"
+              disabled={atualizando}
+              onClick={() => {
+                setAtualizando(true);
+                setVersao((v) => v + 1);
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" className={`ligas__botao-icone${atualizando ? " ligas__botao-icone--gira" : ""}`}>
+                <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" />
+              </svg>
+              {atualizando ? "Atualizando..." : "Atualizar"}
             </button>
           </div>
         </header>
@@ -240,7 +249,7 @@ export default function Ligas() {
                       <span className="ligas__painel-resumo">{grupo.length} {grupo.length === 1 ? "participante" : "participantes"}</span>
                     </div>
                     {podio.length > 0 ? (
-                      <RankingPodium players={podio} ariaLabel={`Top 5 do seu grupo na liga ${nomeDaCategoria(categoria)}`} />
+                      <RankingPodium players={podio} ariaLabel={`Top 5 do seu grupo na liga ${nomeDaCategoria(categoria)}`} showTierLabel={false} />
                     ) : (
                       <p className="ligas__subtitulo">Ainda não há classificação neste grupo.</p>
                     )}
@@ -285,8 +294,8 @@ export default function Ligas() {
                       <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria(categoria)} · Grupo {resumo.numeroGrupo}</h2>
                     </div>
                     <div className="ligas__legenda">
-                      <span className="ligas__legenda-item ligas__legenda-item--promocao">Zona de promoção</span>
-                      <span className="ligas__legenda-item ligas__legenda-item--rebaixamento">Zona de rebaixamento</span>
+                      <span className="ligas__legenda-item ligas__legenda-item--promocao"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6" /></svg>Zona de promoção</span>
+                      <span className="ligas__legenda-item ligas__legenda-item--rebaixamento"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 13l6 6 6-6" /></svg>Zona de rebaixamento</span>
                     </div>
                   </div>
 
@@ -313,12 +322,18 @@ export default function Ligas() {
                             {nome}
                             {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
                           </span>
-                          <span
-                            className="ligas__linha-zona"
-                            title={jogador.movimento ? textoMovimento[jogador.movimento] : undefined}
-                            aria-label={jogador.movimento ? textoMovimento[jogador.movimento] : undefined}
-                          >
-                            {jogador.movimento === "promoted" ? "▲" : jogador.movimento === "demoted" ? "▼" : ""}
+                          <span className="ligas__linha-zona">
+                            {jogador.movimento === "promoted" ? (
+                              <span className="ligas__zona ligas__zona--sobe">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6" /></svg>
+                                Sobe
+                              </span>
+                            ) : jogador.movimento === "demoted" ? (
+                              <span className="ligas__zona ligas__zona--desce">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 13l6 6 6-6" /></svg>
+                                Desce
+                              </span>
+                            ) : null}
                           </span>
                           <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
                         </li>
