@@ -19,7 +19,6 @@ type LessonTrailItem = { type: "lesson"; module: DashboardModule; aula: Aula };
 type TrailItem = { type: "module"; module: DashboardModule } | LessonTrailItem;
 interface DashboardProps { courseId?: string }
 
-const DEFAULT_COURSE_ICON = "📚";
 const DEFAULT_MODULE_ICON = "📘";
 const DEFAULT_SALA_ICON = "👨‍🏫";
 
@@ -134,6 +133,11 @@ async function loadCompletedLessonIds(salaId?: string): Promise<Set<string>> {
       .filter((conclusion) => conclusion.context === "room" && conclusion.attempt_id && roomByAttempt.get(conclusion.attempt_id) === salaId)
       .map((conclusion) => conclusion.lesson_id),
   );
+}
+
+function getInitial(title: string | null | undefined) {
+  const first = Array.from(title?.trim() ?? "")[0];
+  return first ? first.toLocaleUpperCase("pt-BR") : "?";
 }
 
 // Quantas conclusões recentes são examinadas até achar uma que dê para abrir.
@@ -382,6 +386,23 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [coursePickerOpen]);
 
+  // Expõe a largura real da sidebar (--sidebar-left-width) para o botão de curso e o notebook.
+  useEffect(() => {
+    const tela = document.querySelector<HTMLElement>(".tela");
+    const sidebar = tela?.querySelector<HTMLElement>(".sidebarL");
+    if (!(tela && sidebar)) return;
+
+    const updateSidebarWidth = () => {
+      tela.style.setProperty("--sidebar-left-width", `${sidebar.getBoundingClientRect().width}px`);
+    };
+
+    updateSidebarWidth();
+    const observer = new ResizeObserver(updateSidebarWidth);
+    observer.observe(sidebar);
+
+    return () => observer.disconnect();
+  }, []);
+
   // Junta módulos e aulas numa sequência única para o SVG e os nós.
   const trail = useMemo<TrailItem[]>(() => dashboardModules.flatMap((module) => [
     { type: "module", module } as const,
@@ -431,20 +452,33 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const pathEndIndex = Math.max(completedPathEndIndex, activeIndex);
   const activeModuleIndex = Math.max(0, dashboardModules.findIndex((module) => module.id === activeModule?.id));
 
-  // Carrossel da referência: anterior, atual e próximo, sempre em três posições.
-  const carouselItems = dashboardModules.length > 0
-    ? [
-        dashboardModules[(activeModuleIndex - 1 + dashboardModules.length) % dashboardModules.length],
-        dashboardModules[activeModuleIndex],
-        dashboardModules[(activeModuleIndex + 1) % dashboardModules.length],
-      ].map((module, index) => ({ module, current: index === 1 }))
-    : [];
+  // Carrossel: anterior, atual e próximo. Com menos de 3 módulos, mostra só os que existem
+  // (sem repetir o mesmo módulo nas laterais).
+  const carouselItems = useMemo(() => {
+    const total = dashboardModules.length;
+    if (total === 0) return [];
 
-  // O curso atual aparece primeiro; as cores seguem a ordem visual da referência.
+    const indexes = total >= 3
+      ? [(activeModuleIndex - 1 + total) % total, activeModuleIndex, (activeModuleIndex + 1) % total]
+      : Array.from({ length: total }, (_, index) => index);
+
+    return indexes.map((moduleIndex) => ({
+      module: dashboardModules[moduleIndex],
+      current: moduleIndex === activeModuleIndex,
+    }));
+  }, [dashboardModules, activeModuleIndex]);
+
+  // O curso atual aparece primeiro. A cor de cada card vem da posição original
+  // do curso na lista (o banco novo não tem coluna de cor em "courses").
   const orderedCourses = useMemo(() => [
     ...courses.filter((availableCourse) => availableCourse.id === selectedCourseId),
     ...courses.filter((availableCourse) => availableCourse.id !== selectedCourseId),
   ], [courses, selectedCourseId]);
+
+  function getCourseColor(courseIdToFind: string | null | undefined) {
+    const index = courses.findIndex((availableCourse) => availableCourse.id === courseIdToFind);
+    return normalizeColor(undefined, Math.max(0, index));
+  }
 
   // Seletor: só os cursos em que o usuário está matriculado, mais o curso aberto agora quando veio
   // por link. Em modo sala, o curso da sala não entra na lista (a sala tem a própria aba).
@@ -602,7 +636,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
             onClick={() => setPickerTab("courses")}
             aria-pressed={pickerTab === "courses"}
           >
-            <span aria-hidden="true" className="text-lg">📚</span>
+            <span aria-hidden="true" className="text-lg">💼</span>
             <span>Cursos</span>
           </button>
           <button
@@ -623,9 +657,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">
                 Você não está matriculado em nenhum curso. <Link className="text-[var(--amarelo-tangerina)] underline" to="/catalogo">Ver cursos</Link>
               </p>
-            ) : pickerCourses.map((availableCourse, index) => {
+            ) : pickerCourses.map((availableCourse) => {
               const isSelected = availableCourse.id === selectedCourseId && !activeSalaId;
-              const cardColor = FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+              const cardColor = getCourseColor(availableCourse.id);
 
               return (
                 <button
@@ -637,7 +671,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   aria-pressed={isSelected}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{DEFAULT_COURSE_ICON}</span>
+                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl font-bold text-[#f4eeff] shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{getInitial(availableCourse.title)}</span>
                     {isSelected
                       ? <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>
                       : availableCourse.status !== "published" && <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Rascunho</span>}
@@ -658,7 +692,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           ) : (
             salas.map((sala) => {
               const salaCurso = courses.find((availableCourse) => availableCourse.id === sala.course_id);
-              const cardColor = "#A486D5";
+              const cardColor = salaCurso ? getCourseColor(salaCurso.id) : "#A486D5";
               const isSalaAtiva = sala.id === activeSalaId;
 
               return (
@@ -674,7 +708,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   aria-label={`Abrir a sala ${sala.name}`}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{DEFAULT_SALA_ICON}</span>
+                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl font-bold text-[#f4eeff] shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{getInitial(salaCurso?.title ?? sala.name)}</span>
                     {isSalaAtiva
                       ? <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>
                       : <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Sala</span>}
@@ -722,7 +756,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           <header className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
             {courseTrigger}
             <h1 className="dashboard-header__title m-[7px_0_0] text-[clamp(26px,4vw,38px)] font-normal tracking-[0.02em] text-[#f4eeff]">{activeItem?.type === "lesson" ? activeItem.aula.title : activeModule.title}</h1>
-            {activeSala && <span className="sr-only">Sala: {activeSala.name}</span>}
+            {activeSala && <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-0.5 text-xs text-[#e2d8f2]"><span aria-hidden="true">{DEFAULT_SALA_ICON}</span>Sala: {activeSala.name}</span>}
 
             {/* Botão do notebook do curso. */}
             <CursoNotebook course={course} />
@@ -825,11 +859,11 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <strong className="progress-percent text-xl tracking-[0.08em]" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
             </div>
             <div className="module-carousel mt-4 flex items-center justify-center gap-0.5" aria-label="Navegação entre módulos">
-              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
+              <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
               <div className="module-carousel__viewport w-[min(100%,330px)] overflow-hidden">
-                <div className="module-carousel__track grid grid-cols-3 items-end gap-0">
-                  {carouselItems.map(({ module, current }, index) => (
-                    <div key={`${module.id}-${index}`} className={`module-carousel__item ${current ? "module-carousel__item--current" : ""}`}>
+                <div className="module-carousel__track flex items-end justify-center">
+                  {carouselItems.map(({ module, current }) => (
+                    <div key={module.id} className={`module-carousel__item flex-[0_0_33.3333%] ${current ? "module-carousel__item--current" : ""}`}>
                       <span className="module-carousel__name" title={module.title} style={{ color: current ? module.theme.primary : module.theme.muted, borderColor: current ? module.theme.primary : module.theme.muted }}>{module.title}</span>
                       <button
                         className="module-carousel__button"
@@ -849,7 +883,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   ))}
                 </div>
               </div>
-              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
+              <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
             </div>
           </footer>
         </div>
