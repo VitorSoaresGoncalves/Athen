@@ -55,6 +55,7 @@ export function Modal({
 }: ModalProps) {
   // Mantém a última versão de onFechar sem reinstalar os efeitos a cada render.
   const fecharRef = useRef(onFechar);
+  const painelRef = useRef<HTMLElement>(null);
   useEffect(() => {
     fecharRef.current = onFechar;
   });
@@ -63,9 +64,38 @@ export function Modal({
   // o foco volta para quem abriu o modal quando ele fecha.
   useEffect(() => {
     const elementoAnterior = document.activeElement as HTMLElement | null;
+    const focoInicial = painelRef.current?.querySelector<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    (focoInicial ?? painelRef.current)?.focus();
 
     function aoTeclar(evento: KeyboardEvent) {
-      if (fecharComEsc && evento.key === "Escape") fecharRef.current();
+      const painel = painelRef.current;
+      if (!painel) return;
+      const camadas = document.querySelectorAll('.modal__camada');
+      if (painel.parentElement !== camadas[camadas.length - 1]) return;
+      if (fecharComEsc && evento.key === "Escape") {
+        evento.preventDefault();
+        fecharRef.current();
+      }
+      if (evento.key !== 'Tab') return;
+      const controles = Array.from(painel.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((controle) => getComputedStyle(controle).display !== 'none' && getComputedStyle(controle).visibility !== 'hidden');
+      if (controles.length === 0) {
+        evento.preventDefault();
+        painel.focus();
+        return;
+      }
+      const primeiro = controles[0];
+      const ultimo = controles[controles.length - 1];
+      if (evento.shiftKey && (document.activeElement === primeiro || !painel.contains(document.activeElement))) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && (document.activeElement === ultimo || !painel.contains(document.activeElement))) {
+        evento.preventDefault();
+        primeiro.focus();
+      }
     }
 
     const overflowAnterior = document.body.style.overflow;
@@ -106,12 +136,12 @@ export function Modal({
     <div
       className={`modal__camada${camada === "acima" ? " modal__camada--acima" : ""}`}
       role="presentation"
-      onMouseDown={aoApertarNoFundo}
-      onMouseUp={aoSoltarNoFundo}
     >
-      <div className="modal__fundo" aria-hidden="true" />
+      <div className="modal__fundo" aria-hidden="true" onMouseDown={aoApertarNoFundo} onMouseUp={aoSoltarNoFundo} />
 
       <section
+        ref={painelRef}
+        tabIndex={-1}
         className={`modal__painel modal__painel--${largura}${className ? ` ${className}` : ""}`}
         role="dialog"
         aria-modal="true"

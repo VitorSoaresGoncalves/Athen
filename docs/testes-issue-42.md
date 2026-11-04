@@ -1,6 +1,6 @@
 # Suíte de testes — Issue 42 (missões, ligas/temporadas e PAC)
 
-Plano de testes do que foi entregue na issue 42 (migrações `0023`–`0037` e a UI de ligas/missões). Complementa o [guia geral de testes](testes.md): aqui o foco é o comportamento novo de servidor (XP, missões, temporadas, alerta) e as telas que o consomem.
+Plano de testes do que foi entregue na issue 42 (migrações `0023`–`0040` e a UI de ligas/missões). Complementa o [guia geral de testes](testes.md): aqui o foco é o comportamento novo de servidor (XP, missões, temporadas, alerta) e as telas que o consomem.
 
 > **Natureza das verificações.** A maior parte das regras vive no SQL (server-authoritative). Portanto, a validação primária é por **ensaio em Postgres real** (local via Docker ou o projeto de ensaio `Athen-Teste`), não por cliques na UI. O pipeline de frontend cobre compilação/tipos; não valida RLS, XP nem a aplicação das migrações.
 
@@ -8,7 +8,7 @@ Plano de testes do que foi entregue na issue 42 (migrações `0023`–`0037` e a
 
 | Item | Como |
 | --- | --- |
-| Banco com todas as migrações | `supabase db reset` (local) aplica `0001`–`0037` + `seed.sql`. No ensaio remoto, as migrações já estão aplicadas via `db push`. |
+| Banco com todas as migrações | Em um projeto local descartável, `supabase db reset` aplica `0001`–`0040` + `seed.sql`. Para verificar a `0040` num banco existente, use uma cópia isolada e confira o histórico aplicado antes do `db push`. |
 | Extensões de operação | `pg_cron` e `pg_net` habilitados (Dashboard → Database → Extensions). Local já vem com ambas; no remoto foram habilitadas manualmente. |
 | Secret do webhook | `season_alert_webhook` no Supabase Vault (só para o teste de entrega do alerta — seção 6). |
 | Seed base | `supabase/seed.sql` (contas, cursos, salas). Senha das contas: `test123!`. |
@@ -156,6 +156,8 @@ Pré: `pg_net` habilitado e `season_alert_webhook` no Vault com a URL **limpa** 
 
 ### Harness SQL automático (T1–T9)
 
+As regressões da revisão do PR #52 estão em `codigo-base/supabase/testes-issue-42/review-fixes.sql`: permissões de funções internas, ordem da virada, inscrição tardia e conclusão de aula sem questões. `legacy-upgrade-fixture.sql` e `legacy-upgrade-check.sql` verificam a cópia de um crédito e de uma temporada da antiga `0023_ligas.sql`. Rode esses arquivos em um banco de ensaio com `0040` aplicada, dentro de uma transação encerrada com `ROLLBACK`. Para testar o upgrade, aplique a fixture antes da `0040` na mesma transação e execute a checagem depois. O teste de clique no fundo e foco do modal está em `codigo-base/tests/components/Modal.test.tsx`.
+
 Os casos de servidor estão automatizados em `codigo-base/supabase/testes-issue-42/harness.sql`, executado pelo runner `run-harness.ts` (ou pelo script npm). O harness:
 - É **auto-verificável**: cada caso usa `assert`; a falha de qualquer asserção aborta com erro (o runner sai com código ≠ 0).
 - É **isolado**: roda numa transação e dá `ROLLBACK` ao final — não persiste nenhum dado (tentativas, temporadas, eventos).
@@ -166,7 +168,7 @@ Rodar contra um banco de **ensaio** (nunca produção):
 # a connection string aponta para o banco de ensaio (local ou Athen-Teste)
 SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:55322/postgres npm run test:issue42
 ```
-Pré-requisitos no alvo: migrações `0001`–`0037` aplicadas e `supabase/seed.sql` carregado (fornece as contas/cursos). O runner recusa rodar contra a connection string do projeto de produção.
+Pré-requisitos no alvo: migrações `0001`–`0040` aplicadas e `supabase/seed.sql` carregado (fornece as contas/cursos). O runner recusa rodar contra a connection string do projeto de produção.
 
 Saída de sucesso: `HARNESS ISSUE 42: OK`. Qualquer falha imprime a mensagem da asserção (ex.: `T5.1b: zero deveria cair para bronze...`) e sai com erro.
 

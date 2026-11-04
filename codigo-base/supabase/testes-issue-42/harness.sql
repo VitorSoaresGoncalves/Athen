@@ -1,6 +1,6 @@
 -- harness.sql — Testes automáticos auto-verificáveis da issue 42 (T1–T9).
 --
--- Roda num banco de ENSAIO com as migrações 0001–0037 aplicadas e o seed base
+-- Roda num banco de ENSAIO com as migrações 0001–0040 aplicadas e o seed base
 -- (supabase/seed.sql) carregado (reutiliza as contas/cursos de lá). NÃO é
 -- migration e NÃO deve rodar em produção.
 --

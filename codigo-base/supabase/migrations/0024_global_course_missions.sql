@@ -1,3 +1,159 @@
+-- Compatibilidade: se a antiga 0023_ligas.sql ja constar no historico remoto,
+-- esta fatia cria o ledger antes das funcoes de missoes e temporadas.
+-- Em instalacoes novas, todas as instrucoes abaixo sao idempotentes.
+-- 0023_xp_events_ledger.sql
+-- Livro de créditos de XP por evento (fundação das temporadas competitivas).
+--
+-- Contexto: até aqui o XP era apenas um inteiro corrente em profiles.xp_global
+-- (contexto de curso) e room_members.xp_internal (contexto de sala), sem
+-- histórico por evento. As temporadas (Q101–Q102) precisam somar SOMENTE o XP
+-- novo de aprendizagem individual elegível dentro de uma janela de tempo,
+-- excluindo abertura de saldo, ajustes históricos, XP de sala e bônus de missão.
+-- Isso é impossível sobre um contador corrente. Esta migração cria um registro
+-- append-only de créditos de XP (xp_events) e passa finalize_attempt a gravar um
+-- evento por tentativa finalizada, SEM alterar como o XP já é creditado hoje.
+--
+-- Esta fatia é apenas a fundação: cria a tabela, a origem/contexto dos créditos
+-- e a gravação idempotente. A composição da pontuação de temporada (o "XP novo
+-- elegível") será lida a partir daqui em fatias posteriores; nada do saldo atual
+-- muda de valor.
+
+-- ---------------------------------------------------------------------------
+-- Enums: origem e contexto do crédito.
+--   origin  = de onde veio o XP (base de aprendizagem vs bônus de missão vs
+--             abertura de saldo legado vs ajuste auditado). Só 'learning_base'
+--             (contexto de curso) é elegível à temporada; os demais existem para
+--             as fatias seguintes registrarem suas origens sem se confundirem.
+--   context = 'course' (conta para saldo global/temporada) ou 'room' (interno).
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'xp_event_origin') then
+    create type public.xp_event_origin as enum (
+      'learning_base',   -- XP base de aprendizagem (tentativa finalizada)
+      'mission_bonus',   -- bônus concedido por missão (fatias futuras)
+      'legacy_opening',  -- abertura auditada de saldo legado (fatias futuras)
+      'adjustment'       -- ajuste/estorno auditado por admin (fatias futuras)
+    );
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'xp_event_context') then
+    create type public.xp_event_context as enum ('course', 'room');
+  end if;
+end
+$$;
+
+-- ---------------------------------------------------------------------------
+-- xp_events: uma linha por crédito de XP. Append-only; nunca editado.
+--
+-- A idempotência é garantida por um "idempotency_key" único: a mesma origem
+-- aplicada ao mesmo fato (ex.: a mesma tentativa finalizada) nunca grava dois
+-- eventos. Assim, reexecutar finalize_attempt ou uma migração de abertura não
+-- duplica o histórico, espelhando a autoridade idempotente de finalize_attempt.
+-- ---------------------------------------------------------------------------
+create table if not exists public.xp_events (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references public.profiles (id) on delete cascade,
+  origin          public.xp_event_origin  not null,
+  context         public.xp_event_context not null,
+  amount          integer not null check (amount >= 0),
+  -- Referências opcionais ao fato que originou o crédito (sem FK rígida para não
+  -- bloquear a limpeza do fato original; o evento é um registro contábil).
+  attempt_id      uuid references public.attempts (id) on delete set null,
+  course_id       uuid references public.courses (id)  on delete set null,
+  room_id         uuid references public.rooms (id)    on delete set null,
+  mission_id      uuid references public.missions (id) on delete set null,
+  -- Chave de idempotência: identifica o fato+origem de forma estável.
+  idempotency_key text not null unique,
+  occurred_at     timestamptz not null default now(),
+  created_at      timestamptz not null default now()
+);
+
+comment on table public.xp_events is
+  'Livro append-only de créditos de XP por evento. Fundação das temporadas: permite somar o XP novo elegível (origin=learning_base, context=course) por janela de tempo. Não substitui os contadores correntes profiles.xp_global / room_members.xp_internal; registra como esses contadores foram formados.';
+comment on column public.xp_events.origin is
+  'Origem do crédito. Só learning_base em contexto course pontua a temporada (Q102); mission_bonus/legacy_opening/adjustment são excluídos.';
+comment on column public.xp_events.context is
+  'course = crédito que soma ao saldo global; room = crédito interno de sala (nunca pontua temporada).';
+comment on column public.xp_events.idempotency_key is
+  'Identidade estável do fato+origem (ex.: xp:attempt:<attempt_id>). UNIQUE: reexecutar a origem não duplica o evento.';
+
+create index if not exists xp_events_user_occurred_idx
+  on public.xp_events (user_id, occurred_at desc);
+create index if not exists xp_events_user_origin_context_idx
+  on public.xp_events (user_id, origin, context, occurred_at);
+
+-- ---------------------------------------------------------------------------
+-- RLS: o dono lê os próprios eventos; admin lê tudo. Nenhuma escrita pelo
+-- cliente — os eventos são gravados por funções SECURITY DEFINER (como
+-- completions / user_medals, que também não têm política de insert do cliente).
+-- ---------------------------------------------------------------------------
+alter table public.xp_events enable row level security;
+
+drop policy if exists xp_events_select_own on public.xp_events;
+create policy xp_events_select_own on public.xp_events
+  for select to authenticated
+  using (user_id = auth.uid() or public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- record_xp_event(...): gravação idempotente de um crédito de XP.
+-- SECURITY DEFINER porque não há política de insert do cliente; é chamada por
+-- outras funções de autoridade do servidor (finalize_attempt agora; missões e
+-- abertura de saldo nas próximas fatias). Não credita saldo por si só — apenas
+-- registra o fato contábil. Retorna o id do evento (novo ou já existente).
+-- ---------------------------------------------------------------------------
+create or replace function public.record_xp_event(
+  p_user_id         uuid,
+  p_origin          public.xp_event_origin,
+  p_context         public.xp_event_context,
+  p_amount          integer,
+  p_idempotency_key text,
+  p_attempt_id      uuid default null,
+  p_course_id       uuid default null,
+  p_room_id         uuid default null,
+  p_mission_id      uuid default null,
+  p_occurred_at     timestamptz default now()
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  if p_user_id is null or p_idempotency_key is null then
+    raise exception 'record_xp_event requires user_id and idempotency_key';
+  end if;
+
+  insert into public.xp_events (
+    user_id, origin, context, amount,
+    attempt_id, course_id, room_id, mission_id,
+    idempotency_key, occurred_at
+  )
+  values (
+    p_user_id, p_origin, p_context, greatest(coalesce(p_amount, 0), 0),
+    p_attempt_id, p_course_id, p_room_id, p_mission_id,
+    p_idempotency_key, coalesce(p_occurred_at, now())
+  )
+  on conflict (idempotency_key) do nothing
+  returning id into v_id;
+
+  if v_id is null then
+    select id into v_id from public.xp_events where idempotency_key = p_idempotency_key;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+comment on function public.record_xp_event(uuid, public.xp_event_origin, public.xp_event_context, integer, text, uuid, uuid, uuid, uuid, timestamptz) is
+  'Grava um crédito de XP de forma idempotente (unique idempotency_key). Não credita saldo; apenas registra o fato contábil. SECURITY DEFINER: chamada por funções de autoridade do servidor.';
+
+-- Interna: só funções SECURITY DEFINER do servidor devem gravar eventos.
+revoke execute on function public.record_xp_event(uuid, public.xp_event_origin, public.xp_event_context, integer, text, uuid, uuid, uuid, uuid, timestamptz) from authenticated;
+
+
 -- 0024_global_course_missions.sql
 -- Catálogo de missões globais e diárias de curso (estrutura).
 --

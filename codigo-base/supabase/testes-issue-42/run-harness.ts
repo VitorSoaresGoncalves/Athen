@@ -9,7 +9,7 @@
 //     npx tsx supabase/testes-issue-42/run-harness.ts
 //   (ou via o script npm: npm run test:issue42)
 //
-// Pre-requisitos no banco alvo: migracoes 0001-0037 aplicadas e seed base
+// Pre-requisitos no banco alvo: migracoes 0001-0040 aplicadas e seed base
 // (supabase/seed.sql) carregado (fornece as contas/cursos usados).
 
 import { readFileSync } from 'node:fs'
