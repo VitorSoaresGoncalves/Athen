@@ -4,6 +4,8 @@ Referência do modelo usado pelo cliente, conferida em 2026-10-23 contra o SQL v
 
 Verificação posterior no remoto vinculado `testeAthen`: migrações `0001–0040` aplicadas. A `0040` foi ensaiada com `ROLLBACK` sobre os dados remotos antes do `db push`; a reconciliação preservou as duas inscrições novas existentes e incorporou os outros cinco participantes legados. A conferência final confirmou ausência de migrações pendentes e `EXECUTE` negado para `anon` e `authenticated` em `record_xp_event`.
 
+Os tipos de `codigo-base/src/types/database.ts` foram regenerados diretamente desse remoto com `npx supabase gen types typescript --linked --schema public`, usando Supabase CLI `2.121.0`, após a aplicação da `0040`. As 29 RPCs referenciadas por `repositories.ts` foram conferidas no catálogo remoto quanto à existência e à permissão `EXECUTE` para `authenticated`; os contratos de parâmetros e retornos foram validados pela compilação da aplicação com o arquivo gerado. Essa conferência não substitui testes de RLS com cada papel.
+
 ## Fontes e ordem de leitura
 
 1. [Migrações numeradas](../../codigo-base/supabase/migrations/), de `0001` a `0040` neste checkout: modelo, políticas, funções e suas alterações sucessivas. Leia a redefinição mais recente da função ou política que estiver alterando.

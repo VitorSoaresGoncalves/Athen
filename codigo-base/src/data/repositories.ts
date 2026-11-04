@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabase';
 import type { Database } from '../types/database';
 
-// ATENÇÃO: os tipos abaixo dependem do `database.ts` regenerado a partir do banco novo
-// (npx supabase gen types typescript --project-id <id> > src/types/database.ts).
+// Contratos derivados dos tipos gerados do schema public.
+// Origem e comando de geração: docs/banco-de-dados/documentacao-bd.md.
 
 type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];
 type TablesInsert<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert'];
@@ -74,6 +74,7 @@ type HistoricoTemporada = FunctionReturn<'my_season_history'>[number];
 
 // Missões globais/curso para a UI (migração 0031).
 type MissaoGlobal = FunctionReturn<'my_missions'>[number];
+type DetalheMissaoGlobal = FunctionReturn<'my_mission_detail'>[number];
 
 type Amizade = Tables<'friendships'>;
 type CreateAmizadeInput = TablesInsert<'friendships'>;
@@ -1558,7 +1559,7 @@ export const missaoGlobalRepository = {
   },
 
   // Detalhe de uma ocorrência de missão.
-  async detalhe(idOcorrencia: string): Promise<MissaoGlobal | null> {
+  async detalhe(idOcorrencia: string): Promise<DetalheMissaoGlobal | null> {
     const { data, error } = await supabase.rpc('my_mission_detail', { p_occurrence_id: idOcorrencia });
     if (error) throw new Error(`Erro ao obter o detalhe da missão: ${error.message}`);
     return data?.[0] ?? null;
