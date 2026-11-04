@@ -14,6 +14,8 @@ import NotebookPage from './pages/Notebook';
 import Catalogo from './pages/Catalogo';
 import CriarCurso from './pages/criar-curso/CriarCurso';
 import Notificacoes from './pages/Notificacoes';
+import Missoes from './pages/Missoes';
+import MissaoDetalhe from './pages/MissaoDetalhe';
 
 export default function Hub() {
   return (
@@ -37,6 +39,8 @@ export default function Hub() {
         <Route path="/catalogo" element={<ProtectedRoute><Catalogo/></ProtectedRoute>}/> 
         <Route path="/criar-curso" element={<ProtectedRoute><CriarCurso /></ProtectedRoute>} /> 
         <Route path="/ligas" element={<ProtectedRoute><Ligas /></ProtectedRoute>} />
+        <Route path="/missoes" element={<ProtectedRoute><Missoes /></ProtectedRoute>} />
+        <Route path="/missoes/:id" element={<ProtectedRoute><MissaoDetalhe /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )

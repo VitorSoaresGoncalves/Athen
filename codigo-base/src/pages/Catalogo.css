@@ -231,84 +231,11 @@
 /* Vem depois do primário para sobrescrever altura e fonte. */
 .catalogo__botao-entrar { @apply h-[44px] min-w-[158px] text-[11px]; }
 
-.catalogo__modal-camada { @apply fixed grid place-items-center p-[28px] z-30; inset: 0; }
-.catalogo__modal-fundo {
-  @apply absolute;
-  inset: 0;
-  background: rgba(8, 3, 20, 0.78);
-  backdrop-filter: blur(8px);
-  animation: catalogo-aparecer 0.25s ease both;
-}
-.catalogo__modal {
-  @apply relative flex flex-col overflow-hidden bg-[#1b0f35];
-  width: min(1040px, calc(100vw - 64px));
-  height: min(844px, calc(100vh - 56px));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  box-shadow:
-    0 30px 100px rgba(2, 0, 10, 0.68),
-    0 0 0 1px color-mix(in srgb, var(--color-gold) 5%, transparent);
-  animation: catalogo-modal-entrada 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.catalogo__modal-rolagem {
-  @apply min-h-0 flex-1 overflow-y-auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
-}
+/* A moldura do pop-up (camada, fundo, painel, banner, botão de fechar, corpo
+   e rodapé) agora vem do componente compartilhado em
+   src/components/modal/Modal.css. Aqui ficam apenas as partes específicas do
+   pop-up de curso (identidade, trilha, avaliações...). */
 
-.catalogo__modal-banner {
-  @apply relative h-[148px] flex-none overflow-hidden;
-  background:
-    radial-gradient(circle at 65% 40%, color-mix(in srgb, var(--color-gold) 28%, transparent), transparent 22%),
-    linear-gradient(115deg, #5e234f 0%, #9e3f55 52%, #d3794f 100%);
-}
-.catalogo__modal-banner::before {
-  content: "";
-  @apply absolute top-[-120px] right-[70px] h-[210px] w-[480px];
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 50%;
-  transform: rotate(-9deg);
-}
-.catalogo__modal-banner::after {
-  content: "";
-  @apply absolute right-[190px] bottom-[-85px] h-[120px] w-[280px];
-  border: 22px solid rgba(255, 255, 255, 0.06);
-  border-radius: 50%;
-  transform: rotate(-9deg);
-}
-.catalogo__modal-categoria {
-  @apply absolute top-[28px] left-[32px] px-[11px] py-[7px] text-[9px] tracking-[1.3px];
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.84);
-  background: rgba(26, 8, 31, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 20px;
-}
-.catalogo__modal-forma {
-  @apply absolute;
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 50%;
-}
-.catalogo__modal-forma--a { @apply top-[25px] right-[110px] size-[80px]; }
-.catalogo__modal-forma--b { @apply top-[32px] right-[222px] size-[14px] bg-[rgba(255,255,255,0.16)]; }
-.catalogo__modal-brilho {
-  @apply absolute top-[56px] right-1/2 text-[24px] text-gold-light;
-  transform: rotate(12deg);
-}
-.catalogo__modal-fechar {
-  @apply absolute top-[20px] right-[20px] grid size-[40px] cursor-pointer place-items-center text-[#fff];
-  background: rgba(16, 7, 30, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.19);
-  border-radius: 12px;
-  backdrop-filter: blur(5px);
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-.catalogo__modal-fechar:hover {
-  background: rgba(16, 7, 30, 0.62);
-  transform: rotate(4deg);
-}
-
-.catalogo__modal-corpo { @apply px-[32px] pb-[28px]; }
 .catalogo__identidade {
   @apply relative z-2 grid min-h-[114px] grid-cols-[78px_1fr_auto] items-center gap-[18px];
 }
@@ -327,8 +254,12 @@
 .catalogo__meta { @apply flex flex-col items-end gap-[10px]; }
 .catalogo__meta > div { @apply flex items-center gap-[7px] text-[10px] text-violet-pale/70; }
 .catalogo__meta strong { @apply text-[11px] text-[#f4eeff]; font-weight: 500; }
+/* Linha de tags: o rótulo alinha no topo e as etiquetas quebram juntas, mantendo
+   o mesmo ritmo das demais linhas (como no pop-up de salas). */
+.catalogo__meta-tags { @apply items-start; }
+.catalogo__meta-chips { @apply flex flex-wrap justify-end gap-[6px]; }
 .catalogo__tag {
-  @apply bg-[rgba(255,255,255,0.055)] px-[8px] py-[5px] text-violet-pale;
+  @apply bg-[rgba(255,255,255,0.055)] px-[8px] py-[5px] text-[10px] text-violet-pale;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
 }
@@ -363,7 +294,7 @@
   border-radius: 11px;
 }
 .catalogo__modulo--aberto {
-  @apply bg-gold/2.5;
+  @apply bg-gold/[0.025];
   border-color: color-mix(in srgb, var(--color-gold) 18%, transparent);
 }
 .catalogo__modulo-botao {
@@ -394,10 +325,19 @@
   border-top: 1px solid rgba(255, 255, 255, 0.055);
 }
 .catalogo__aula-play {
-  @apply grid size-[18px] place-items-center bg-gold/9 text-gold;
+  @apply grid size-[18px] place-items-center bg-gold/[0.09] text-gold;
   border-radius: 6px;
 }
-.catalogo__aula--concluida { opacity: 0.8; }
+.catalogo__aula small { @apply flex items-center gap-[4px] text-[8px] text-violet-pale/50; }
+
+/* Aula clicável: abre a aula (igual à trilha das salas). */
+button.catalogo__aula--botao {
+  @apply w-full cursor-pointer bg-transparent text-left text-violet-pale/70;
+  border-width: 1px 0 0;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.055);
+}
+button.catalogo__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255, 255, 255, 0.04); }
 .catalogo__aula--concluida .catalogo__aula-play { @apply bg-gold text-[#211029]; }
 .catalogo__vazio-modulos { @apply px-[4px] py-[10px] text-[11px] text-violet-pale/60; }
 
@@ -473,18 +413,6 @@
 
 .catalogo__erro-inline { @apply text-[11px]; color: #fecaca; }
 
-/* Rodapé do pop-up */
-.catalogo__modal-rodape {
-  @apply flex min-h-[74px] flex-none items-center justify-between px-[32px];
-  background: rgba(19, 10, 39, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 -10px 30px rgba(8, 3, 20, 0.18);
-}
-.catalogo__modal-rodape > p { @apply flex items-center gap-[8px] text-[10px] text-violet-pale/70; }
-.catalogo__modal-rodape > p svg { @apply text-gold; }
-.catalogo__modal-rodape > p strong { @apply text-violet-pale; font-weight: 600; }
-.catalogo__modal-acoes { @apply flex gap-[10px]; }
-
 .catalogo__botao-primario:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -492,14 +420,10 @@
   box-shadow: none;
 }
 
-/* ---------- Animações ---------- */
+/* ---------- Animações (específicas do conteúdo do pop-up) ---------- */
 @keyframes catalogo-revelar {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes catalogo-aparecer { from { opacity: 0; } }
-@keyframes catalogo-modal-entrada {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
 }
 @media (prefers-reduced-motion: reduce) {
   .catalogo *, .catalogo *::before, .catalogo *::after {
@@ -508,22 +432,15 @@
   }
 }
 
-/* ---------- Responsivo do pop-up ---------- */
+/* ---------- Responsivo do conteúdo do pop-up ---------- */
 @media (max-width: 760px) {
-  .catalogo__modal-camada { @apply p-[10px]; }
-  .catalogo__modal { width: calc(100vw - 20px); height: calc(100vh - 20px); }
-  .catalogo__modal-corpo { @apply px-[16px] pb-[18px]; }
   .catalogo__identidade { @apply grid-cols-[56px_1fr] gap-[10px]; }
   .catalogo__modal-icone { @apply size-[56px] rounded-[15px] text-[21px]; }
   .catalogo__meta { @apply col-span-2 items-start; }
   .catalogo__sobre { @apply grid-cols-1 gap-[8px] px-[14px] py-[14px]; }
   .catalogo__colunas { @apply grid-cols-1; }
-  .catalogo__modal-rodape { @apply flex-wrap gap-[10px] px-[16px] py-[12px]; }
-  .catalogo__modal-acoes { @apply ml-auto; }
 }
 @media (max-height: 800px) {
-  .catalogo__modal { height: calc(100vh - 32px); }
-  .catalogo__modal-banner { @apply h-[124px]; }
   .catalogo__identidade { @apply min-h-[100px]; }
 }
 

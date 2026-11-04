@@ -154,26 +154,34 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
                 </Bloco>
 
                     
-                {/* Missoes ativas */}
+                {/* Missões ativas: resumo com até três pendentes (globais, de curso
+                    e de sala), ordenadas pelo prazo mais próximo (Q072). */}
                 <Bloco cor={cor} titulo="Missões">
                     {carregando ? (
                         <Mensagem>Carregando...</Mensagem>
                     ) : erroMissoes ? (
                         <Mensagem>{erroMissoes}</Mensagem>
                     ) : missoes.length === 0 ? (
-                        <Mensagem>Nenhuma missão ativa nas suas salas.</Mensagem>
+                        <Mensagem>Nenhuma missão pendente agora.</Mensagem>
                     ) : (
                         <ul className="m-0 flex list-none flex-col gap-4 p-0">
                             {missoes.map((missao) => {
-                                const progresso = missao.concluida ? 100 : Math.round(missao.progresso);
-                            
+                                const progresso = Math.round(missao.progresso);
+
                                 return (
                                     <li key={missao.id}>
+                                        <span
+                                            className="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em]"
+                                            style={{ color: hexToRgba(cor, 0.85) }}
+                                        >
+                                            {missao.contexto}
+                                        </span>
+
                                         <div className="flex items-start justify-between gap-3">
                                             <strong className="text-sm leading-snug text-[#f4eeff]">
                                                 {missao.title}
                                             </strong>
-                                
+
                                             <span
                                                 className="flex-none rounded-full border px-2 py-0.5 text-[11px] font-bold"
                                                 style={{ borderColor: hexToRgba(cor, 0.6), color: cor }}
@@ -181,7 +189,7 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
                                                 +{missao.reward_xp} XP
                                             </span>
                                         </div>
-                                
+
                                         <div
                                             className="mt-3 h-1.5 w-full overflow-hidden rounded-full"
                                             style={{ backgroundColor: hexToRgba(cor, 0.15) }}
@@ -195,10 +203,10 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
                                                 }}
                                             />
                                         </div>
-                                            
+
                                         <span className="mt-2 block text-xs" style={{ color: hexToRgba(cor, 0.9) }}>
-                                            {missao.concluida ? "Concluída" : `${progresso}% concluído`}
-                                            {missao.deadline && ` · até ${new Date(missao.deadline).toLocaleDateString("pt-BR")}`}
+                                            {`${progresso}% concluído`}
+                                            {missao.prazo && ` · até ${new Date(missao.prazo).toLocaleDateString("pt-BR")}`}
                                         </span>
                                     </li>
                                 );
