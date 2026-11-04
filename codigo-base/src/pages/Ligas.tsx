@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import {
   RankBadge,
@@ -7,60 +7,51 @@ import {
   type PodiumPlayer,
   type Tier,
 } from "../components/ranking/RankingPodium";
-import {
-  ligaRepository,
-  type CategoriaLiga,
-  //type MovimentoLiga,
-  type ParticipanteLiga,
-  type ResumoLiga,
-  type TemporadaFechada,
-} from "../data/Ligarepository";
+import { temporadaRepository } from "../data/repositories";
+import type { Database } from "../types/database";
 import "./Ligas.css";
 
 // ---------------------------------------------------------------------------
-// Ligas semanais
+// Ligas — temporadas competitivas (ligas globais por XP).
 //
-// Cada temporada vai de segunda 00:00 até a segunda seguinte 00:00 (America/Sao_Paulo). O usuário
-// disputa, dentro de uma categoria (Bronze...Lendário), com um grupo de até 30 pessoas, só pelo XP de
-// aprendizado ganho na semana. No fechamento, os do topo sobem, os do fim descem e os demais ficam.
-// Toda a regra mora no banco (migração 0023_leagues.sql); esta página só exibe o que as funções devolvem.
+// A página consome a temporada corrente do banco (migrações 0026–0029):
+//   - current_season  -> a janela semanal aberta/em apuração;
+//   - my_season_summary -> categoria, grupo, XP de temporada e posição do usuário;
+//   - my_season_group   -> a classificação do PRÓPRIO grupo (Q066: só o seu grupo);
+//   - my_season_history -> histórico das temporadas do usuário.
+//
+// As categorias (Bronze→Mestre) são as faixas competitivas; a identidade exibida
+// é só a padrão (display name/avatar/banner — Q069), e linhas ocultas (conta
+// desativada — Q070) aparecem sem nome/avatar mas com posição/XP.
 // ---------------------------------------------------------------------------
 
-const ligas: { tier: Tier; nome: string }[] = [
+type SeasonCategory = Database["public"]["Enums"]["season_category"];
+
+// Jogador do grupo, já normalizado para o pódio/lista.
+type Jogador = { id: string; nome: string; pontos: number; posicao: number; voce: boolean; oculto: boolean };
+
+// A categoria do banco (season_category) é exatamente o Tier visual do cliente.
+const categorias: { tier: Tier; nome: string }[] = [
   { tier: "bronze", nome: "Bronze" },
   { tier: "silver", nome: "Prata" },
   { tier: "gold", nome: "Ouro" },
   { tier: "platinum", nome: "Platina" },
   { tier: "diamond", nome: "Diamante" },
   { tier: "master", nome: "Mestre" },
-  { tier: "legendary", nome: "Lendário" },
 ];
 
-const tierDaCategoria = (categoria: CategoriaLiga): Tier => ligas[categoria - 1].tier;
-const nomeDaCategoria = (categoria: CategoriaLiga) => ligas[categoria - 1].nome;
+const nomeDaCategoria = Object.fromEntries(categorias.map((c) => [c.tier, c.nome])) as Record<Tier, string>;
 
-const INTERVALO_ATUALIZACAO_MS = 60_000;
+// season_category e Tier compartilham as mesmas chaves; mapeamento direto.
+const categoriaParaTier = (categoria: SeasonCategory): Tier => categoria as Tier;
 
 const errMsg = (error: unknown, fallback = "Erro desconhecido.") => (error instanceof Error ? error.message : fallback);
 
 const formatarXp = (pontos: number) => `${pontos.toLocaleString("pt-BR")} XP`;
 
-const formatarData = (iso: string) =>
-  new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
-
-const formatarHora = (data: Date) =>
-  data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
-
-function tempoRestante(fimIso: string, agora: number): string {
-  const ms = new Date(fimIso).getTime() - agora;
-  if (ms <= 0) return "encerrando";
-  const minutos = Math.floor(ms / 60_000);
-  const dias = Math.floor(minutos / 1440);
-  const horas = Math.floor((minutos % 1440) / 60);
-  if (dias > 0) return `${dias}d ${horas}h`;
-  if (horas > 0) return `${horas}h ${minutos % 60}min`;
-  return `${minutos}min`;
-}
+// Nome exibido de uma linha do grupo, respeitando a ocultação de identidade (Q070).
+const nomeExibido = (nome: string | null, oculto: boolean) =>
+  oculto || !nome ? "Participante oculto" : nome;
 
 // O pódio é exibido na ordem visual: 4º, 2º, 1º, 3º, 5º.
 const ORDEM_DO_PODIO: { indice: number; altura: PodiumHeight }[] = [
@@ -71,68 +62,81 @@ const ORDEM_DO_PODIO: { indice: number; altura: PodiumHeight }[] = [
   { indice: 4, altura: "fifth" },
 ];
 
-function montarPodio(grupo: ParticipanteLiga[], tier: Tier): PodiumPlayer[] {
-  return ORDEM_DO_PODIO.filter(({ indice }) => grupo[indice]).map(({ indice, altura }) => ({
-    position: `${grupo[indice].posicao}º`,
-    name: grupo[indice].nome ?? "Participante",
-    detail: formatarXp(grupo[indice].pontos),
+function montarPodio(jogadores: Jogador[], tier: Tier): PodiumPlayer[] {
+  return ORDEM_DO_PODIO.filter(({ indice }) => jogadores[indice]).map(({ indice, altura }) => ({
+    position: `${jogadores[indice].posicao}º`,
+    name: jogadores[indice].nome,
+    detail: formatarXp(jogadores[indice].pontos),
     tier,
     height: altura,
-    isYou: grupo[indice].voce,
+    isYou: jogadores[indice].voce,
   }));
-}
-
-function descreverProjecao(resumo: ResumoLiga): string {
-  if (!resumo.categoria) return "";
-  if (resumo.projecao === "promoted" && resumo.categoriaProjetada) {
-    return `Se a semana fechasse agora, você subiria para ${nomeDaCategoria(resumo.categoriaProjetada)}.`;
-  }
-  if (resumo.projecao === "demoted" && resumo.categoriaProjetada) {
-    return `Se a semana fechasse agora, você desceria para ${nomeDaCategoria(resumo.categoriaProjetada)}.`;
-  }
-  return `Se a semana fechasse agora, você continuaria em ${nomeDaCategoria(resumo.categoria)}.`;
 }
 
 // ---------------------------------------------------------------------------
 // Página
 // ---------------------------------------------------------------------------
 export default function Ligas() {
-  const [resumo, setResumo] = useState<ResumoLiga | null>(null);
-  const [grupo, setGrupo] = useState<ParticipanteLiga[]>([]);
-  const [historico, setHistorico] = useState<TemporadaFechada[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
-  const [agora, setAgora] = useState(() => Date.now());
-  // Cada incremento dispara uma nova leitura (botão "Atualizar" e atualização automática).
-  const [versao, setVersao] = useState(0);
-  const [atualizando, setAtualizando] = useState(false);
+
+  const [temporadaId, setTemporadaId] = useState<string | null>(null);
+  const [temporadaStatus, setTemporadaStatus] = useState<Database["public"]["Enums"]["season_status"] | null>(null);
+  const [minhaCategoria, setMinhaCategoria] = useState<SeasonCategory | null>(null);
+  const [minhaPosicao, setMinhaPosicao] = useState<number | null>(null);
+  const [meuXp, setMeuXp] = useState(0);
+  const [tamanhoGrupo, setTamanhoGrupo] = useState(0);
+  const [temGrupo, setTemGrupo] = useState(false);
+  const [jogadores, setJogadores] = useState<Jogador[]>([]);
 
   useEffect(() => {
     let cancelado = false;
 
     async function carregar() {
+      setCarregando(true);
+      setErro("");
       try {
-        await ligaRepository.sincronizar();
-        const [resumoAtual, grupoAtual, historicoAtual] = await Promise.all([
-          ligaRepository.obterResumo(),
-          ligaRepository.listarMeuGrupo(),
-          ligaRepository.listarHistorico(),
+        const temporada = await temporadaRepository.atual();
+        if (cancelado) return;
+
+        if (!temporada) {
+          // Nenhuma temporada ativa: estado de formação/espera (Q141).
+          setTemporadaId(null);
+          setTemporadaStatus(null);
+          return;
+        }
+
+        setTemporadaId(temporada.id);
+        setTemporadaStatus(temporada.status);
+
+        const [resumo, grupo] = await Promise.all([
+          temporadaRepository.meuResumo(temporada.id),
+          temporadaRepository.meuGrupo(temporada.id),
         ]);
         if (cancelado) return;
-        setResumo(resumoAtual);
-        setGrupo(grupoAtual);
-        setHistorico(historicoAtual);
-        setAtualizadoEm(new Date());
-        setErro("");
+
+        if (resumo) {
+          setMinhaCategoria(resumo.category);
+          setMinhaPosicao(resumo.final_rank);
+          setMeuXp(resumo.season_xp);
+          setTamanhoGrupo(resumo.group_size);
+          setTemGrupo(Boolean(resumo.group_id));
+        }
+
+        setJogadores(
+          grupo.map((linha) => ({
+            id: linha.user_id,
+            nome: nomeExibido(linha.display_name, linha.hidden),
+            pontos: linha.season_xp,
+            posicao: linha.rank_position,
+            voce: linha.is_self,
+            oculto: linha.hidden,
+          }))
+        );
       } catch (error) {
-        // Mantém o que já estava na tela: falha de rede não vira "0 XP".
         if (!cancelado) setErro(errMsg(error, "Erro ao carregar as ligas."));
       } finally {
-        if (!cancelado) {
-          setCarregando(false);
-          setAtualizando(false);
-        }
+        if (!cancelado) setCarregando(false);
       }
     }
 
@@ -140,244 +144,177 @@ export default function Ligas() {
     return () => {
       cancelado = true;
     };
-  }, [versao]);
-
-  // Atualiza a cada 60 s enquanto a aba estiver visível, e relê ao voltar para ela.
-  useEffect(() => {
-    const atualizar = () => {
-      if (document.visibilityState !== "visible") return;
-      setAgora(Date.now());
-      setVersao((v) => v + 1);
-    };
-    const timer = window.setInterval(atualizar, INTERVALO_ATUALIZACAO_MS);
-    document.addEventListener("visibilitychange", atualizar);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", atualizar);
-    };
   }, []);
 
-  const categoria = resumo?.categoria ?? null;
-  const tier = categoria ? tierDaCategoria(categoria) : null;
-  const podio = tier ? montarPodio(grupo, tier) : [];
-  const inscrito = Boolean(resumo?.inscrito && categoria);
+  const tierAtual = useMemo<Tier>(
+    () => (minhaCategoria ? categoriaParaTier(minhaCategoria) : "bronze"),
+    [minhaCategoria]
+  );
+
+  // Posição do usuário no grupo (prioriza o resumo; cai para a linha do grupo).
+  const posicaoNoGrupo = useMemo(() => {
+    if (minhaPosicao) return minhaPosicao;
+    const eu = jogadores.find((j) => j.voce);
+    return eu?.posicao ?? null;
+  }, [minhaPosicao, jogadores]);
+
+  const podio = montarPodio(jogadores, tierAtual);
+
+  const semTemporada = !carregando && !erro && temporadaId === null;
+  const emFormacao = !carregando && !erro && temporadaId !== null && !temGrupo;
 
   return (
     <PageLayout variant="bare">
-    <div className="ligas">
-      <main className="ligas__main">
-        <div className="ligas__brilho" />
+      <div className="ligas">
+        <main className="ligas__main">
+          <div className="ligas__brilho" />
 
-        <header className="ligas__cabecalho">
-          <div>
-            <p className="ligas__caminho">PLATAFORMA / <span>LIGAS</span></p>
-            <h1 className="ligas__titulo">Ligas</h1>
-            <p className="ligas__subtitulo">
-              {resumo
-                ? `Temporada de ${formatarData(resumo.inicio)} a ${formatarData(resumo.fim)} · termina em ${tempoRestante(resumo.fim, agora)}`
-                : "Dispute a semana com seu grupo e suba de liga."}
-            </p>
-          </div>
-          <div className="ligas__atualizar">
-            {atualizadoEm && <span className="ligas__atualizado">Atualizado às {formatarHora(atualizadoEm)}</span>}
-            <button
-              type="button"
-              className="ligas__botao"
-              disabled={atualizando}
-              onClick={() => {
-                setAtualizando(true);
-                setVersao((v) => v + 1);
-              }}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" className={`ligas__botao-icone${atualizando ? " ligas__botao-icone--gira" : ""}`}>
-                <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" />
-              </svg>
-              {atualizando ? "Atualizando..." : "Atualizar"}
-            </button>
-          </div>
-        </header>
-
-        {carregando ? (
-          <p className="ligas__subtitulo">Carregando ligas...</p>
-        ) : erro && !resumo ? (
-          <p className="ligas__subtitulo" role="alert">{erro}</p>
-        ) : (
-          <>
-            {erro && (
-              <p className="ligas__aviso" role="alert">
-                Não foi possível atualizar agora ({erro}). Exibindo os últimos dados carregados.
+          <header className="ligas__cabecalho">
+            <div>
+              <p className="ligas__caminho">PLATAFORMA / <span>LIGAS</span></p>
+              <h1 className="ligas__titulo">Ligas</h1>
+              <p className="ligas__subtitulo">
+                Temporada semanal de XP. Compita no seu grupo e suba de categoria.
               </p>
-            )}
+            </div>
+          </header>
 
-            {/* Categorias */}
-            <section className="ligas__seletor" aria-label="Categorias de liga">
-              {ligas.map((liga, indice) => {
-                const atual = categoria === indice + 1;
-                return (
-                  <div key={liga.tier} className={`ligas__liga${atual ? " ligas__liga--ativa" : ""}`}>
-                    {atual && <span className="ligas__liga-tag">SUA LIGA</span>}
-                    <RankBadge tier={liga.tier} size={44} />
-                    <span className="ligas__liga-nome">{liga.nome}</span>
-                  </div>
-                );
-              })}
+          {carregando ? (
+            <p className="ligas__subtitulo">Carregando ligas...</p>
+          ) : erro ? (
+            <p className="ligas__subtitulo">{erro}</p>
+          ) : semTemporada ? (
+            <section className="ligas__painel">
+              <p className="ligas__rotulo">SEM TEMPORADA ATIVA</p>
+              <h2 className="ligas__painel-titulo">Aguardando a próxima temporada</h2>
+              <p className="ligas__progresso-texto">
+                Nenhuma temporada está aberta agora. Estude para entrar automaticamente
+                quando a próxima começar.
+              </p>
             </section>
-
-            {!resumo ? (
-              <section className="ligas__painel">
-                <p className="ligas__rotulo">SEM TEMPORADA</p>
-                <p className="ligas__progresso-texto">A temporada desta semana ainda não foi aberta. Tente atualizar em instantes.</p>
+          ) : (
+            <>
+              {/* Faixas competitivas (Bronze→Mestre). Destaca a sua categoria. */}
+              <section className="ligas__seletor" aria-label="Categorias da liga">
+                {categorias.map((categoria) => {
+                  const ativa = categoria.tier === tierAtual;
+                  return (
+                    <div
+                      key={categoria.tier}
+                      className={`ligas__liga${ativa ? " ligas__liga--ativa" : ""}`}
+                      aria-current={ativa ? "true" : undefined}
+                    >
+                      {ativa && <span className="ligas__liga-tag">SUA LIGA</span>}
+                      <RankBadge tier={categoria.tier} size={44} />
+                      <span className="ligas__liga-nome">{categoria.nome}</span>
+                    </div>
+                  );
+                })}
               </section>
-            ) : !inscrito || !categoria || !tier ? (
-              <section className="ligas__painel">
-                <p className="ligas__rotulo">VOCÊ AINDA NÃO ESTÁ NA LIGA</p>
-                <h2 className="ligas__painel-titulo">Conclua uma aula para entrar</h2>
-                <p className="ligas__progresso-texto">
-                  Ao concluir uma aula nesta semana você entra na liga Bronze e já começa a somar XP com o seu grupo.
-                </p>
-              </section>
-            ) : (
-              <>
-                <div className="ligas__colunas">
-                  {/* Pódio do grupo */}
-                  <section className="ligas__painel ligas__podio">
-                    <div className="ligas__painel-cabecalho">
-                      <div>
-                        <p className="ligas__rotulo">LIGA {nomeDaCategoria(categoria).toUpperCase()} · GRUPO {resumo.numeroGrupo}</p>
-                        <h2 className="ligas__painel-titulo">Top 5 do grupo</h2>
-                      </div>
-                      <span className="ligas__painel-resumo">{grupo.length} {grupo.length === 1 ? "participante" : "participantes"}</span>
-                    </div>
-                    {podio.length > 0 ? (
-                      <RankingPodium players={podio} ariaLabel={`Top 5 do seu grupo na liga ${nomeDaCategoria(categoria)}`} showTierLabel={false} />
-                    ) : (
-                      <p className="ligas__subtitulo">Ainda não há classificação neste grupo.</p>
-                    )}
-                  </section>
 
-                  {/* Resumo do usuário */}
-                  <aside className="ligas__painel ligas__resumo">
-                    <p className="ligas__rotulo">SUA SEMANA</p>
-                    <div className="ligas__resumo-liga">
-                      <RankBadge tier={tier} size={44} />
-                      <div>
-                        <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria(categoria)}</h2>
-                        <p className="ligas__resumo-proxima">
-                          {resumo.tipoEntrada === "late" ? "Entrada durante a semana" : "Inscrito no início da semana"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="ligas__numeros">
-                      <div>
-                        <span className="ligas__numero-rotulo">POSIÇÃO</span>
-                        <strong className="ligas__numero-valor">{resumo.posicao ?? "–"}º</strong>
-                        <span className="ligas__numero-detalhe">de {resumo.tamanhoGrupo ?? grupo.length}</span>
-                      </div>
-                      <div>
-                        <span className="ligas__numero-rotulo">XP DA SEMANA</span>
-                        <strong className="ligas__numero-valor">{resumo.pontos.toLocaleString("pt-BR")}</strong>
-                        <span className="ligas__numero-detalhe">só aprendizado</span>
-                      </div>
-                    </div>
-
-                    <p className="ligas__progresso-texto">{descreverProjecao(resumo)}</p>
-                    <p className="ligas__progresso-texto">A projeção muda conforme os outros pontuam; só vale no fechamento da semana.</p>
-                  </aside>
-                </div>
-
-                {/* Classificação do grupo */}
-                <section className="ligas__painel ligas__tabela">
+              <div className="ligas__colunas">
+                {/* Pódio do próprio grupo */}
+                <section className="ligas__painel ligas__podio">
                   <div className="ligas__painel-cabecalho">
                     <div>
-                      <p className="ligas__rotulo">CLASSIFICAÇÃO DO GRUPO</p>
-                      <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria(categoria)} · Grupo {resumo.numeroGrupo}</h2>
+                      <p className="ligas__rotulo">LIGA {nomeDaCategoria[tierAtual].toUpperCase()}</p>
+                      <h2 className="ligas__painel-titulo">Top 5 do seu grupo</h2>
                     </div>
-                    <div className="ligas__legenda">
-                      <span className="ligas__legenda-item ligas__legenda-item--promocao"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6" /></svg>Zona de promoção</span>
-                      <span className="ligas__legenda-item ligas__legenda-item--rebaixamento"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 13l6 6 6-6" /></svg>Zona de rebaixamento</span>
-                    </div>
+                    <span className="ligas__painel-resumo">
+                      {tamanhoGrupo} {tamanhoGrupo === 1 ? "participante" : "participantes"}
+                    </span>
                   </div>
-
-                  <ol className="ligas__lista">
-                    {grupo.map((jogador) => {
-                      const nome = jogador.nome ?? "Participante";
-                      const zona =
-                        jogador.movimento === "promoted"
-                          ? " ligas__linha--promocao"
-                          : jogador.movimento === "demoted"
-                            ? " ligas__linha--rebaixamento"
-                            : "";
-                      return (
-                        <li key={jogador.idUsuario} className={`ligas__linha${zona}${jogador.voce ? " ligas__linha--voce" : ""}`}>
-                          <span className="ligas__linha-posicao">{jogador.posicao}º</span>
-                          <span className="ligas__linha-avatar" aria-hidden="true">
-                            {jogador.avatarUrl ? (
-                              <img src={jogador.avatarUrl} alt="" className="ligas__linha-foto" />
-                            ) : (
-                              nome.charAt(0).toUpperCase()
-                            )}
-                          </span>
-                          <span className="ligas__linha-nome">
-                            {nome}
-                            {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
-                          </span>
-                          <span className="ligas__linha-zona">
-                            {jogador.movimento === "promoted" ? (
-                              <span className="ligas__zona ligas__zona--sobe">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6" /></svg>
-                                Sobe
-                              </span>
-                            ) : jogador.movimento === "demoted" ? (
-                              <span className="ligas__zona ligas__zona--desce">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 13l6 6 6-6" /></svg>
-                                Desce
-                              </span>
-                            ) : null}
-                          </span>
-                          <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
-                        </li>
-                      );
-                    })}
-                  </ol>
+                  {emFormacao ? (
+                    <p className="ligas__subtitulo">
+                      Seu grupo ainda está em formação. Volte em instantes.
+                    </p>
+                  ) : podio.length > 0 ? (
+                    <RankingPodium players={podio} hideTier ariaLabel={`Top 5 do seu grupo na liga ${nomeDaCategoria[tierAtual]}`} />
+                  ) : (
+                    <p className="ligas__subtitulo">Ninguém pontuou no seu grupo ainda.</p>
+                  )}
                 </section>
-              </>
-            )}
 
-            {/* Histórico */}
-            {historico.length > 0 && (
-              <section className="ligas__painel ligas__historico">
+                {/* Resumo do usuário */}
+                <aside className="ligas__painel ligas__resumo">
+                  <p className="ligas__rotulo">SUA TEMPORADA</p>
+                  {minhaCategoria ? (
+                    <>
+                      <div className="ligas__resumo-liga">
+                        <RankBadge tier={tierAtual} size={44} />
+                        <div>
+                          <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria[tierAtual]}</h2>
+                          {temporadaStatus === "closing" && (
+                            <p className="ligas__resumo-proxima">Apuração em andamento</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="ligas__numeros">
+                        <div>
+                          <span className="ligas__numero-rotulo">POSIÇÃO</span>
+                          <strong className="ligas__numero-valor">
+                            {posicaoNoGrupo ? `${posicaoNoGrupo}º` : "—"}
+                          </strong>
+                          <span className="ligas__numero-detalhe">de {tamanhoGrupo}</span>
+                        </div>
+                        <div>
+                          <span className="ligas__numero-rotulo">XP DA TEMPORADA</span>
+                          <strong className="ligas__numero-valor">{meuXp.toLocaleString("pt-BR")}</strong>
+                          <span className="ligas__numero-detalhe">só aprendizagem elegível</span>
+                        </div>
+                      </div>
+
+                      <p className="ligas__progresso-texto">
+                        Sua categoria pode subir ou descer ao fim da temporada conforme sua
+                        posição no grupo. O XP vitalício e o nível não zeram.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="ligas__progresso-texto">
+                      Você ainda não está inscrito nesta temporada. Conclua uma aula para entrar.
+                    </p>
+                  )}
+                </aside>
+              </div>
+
+              {/* Classificação completa do próprio grupo */}
+              <section className="ligas__painel ligas__tabela">
                 <div className="ligas__painel-cabecalho">
                   <div>
-                    <p className="ligas__rotulo">HISTÓRICO</p>
-                    <h2 className="ligas__painel-titulo">Temporadas anteriores</h2>
+                    <p className="ligas__rotulo">CLASSIFICAÇÃO DO SEU GRUPO</p>
+                    <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria[tierAtual]}</h2>
                   </div>
+                  <span className="ligas__painel-resumo">Ordenado por XP da temporada</span>
                 </div>
-                <ol className="ligas__lista">
-                  {historico.map((t) => (
-                    <li key={t.idTemporada} className="ligas__linha ligas__linha--historico">
-                      <span className="ligas__linha-posicao">{formatarData(t.inicio)}</span>
-                      <RankBadge tier={tierDaCategoria(t.categoria)} size={34} />
-                      <span className="ligas__linha-nome">
-                        {nomeDaCategoria(t.categoria)} · {t.posicao}º de {t.tamanhoGrupo}
-                      </span>
-                      <span className={`ligas__resultado ligas__resultado--${t.movimento}`}>
-                        {t.movimento === "promoted" && t.categoriaDepois
-                          ? `Subiu para ${nomeDaCategoria(t.categoriaDepois)}`
-                          : t.movimento === "demoted" && t.categoriaDepois
-                            ? `Desceu para ${nomeDaCategoria(t.categoriaDepois)}`
-                            : "Manteve"}
-                      </span>
-                      <span className="ligas__linha-pontos">{formatarXp(t.pontos)}</span>
-                    </li>
-                  ))}
-                </ol>
+
+                {jogadores.length === 0 ? (
+                  <p className="ligas__subtitulo">Nenhum participante pontuou no seu grupo ainda.</p>
+                ) : (
+                  <ol className="ligas__lista">
+                    {jogadores.map((jogador) => (
+                      <li
+                        key={jogador.id}
+                        className={["ligas__linha", jogador.voce ? "ligas__linha--voce" : ""].join(" ").trim()}
+                      >
+                        <span className="ligas__linha-posicao">{jogador.posicao}º</span>
+                        <span className="ligas__linha-avatar" aria-hidden="true">{jogador.nome.charAt(0)}</span>
+                        <span className="ligas__linha-nome">
+                          {jogador.nome}
+                          {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
+                        </span>
+                        {/* Coluna mantida vazia só para preservar a grade do CSS. */}
+                        <span className="ligas__linha-zona" aria-hidden="true" />
+                        <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </section>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+            </>
+          )}
+        </main>
+      </div>
     </PageLayout>
   );
 }
