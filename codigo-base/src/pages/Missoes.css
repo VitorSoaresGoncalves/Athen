@@ -1,0 +1,130 @@
+@reference "../index.css";
+
+/* ==========================================================================
+   Página Missões — usa os tokens globais de design (index.css):
+   canvas · surface · ink · muted · line · gold · violet(-mid/-pale)
+   Mesmo esqueleto visual das demais páginas internas da plataforma.
+   ========================================================================== */
+
+/* ---------- Base ---------- */
+.missoes {
+  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  line-height: normal;
+}
+
+.missoes,
+.missoes *,
+.missoes *::before,
+.missoes *::after {
+  box-sizing: border-box;
+}
+
+:where(.missoes) :where(h1, h2, h3, p, ul) { margin: 0; }
+:where(.missoes) :where(h1, h2, h3) { font-weight: 400; }
+
+/* O deslocamento da SidebarLeft é responsabilidade do PageLayout. */
+.missoes__main {
+  @apply relative isolate min-h-svh min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+}
+
+.missoes__brilho {
+  @apply pointer-events-none fixed top-[-200px] right-[-120px] h-[560px] w-[700px];
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(164, 134, 213, 0.18), rgba(14, 8, 32, 0) 68%);
+}
+
+/* ---------- Cabeçalho (padrão compartilhado entre as páginas) ---------- */
+.missoes__cabecalho { @apply mb-[32px] flex items-end justify-between gap-[16px]; }
+.missoes__caminho {
+  @apply mb-[10px] text-[10px] tracking-[1.4px] text-muted;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.missoes__caminho span { @apply text-gold; }
+.missoes__titulo { @apply font-display text-[46px] leading-[1.05] tracking-[-0.8px] text-ink; }
+.missoes__subtitulo { @apply mt-[9px] text-[14px] text-muted; }
+
+/* ---------- Estados (carregando / erro / vazio) ---------- */
+.missoes__estado {
+  @apply mt-[24px] rounded-xl border border-dashed border-line bg-surface/70 px-6 py-14 text-center text-sm text-muted;
+}
+.missoes__estado--erro { @apply border-red-300/40 text-red-200; }
+
+/* ---------- Seções (pendentes / concluídas) ---------- */
+.missoes__secao { @apply mt-[28px] max-w-[720px]; }
+.missoes__secao-cabecalho { @apply mb-[12px] flex items-center gap-[10px]; }
+.missoes__secao-titulo { @apply text-[18px] font-bold text-ink; }
+.missoes__secao-resumo {
+  @apply inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full border border-line bg-surface px-[7px] text-[12px] font-bold text-violet-pale;
+}
+
+/* ---------- Lista de missões ---------- */
+.missoes__lista { @apply flex list-none flex-col gap-[10px] p-0; }
+
+.missoes__item {
+  @apply flex w-full flex-col gap-[8px] rounded-xl border border-line bg-surface px-[18px] py-[15px];
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.missoes__item:hover {
+  border-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent);
+  transform: translateY(-1px);
+}
+.missoes__item--concluida { @apply opacity-70; }
+
+.missoes__item-topo { @apply flex items-center justify-between gap-3; }
+.missoes__contexto { @apply text-[11px] font-bold uppercase tracking-[1px] text-gold; }
+.missoes__prazo { @apply shrink-0 whitespace-nowrap text-[11px] text-muted; }
+
+.missoes__item-titulo { @apply text-[15px] font-bold text-ink; }
+.missoes__item-descricao { @apply text-[13px] leading-[1.45] text-muted; }
+
+.missoes__item-meta { @apply flex items-center gap-[14px] text-[12px]; }
+.missoes__objetivo { @apply text-muted; }
+.missoes__contagem { @apply font-bold text-ink; }
+.missoes__bonus { @apply ml-auto font-bold text-gold; }
+
+.missoes__barra {
+  @apply h-[8px] w-full overflow-hidden rounded-full bg-canvas;
+}
+.missoes__barra span {
+  @apply block h-full rounded-full bg-gold;
+  transition: width 0.3s ease;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 760px) {
+  .missoes__main { @apply px-[20px] pt-[28px]; }
+  .missoes__cabecalho { @apply flex-col items-start gap-[14px]; }
+  .missoes__titulo { @apply text-[36px]; }
+}
+
+/* ---------- Link de voltar no caminho ---------- */
+.missoes__voltar { @apply text-gold no-underline; }
+.missoes__voltar:hover { @apply underline; }
+
+/* ---------- Cartão como link (lista) ---------- */
+:where(.missoes) a.missoes__item { @apply no-underline; }
+
+/* ---------- Detalhe (/missoes/:id) ---------- */
+.missoes__detalhe { @apply mt-[24px] max-w-[640px]; }
+.missoes__detalhe-descricao { @apply mb-[20px] text-[14px] leading-[1.5] text-muted; }
+
+.missoes__detalhe-grade {
+  @apply grid grid-cols-2 gap-[14px] rounded-xl border border-line bg-surface p-[18px];
+  margin: 0;
+}
+.missoes__detalhe-grade dt { @apply mb-[2px] text-[11px] font-bold uppercase tracking-[1px] text-muted; }
+.missoes__detalhe-grade dd { @apply m-0 text-[15px] font-bold text-ink; }
+
+.missoes__barra--detalhe { @apply mt-[16px]; }
+
+.missoes__acao {
+  @apply mt-[20px] inline-flex h-[44px] items-center justify-center rounded-[12px] bg-gold px-[20px] text-[14px] font-bold text-canvas no-underline;
+  transition: opacity 0.2s ease;
+}
+.missoes__acao:hover { @apply opacity-90; }
+
+@media (max-width: 760px) {
+  .missoes__detalhe-grade { @apply grid-cols-1; }
+}
