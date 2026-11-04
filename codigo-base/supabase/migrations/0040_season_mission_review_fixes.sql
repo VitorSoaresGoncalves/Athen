@@ -292,12 +292,25 @@ begin
            else public.season_category_from_rank(le.tier_after) end,
       le.joined_at
       from public.league_entries le
-      join public.season_groups sg on sg.id = le.group_id
+      join public.league_groups lg on lg.id = le.group_id
+      join public.league_seasons ls on ls.id = lg.season_id
+      join public.seasons s on s.starts_at = ls.starts_at
+      join public.season_groups sg on sg.season_id = s.id
+       and sg.category = public.season_category_from_rank(lg.tier)
+       and sg.group_index = lg.group_number + case when lg.tier = 7 then 1000000 else 0 end
     on conflict do nothing;
 
+    -- Bancos que experimentaram as duas implementações podem já ter a mesma
+    -- semana/grupo/participante com UUIDs novos. Preserva essas inscrições e
+    -- identifica equivalência pela semana e pelo usuário, sem mover membros.
     if exists (
       select 1 from public.league_entries le
-       where not exists (select 1 from public.season_entries se where se.id = le.id)
+      join public.league_seasons ls on ls.id = le.season_id
+       where not exists (
+         select 1 from public.season_entries se
+         join public.seasons s on s.id = se.season_id
+          where s.starts_at = ls.starts_at and se.user_id = le.user_id
+       )
     ) then
       raise exception 'legacy league entries need reconciliation before migration 0040';
     end if;

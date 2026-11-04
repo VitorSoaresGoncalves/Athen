@@ -156,6 +156,8 @@ Pré: `pg_net` habilitado e `season_alert_webhook` no Vault com a URL **limpa** 
 
 ### Harness SQL automático (T1–T9)
 
+`legacy-overlap-check.sql` cobre a coexistência de inscrições antigas e novas com UUIDs diferentes. Antes da `0040`, crie uma tabela temporária `review_entries_before as table public.season_entries`; execute a migração e a checagem na mesma transação com `ROLLBACK`. Esse ensaio passou no remoto `testeAthen`, preservando as inscrições existentes e garantindo correspondência de todos os participantes legados por semana e usuário.
+
 As regressões da revisão do PR #52 estão em `codigo-base/supabase/testes-issue-42/review-fixes.sql`: permissões de funções internas, ordem da virada, inscrição tardia e conclusão de aula sem questões. `legacy-upgrade-fixture.sql` e `legacy-upgrade-check.sql` verificam a cópia de um crédito e de uma temporada da antiga `0023_ligas.sql`. Rode esses arquivos em um banco de ensaio com `0040` aplicada, dentro de uma transação encerrada com `ROLLBACK`. Para testar o upgrade, aplique a fixture antes da `0040` na mesma transação e execute a checagem depois. O teste de clique no fundo e foco do modal está em `codigo-base/tests/components/Modal.test.tsx`.
 
 Os casos de servidor estão automatizados em `codigo-base/supabase/testes-issue-42/harness.sql`, executado pelo runner `run-harness.ts` (ou pelo script npm). O harness:
