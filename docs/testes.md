@@ -22,6 +22,8 @@ npm run build
 
 O pre-commit em [Husky](../codigo-base/.husky/pre-commit) usa lint-staged e faz verificações locais; confira o arquivo ao investigar falhas. Ele não substitui a execução completa acima.
 
+Para o comportamento da issue 42 (missões, ligas/temporadas, PAC, agendador e alerta), o plano de testes dedicado — com seed de cenário e casos de servidor/UI — está em [Suíte de testes da Issue 42](testes-issue-42.md).
+
 ## Interface e E2E
 
 Para mudanças visuais ou de navegação, execute também:
