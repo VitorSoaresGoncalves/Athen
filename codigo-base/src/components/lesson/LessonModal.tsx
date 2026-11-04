@@ -4,6 +4,10 @@ import {
   questaoRepository,
   respostaRepository,
   tentativaRepository,
+  xpRepository,
+  type DetalheXpResposta,
+  type PreviaXpQuestao,
+  formatarXp,
 } from "../../data/repositories";
 import type { Database } from "../../types/database";
 import "./LessonModal.css";
@@ -309,6 +313,9 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState("");
   const [resultado, setResultado] = useState<ResultadoTentativa | null>(null);
+  // Quanto cada questão vale AGORA para este aluno (1ª tentativa = base; depois base ÷ nº da tentativa).
+  const [previa, setPrevia] = useState<Record<string, PreviaXpQuestao>>({});
+  const [detalhe, setDetalhe] = useState<DetalheXpResposta[]>([]);
 
   // Mantém o handler mais recente sem religar os listeners do teclado.
   const fecharRef = useRef(onFechar);
@@ -339,8 +346,11 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
     async function carregar() {
       try {
         const lista = await questaoRepository.listarPorAula(aula.id);
+        // A prévia é só informativa: se falhar, a tela mostra o XP base e o servidor credita certo do mesmo jeito.
+        const linhasPrevia = await xpRepository.previaDaAula(aula.id, salaId).catch(() => []);
         if (cancelado) return;
         setQuestoes(lista);
+        setPrevia(Object.fromEntries(linhasPrevia.map((linha) => [linha.idQuestao, linha])));
       } catch (error) {
         if (!cancelado) setErro(mensagemDoErro(error));
       } finally {
@@ -350,10 +360,13 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
 
     void carregar();
     return () => { cancelado = true; };
-  }, [aula.id]);
+  }, [aula.id, salaId]);
 
   const questao = questoes[indice];
-  const xpTotal = questoes.reduce((soma, item) => soma + item.xp_value, 0);
+  // XP que a aula ainda pode render agora (questões já creditadas valem 0).
+  const xpDisponivel = questoes.reduce((soma, item) => soma + (previa[item.id]?.xpPotencial ?? item.xp_value), 0);
+  const tudoCreditado = questoes.length > 0 && questoes.every((item) => previa[item.id]?.creditada);
+  const previaAtual = questao ? previa[questao.id] : undefined;
 
   function irParaQuestao(posicao: number) {
     setIndice(posicao);
@@ -419,6 +432,7 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
 
     try {
       const final = await tentativaRepository.finalizar(tentativaId);
+      setDetalhe(await xpRepository.detalharTentativa(tentativaId).catch(() => []));
       setResultado(final);
       setFase("resultado");
       onConcluida(aula.id);
@@ -473,7 +487,16 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
                 : <p className="lesson-modal__aviso">Esta aula não tem texto de apoio.</p>}
 
               {questoes.length > 0
-                ? <p className="lesson-modal__resumo">{questoes.length} {questoes.length === 1 ? "questão" : "questões"} · até {xpTotal} XP</p>
+                ? (
+                  <>
+                    <p className="lesson-modal__resumo">
+                      {questoes.length} {questoes.length === 1 ? "questão" : "questões"} · {tudoCreditado ? "sem XP novo" : `até ${formatarXp(xpDisponivel)} XP`}
+                    </p>
+                    {tudoCreditado && (
+                      <p className="lesson-modal__aviso">Você já recebeu o XP de todas as questões desta aula. Refazer conta como revisão e atualiza sua conclusão.</p>
+                    )}
+                  </>
+                )
                 : <p className="lesson-modal__aviso">Esta aula ainda não tem atividades, então ela não pode ser concluída por enquanto.</p>}
             </>
           )}
@@ -482,7 +505,11 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
             <>
               <div className="lesson-modal__cabecalho-questao">
                 <span>Questão {indice + 1} de {questoes.length}</span>
-                <span className="lesson-modal__tipo">{ROTULO_TIPO[questao.type]} · {questao.xp_value} XP</span>
+                <span className="lesson-modal__tipo">
+                  {ROTULO_TIPO[questao.type]} · {previaAtual?.creditada
+                    ? "XP já recebido"
+                    : `${formatarXp(previaAtual?.xpPotencial ?? questao.xp_value)} XP${previaAtual && previaAtual.proximoOrdinal > 1 ? ` (${previaAtual.proximoOrdinal}ª tentativa)` : ""}`}
+                </span>
               </div>
               <h3 className="lesson-modal__enunciado">{questao.prompt}</h3>
               <p className="lesson-modal__dica">{DICA_TIPO[questao.type]}</p>
@@ -502,11 +529,22 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
                   role="status"
                 >
                   {correcao === null && <strong>Resposta salva.</strong>}
-                  {correcao?.is_correct && <strong>Correto! +{correcao.xp} XP</strong>}
+                  {correcao?.is_correct && (
+                    <strong>
+                      {previaAtual?.creditada || previaAtual?.xpPotencial === 0
+                        ? "Correto! Sem XP novo: esta questão já foi creditada."
+                        : `Correto! +${formatarXp(previaAtual?.xpPotencial ?? correcao.xp)} XP`}
+                    </strong>
+                  )}
                   {correcao && !correcao.is_correct && (
                     <>
-                      <strong>{correcao.xp > 0 ? `Quase! +${correcao.xp} XP` : "Não foi dessa vez."}</strong>
+                      <strong>Não foi dessa vez.</strong>
                       <span>Resposta esperada: {respostaEsperada(questao)}</span>
+                      {previaAtual && !previaAtual.creditada && (
+                        <span>
+                          Acertando numa próxima tentativa, vale {formatarXp(previaAtual.xpBase / (previaAtual.proximoOrdinal + 1))} XP.
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -521,8 +559,21 @@ export function LessonModal({ aula, moduloTitulo, cursoId, salaId, cor, jaConclu
               <div className="lesson-modal__numeros">
                 <div><strong>{resultado.correct_count}/{resultado.total_count}</strong><span>acertos</span></div>
                 <div><strong>{pac}%</strong><span>de aproveitamento</span></div>
-                <div><strong>+{resultado.xp_earned}</strong><span>XP</span></div>
+                <div><strong>+{formatarXp(resultado.xp_earned)}</strong><span>XP</span></div>
               </div>
+              {detalhe.length > 0 && (
+                <ul className="lesson-modal__detalhe-xp">
+                  {detalhe.some((d) => d.status === "credited") && (
+                    <li>{detalhe.filter((d) => d.status === "credited").length} questão(ões) creditada(s) nesta tentativa.</li>
+                  )}
+                  {detalhe.some((d) => d.status === "already_credited") && (
+                    <li>{detalhe.filter((d) => d.status === "already_credited").length} já tinha(m) sido creditada(s) antes (sem XP novo).</li>
+                  )}
+                  {detalhe.some((d) => d.status === "wrong") && (
+                    <li>{detalhe.filter((d) => d.status === "wrong").length} errada(s): refaça a aula para ganhar o XP delas (base ÷ nº da tentativa).</li>
+                  )}
+                </ul>
+              )}
             </div>
           )}
 

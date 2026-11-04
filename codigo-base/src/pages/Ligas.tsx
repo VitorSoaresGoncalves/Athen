@@ -10,11 +10,11 @@ import {
 import {
   ligaRepository,
   type CategoriaLiga,
-  //type MovimentoLiga,
   type ParticipanteLiga,
   type ResumoLiga,
   type TemporadaFechada,
-} from "../data/Ligarepository";
+  formatarXp,
+} from "../data/repositories";
 import "./Ligas.css";
 
 // ---------------------------------------------------------------------------
@@ -40,10 +40,12 @@ const tierDaCategoria = (categoria: CategoriaLiga): Tier => ligas[categoria - 1]
 const nomeDaCategoria = (categoria: CategoriaLiga) => ligas[categoria - 1].nome;
 
 const INTERVALO_ATUALIZACAO_MS = 60_000;
+// Quem está com 0 XP só é marcado para rebaixamento nas últimas 24 h antes do fechamento da semana.
+const JANELA_ZERADOS_MS = 24 * 60 * 60 * 1000;
 
 const errMsg = (error: unknown, fallback = "Erro desconhecido.") => (error instanceof Error ? error.message : fallback);
 
-const formatarXp = (pontos: number) => `${pontos.toLocaleString("pt-BR")} XP`;
+const textoXp = (pontos: number) => `${formatarXp(pontos)} XP`;
 
 const formatarData = (iso: string) =>
   new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
@@ -75,20 +77,25 @@ function montarPodio(grupo: ParticipanteLiga[], tier: Tier): PodiumPlayer[] {
   return ORDEM_DO_PODIO.filter(({ indice }) => grupo[indice]).map(({ indice, altura }) => ({
     position: `${grupo[indice].posicao}º`,
     name: grupo[indice].nome ?? "Participante",
-    detail: formatarXp(grupo[indice].pontos),
+    detail: textoXp(grupo[indice].pontos),
     tier,
     height: altura,
     isYou: grupo[indice].voce,
   }));
 }
 
-function descreverProjecao(resumo: ResumoLiga): string {
+// Zero XP: o front decide sozinho. Marcado para rebaixamento só nas últimas 24 h e fora do Bronze.
+// Quem tem XP segue o que o banco calculou.
+function descreverProjecao(resumo: ResumoLiga, janelaFinal: boolean): string {
   if (!resumo.categoria) return "";
-  if (resumo.projecao === "promoted" && resumo.categoriaProjetada) {
-    return `Se a semana fechasse agora, você subiria para ${nomeDaCategoria(resumo.categoriaProjetada)}.`;
+  const zerado = resumo.pontos === 0;
+  const projecao = zerado ? (resumo.categoria > 1 && janelaFinal ? "demoted" : "stayed") : resumo.projecao;
+  const destino = zerado && projecao === "demoted" ? ((resumo.categoria - 1) as CategoriaLiga) : resumo.categoriaProjetada;
+  if (projecao === "promoted" && destino) {
+    return `Se a semana fechasse agora, você subiria para ${nomeDaCategoria(destino)}.`;
   }
-  if (resumo.projecao === "demoted" && resumo.categoriaProjetada) {
-    return `Se a semana fechasse agora, você desceria para ${nomeDaCategoria(resumo.categoriaProjetada)}.`;
+  if (projecao === "demoted" && destino) {
+    return `Se a semana fechasse agora, você desceria para ${nomeDaCategoria(destino)}.`;
   }
   return `Se a semana fechasse agora, você continuaria em ${nomeDaCategoria(resumo.categoria)}.`;
 }
@@ -161,6 +168,7 @@ export default function Ligas() {
   const tier = categoria ? tierDaCategoria(categoria) : null;
   const podio = tier ? montarPodio(grupo, tier) : [];
   const inscrito = Boolean(resumo?.inscrito && categoria);
+  const janelaFinal = resumo ? new Date(resumo.fim).getTime() - agora <= JANELA_ZERADOS_MS : false;
 
   return (
     <PageLayout variant="bare">
@@ -276,12 +284,17 @@ export default function Ligas() {
                       </div>
                       <div>
                         <span className="ligas__numero-rotulo">XP DA SEMANA</span>
-                        <strong className="ligas__numero-valor">{resumo.pontos.toLocaleString("pt-BR")}</strong>
+                        <strong className="ligas__numero-valor">{formatarXp(resumo.pontos)}</strong>
                         <span className="ligas__numero-detalhe">só aprendizado</span>
                       </div>
                     </div>
 
-                    <p className="ligas__progresso-texto">{descreverProjecao(resumo)}</p>
+                    <p className="ligas__progresso-texto">{descreverProjecao(resumo, janelaFinal)}</p>
+                    {resumo.pontos === 0 && categoria > 1 && (
+                      <p className="ligas__progresso-texto">
+                        Você ainda não fez XP nesta semana. Quem fecha a semana com 0 XP desce uma categoria; a marca de rebaixamento aparece nas últimas 24 horas.
+                      </p>
+                    )}
                     <p className="ligas__progresso-texto">A projeção muda conforme os outros pontuam; só vale no fechamento da semana.</p>
                   </aside>
                 </div>
@@ -302,10 +315,12 @@ export default function Ligas() {
                   <ol className="ligas__lista">
                     {grupo.map((jogador) => {
                       const nome = jogador.nome ?? "Participante";
+                      // Zerado só aparece como rebaixamento nas últimas 24 h.
+                      const movimento = jogador.pontos === 0 ? (categoria > 1 && janelaFinal ? "demoted" : "stayed") : jogador.movimento;
                       const zona =
-                        jogador.movimento === "promoted"
+                        movimento === "promoted"
                           ? " ligas__linha--promocao"
-                          : jogador.movimento === "demoted"
+                          : movimento === "demoted"
                             ? " ligas__linha--rebaixamento"
                             : "";
                       return (
@@ -323,19 +338,19 @@ export default function Ligas() {
                             {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
                           </span>
                           <span className="ligas__linha-zona">
-                            {jogador.movimento === "promoted" ? (
+                            {movimento === "promoted" ? (
                               <span className="ligas__zona ligas__zona--sobe">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6" /></svg>
                                 Sobe
                               </span>
-                            ) : jogador.movimento === "demoted" ? (
+                            ) : movimento === "demoted" ? (
                               <span className="ligas__zona ligas__zona--desce">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6 13l6 6 6-6" /></svg>
                                 Desce
                               </span>
                             ) : null}
                           </span>
-                          <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
+                          <span className="ligas__linha-pontos">{textoXp(jogador.pontos)}</span>
                         </li>
                       );
                     })}
@@ -368,7 +383,7 @@ export default function Ligas() {
                             ? `Desceu para ${nomeDaCategoria(t.categoriaDepois)}`
                             : "Manteve"}
                       </span>
-                      <span className="ligas__linha-pontos">{formatarXp(t.pontos)}</span>
+                      <span className="ligas__linha-pontos">{textoXp(t.pontos)}</span>
                     </li>
                   ))}
                 </ol>

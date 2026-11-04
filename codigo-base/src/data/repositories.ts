@@ -1524,3 +1524,261 @@ export const dominioRepository = {
     return data ?? false;
   }
 };
+// ===========================================================================
+// LIGAS SEMANAIS (migração 0023) e XP POR TENTATIVA (migração 0024)
+//
+// As funções abaixo são novas e só entram em src/types/database.ts depois de
+// `npx supabase gen types typescript`. Até lá as chamadas passam por `chamarRpcNova`,
+// tipada à mão. Depois de regenerar os tipos, dá para trocá-la por `supabase.rpc(...)`.
+// ===========================================================================
+
+
+
+/** Categoria 1..7 = Bronze, Prata, Ouro, Platina, Diamante, Mestre, Lendário. */
+export type CategoriaLiga = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** promoted = zona de promoção · demoted = zona de rebaixamento · stayed = mantém. */
+export type MovimentoLiga = 'promoted' | 'demoted' | 'stayed';
+
+export type ResumoLiga = {
+  idTemporada: string;
+  inicio: string;
+  fim: string;
+  inscrito: boolean;
+  tipoEntrada: 'snapshot' | 'late' | null;
+  categoria: CategoriaLiga | null;
+  numeroGrupo: number | null;
+  tamanhoGrupo: number | null;
+  pontos: number;
+  posicao: number | null;
+  /** Projeção ao vivo com a pontuação de agora (só vira definitivo no fechamento). */
+  projecao: MovimentoLiga | null;
+  categoriaProjetada: CategoriaLiga | null;
+};
+
+export type ParticipanteLiga = {
+  idUsuario: string;
+  /** null quando a conta foi desativada (identidade não é exibida). */
+  nome: string | null;
+  avatarUrl: string | null;
+  bannerUrl: string | null;
+  ativo: boolean;
+  pontos: number;
+  posicao: number;
+  movimento: MovimentoLiga | null;
+  voce: boolean;
+};
+
+export type TemporadaFechada = {
+  idTemporada: string;
+  inicio: string;
+  fim: string;
+  categoria: CategoriaLiga;
+  categoriaDepois: CategoriaLiga | null;
+  pontos: number;
+  posicao: number;
+  tamanhoGrupo: number;
+  movimento: MovimentoLiga;
+};
+
+type RpcResposta<T> = { data: T | null; error: { message: string } | null };
+
+async function chamarRpcNova<T>(nome: string, args?: Record<string, unknown>): Promise<T> {
+  const cliente = supabase as unknown as {
+    rpc: (fn: string, params?: Record<string, unknown>) => PromiseLike<RpcResposta<T>>;
+  };
+  const { data, error } = await cliente.rpc(nome, args);
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+type LinhaResumo = {
+  season_id: string;
+  starts_at: string;
+  ends_at: string;
+  entered: boolean | null;
+  entry_kind: 'snapshot' | 'late' | null;
+  tier: number | null;
+  group_number: number | null;
+  group_size: number | null;
+  score: number | null;
+  position: number | null;
+  projected: MovimentoLiga | null;
+  projected_tier: number | null;
+};
+
+type LinhaGrupo = {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  banner_url: string | null;
+  active: boolean;
+  score: number;
+  position: number;
+  movement: MovimentoLiga | null;
+  is_self: boolean;
+};
+
+type LinhaHistorico = {
+  season_id: string;
+  starts_at: string;
+  ends_at: string;
+  tier: number;
+  tier_after: number | null;
+  final_score: number | null;
+  final_position: number | null;
+  group_size: number | null;
+  movement: MovimentoLiga;
+};
+
+const comoCategoria = (valor: number | null): CategoriaLiga | null =>
+  valor === null ? null : (Math.min(7, Math.max(1, valor)) as CategoriaLiga);
+
+export const ligaRepository = {
+  /**
+   * Vira a semana quando preciso (fecha a anterior e forma os grupos da nova). É idempotente e barata
+   * quando não há nada a fazer; chame antes de ler.
+   */
+  async sincronizar(): Promise<void> {
+    await chamarRpcNova<void>('league_sync');
+  },
+
+  /** Resumo pessoal da temporada atual. null = ainda não existe temporada. */
+  async obterResumo(): Promise<ResumoLiga | null> {
+    const linhas = (await chamarRpcNova<LinhaResumo[]>('league_overview')) ?? [];
+    const l = linhas[0];
+    if (!l) return null;
+    return {
+      idTemporada: l.season_id,
+      inicio: l.starts_at,
+      fim: l.ends_at,
+      inscrito: Boolean(l.entered),
+      tipoEntrada: l.entry_kind,
+      categoria: comoCategoria(l.tier),
+      numeroGrupo: l.group_number,
+      tamanhoGrupo: l.group_size,
+      pontos: l.score ?? 0,
+      posicao: l.position,
+      projecao: l.projected,
+      categoriaProjetada: comoCategoria(l.projected_tier),
+    };
+  },
+
+  /** Classificação do próprio grupo (temporada atual, ou a informada). */
+  async listarMeuGrupo(idTemporada?: string): Promise<ParticipanteLiga[]> {
+    const linhas = (await chamarRpcNova<LinhaGrupo[]>('league_my_group', { p_season_id: idTemporada ?? null })) ?? [];
+    return linhas.map((l) => ({
+      idUsuario: l.user_id,
+      nome: l.display_name,
+      avatarUrl: l.avatar_url,
+      bannerUrl: l.banner_url,
+      ativo: l.active,
+      pontos: l.score,
+      posicao: l.position,
+      movimento: l.movement,
+      voce: l.is_self,
+    }));
+  },
+
+  /** Temporadas já fechadas em que o usuário participou (mais recente primeiro). */
+  async listarHistorico(limite = 12): Promise<TemporadaFechada[]> {
+    const linhas = (await chamarRpcNova<LinhaHistorico[]>('league_my_history', { p_limit: limite })) ?? [];
+    return linhas.map((l) => ({
+      idTemporada: l.season_id,
+      inicio: l.starts_at,
+      fim: l.ends_at,
+      categoria: comoCategoria(l.tier) ?? 1,
+      categoriaDepois: comoCategoria(l.tier_after),
+      pontos: l.final_score ?? 0,
+      posicao: l.final_position ?? 0,
+      tamanhoGrupo: l.group_size ?? 0,
+      movimento: l.movement,
+    }));
+  },
+};
+
+// ---------------------------------------------------------------------------
+// XP por tentativa (0024)
+//   Crédito = base ÷ n, n = ordinal do primeiro acerto entre os primeiros envios da questão
+//   (tentativas distintas, mesmo contexto). Um crédito por questão no curso individual e um por sala.
+// ---------------------------------------------------------------------------
+export type PreviaXpQuestao = {
+  idQuestao: string;
+  /** XP base cadastrado na questão. */
+  xpBase: number;
+  /** Já recebeu o XP desta questão neste contexto (curso ou sala)? */
+  creditada: boolean;
+  xpCreditado: number;
+  /** Ordinal que valerá no próximo acerto (1 = primeira tentativa). */
+  proximoOrdinal: number;
+  /** Quanto renderia um acerto agora (0 se já creditada). */
+  xpPotencial: number;
+};
+
+export type StatusXpResposta = 'credited' | 'already_credited' | 'wrong' | 'no_xp';
+
+export type DetalheXpResposta = {
+  idQuestao: string;
+  acertou: boolean;
+  ordinalDoEnvio: number;
+  xpBase: number;
+  xpCreditado: number;
+  status: StatusXpResposta;
+};
+
+type LinhaPrevia = {
+  question_id: string;
+  base_xp: number;
+  credited: boolean;
+  credited_xp: number;
+  next_ordinal: number;
+  potential_xp: number;
+};
+
+type LinhaDetalhe = {
+  question_id: string;
+  is_correct: boolean;
+  submission_ordinal: number;
+  base_xp: number;
+  credited_xp: number;
+  status: StatusXpResposta;
+};
+
+export const xpRepository = {
+  /** Quanto cada questão da aula vale agora para o usuário logado (salaId = contexto da sala, se houver). */
+  async previaDaAula(idAula: string, idSala?: string): Promise<PreviaXpQuestao[]> {
+    const linhas = (await chamarRpcNova<LinhaPrevia[]>('learning_xp_preview', {
+      p_lesson_id: idAula,
+      p_room_id: idSala ?? null,
+    })) ?? [];
+    return linhas.map((l) => ({
+      idQuestao: l.question_id,
+      xpBase: Number(l.base_xp),
+      creditada: l.credited,
+      xpCreditado: Number(l.credited_xp),
+      proximoOrdinal: l.next_ordinal,
+      xpPotencial: Number(l.potential_xp),
+    }));
+  },
+
+  /** Detalhe do XP de cada resposta de uma tentativa já finalizada. */
+  async detalharTentativa(idTentativa: string): Promise<DetalheXpResposta[]> {
+    const linhas = (await chamarRpcNova<LinhaDetalhe[]>('learning_attempt_breakdown', {
+      p_attempt_id: idTentativa,
+    })) ?? [];
+    return linhas.map((l) => ({
+      idQuestao: l.question_id,
+      acertou: l.is_correct,
+      ordinalDoEnvio: l.submission_ordinal,
+      xpBase: Number(l.base_xp),
+      xpCreditado: Number(l.credited_xp),
+      status: l.status,
+    }));
+  },
+};
+
+// Saldos de XP têm até 4 casas decimais no banco (ex.: 1,3333). Na tela mostramos no máximo 2,
+// sem zeros sobrando. O arredondamento é só de exibição: o nível é calculado no servidor com o valor exato.
+export function formatarXp(valor: number | null | undefined): string {
+  return Number(valor ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
