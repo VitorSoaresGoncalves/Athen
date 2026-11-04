@@ -19,6 +19,7 @@ type LessonTrailItem = { type: "lesson"; module: DashboardModule; aula: Aula };
 type TrailItem = { type: "module"; module: DashboardModule } | LessonTrailItem;
 interface DashboardProps { courseId?: string }
 
+const DEFAULT_COURSE_ICON = "📚";
 const DEFAULT_MODULE_ICON = "📘";
 const DEFAULT_SALA_ICON = "👨‍🏫";
 
@@ -133,11 +134,6 @@ async function loadCompletedLessonIds(salaId?: string): Promise<Set<string>> {
       .filter((conclusion) => conclusion.context === "room" && conclusion.attempt_id && roomByAttempt.get(conclusion.attempt_id) === salaId)
       .map((conclusion) => conclusion.lesson_id),
   );
-}
-
-function getInitial(title: string | null | undefined) {
-  const first = Array.from(title?.trim() ?? "")[0];
-  return first ? first.toLocaleUpperCase("pt-BR") : "?";
 }
 
 // Quantas conclusões recentes são examinadas até achar uma que dê para abrir.
@@ -444,17 +440,11 @@ export default function Dashboard({ courseId }: DashboardProps) {
       ].map((module, index) => ({ module, current: index === 1 }))
     : [];
 
-  // O curso atual aparece primeiro. A cor de cada card vem da posição original
-  // do curso na lista (o banco novo não tem coluna de cor em "courses").
+  // O curso atual aparece primeiro; as cores seguem a ordem visual da referência.
   const orderedCourses = useMemo(() => [
     ...courses.filter((availableCourse) => availableCourse.id === selectedCourseId),
     ...courses.filter((availableCourse) => availableCourse.id !== selectedCourseId),
   ], [courses, selectedCourseId]);
-
-  function getCourseColor(courseIdToFind: string | null | undefined) {
-    const index = courses.findIndex((availableCourse) => availableCourse.id === courseIdToFind);
-    return normalizeColor(undefined, Math.max(0, index));
-  }
 
   // Seletor: só os cursos em que o usuário está matriculado, mais o curso aberto agora quando veio
   // por link. Em modo sala, o curso da sala não entra na lista (a sala tem a própria aba).
@@ -612,7 +602,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
             onClick={() => setPickerTab("courses")}
             aria-pressed={pickerTab === "courses"}
           >
-            <span aria-hidden="true" className="text-lg">💼</span>
+            <span aria-hidden="true" className="text-lg">📚</span>
             <span>Cursos</span>
           </button>
           <button
@@ -633,9 +623,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">
                 Você não está matriculado em nenhum curso. <Link className="text-[var(--amarelo-tangerina)] underline" to="/catalogo">Ver cursos</Link>
               </p>
-            ) : pickerCourses.map((availableCourse) => {
+            ) : pickerCourses.map((availableCourse, index) => {
               const isSelected = availableCourse.id === selectedCourseId && !activeSalaId;
-              const cardColor = getCourseColor(availableCourse.id);
+              const cardColor = FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 
               return (
                 <button
@@ -647,7 +637,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   aria-pressed={isSelected}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl font-bold text-[#f4eeff] shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{getInitial(availableCourse.title)}</span>
+                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{DEFAULT_COURSE_ICON}</span>
                     {isSelected
                       ? <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>
                       : availableCourse.status !== "published" && <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Rascunho</span>}
@@ -668,7 +658,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           ) : (
             salas.map((sala) => {
               const salaCurso = courses.find((availableCourse) => availableCourse.id === sala.course_id);
-              const cardColor = salaCurso ? getCourseColor(salaCurso.id) : "#A486D5";
+              const cardColor = "#A486D5";
               const isSalaAtiva = sala.id === activeSalaId;
 
               return (
@@ -684,7 +674,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   aria-label={`Abrir a sala ${sala.name}`}
                 >
                   <span className="flex items-start justify-between gap-2">
-                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl font-bold text-[#f4eeff] shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{getInitial(salaCurso?.title ?? sala.name)}</span>
+                    <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#120c22]/70 text-2xl shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/15">{DEFAULT_SALA_ICON}</span>
                     {isSalaAtiva
                       ? <span className="rounded-full bg-[#A486D5] px-2 py-0.5 text-[10px] font-bold text-[#171027]">Atual</span>
                       : <span className="rounded-full bg-[#120c22]/70 px-2 py-0.5 text-[10px] text-[#e2d8f2] ring-1 ring-white/10">Sala</span>}
@@ -732,7 +722,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           <header className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
             {courseTrigger}
             <h1 className="dashboard-header__title m-[7px_0_0] text-[clamp(26px,4vw,38px)] font-normal tracking-[0.02em] text-[#f4eeff]">{activeItem?.type === "lesson" ? activeItem.aula.title : activeModule.title}</h1>
-            {activeSala && <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-0.5 text-xs text-[#e2d8f2]"><span aria-hidden="true">{DEFAULT_SALA_ICON}</span>Sala: {activeSala.name}</span>}
+            {activeSala && <span className="sr-only">Sala: {activeSala.name}</span>}
 
             {/* Botão do notebook do curso. */}
             <CursoNotebook course={course} />

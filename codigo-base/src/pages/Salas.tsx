@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import { LessonModal } from "../components/lesson/LessonModal";
+import { Modal, ModalFechar } from "../components/modal/Modal";
 import { RankingPodium, type PodiumHeight, type PodiumPlayer, type Tier } from "../components/ranking/RankingPodium";
 import {
   aulaRepository,
@@ -127,12 +128,14 @@ function traduzirErro(erro: unknown) {
   return mensagem || "Algo deu errado. Tente novamente.";
 }
 
+// Faixas de PAC alinhadas a division_for_pac (migração 0039): 6 patamares.
 function tierPorPac(pac: number): Tier {
-  if (pac < 60) return "bronze";
-  if (pac <= 74) return "silver";
-  if (pac <= 84) return "gold";
-  if (pac <= 94) return "platinum";
-  return "diamond";
+  if (pac < 50) return "bronze";
+  if (pac <= 64) return "silver";
+  if (pac <= 74) return "gold";
+  if (pac <= 84) return "platinum";
+  if (pac <= 94) return "diamond";
+  return "master";
 }
 
 const ALTURAS: PodiumHeight[] = ["first", "second", "third", "fourth", "fifth"];
@@ -267,28 +270,8 @@ function ordenar(lista: Sala[], filtros: Filtros) {
   });
 }
 
-// Fecha o pop-up com Esc e trava a rolagem da página enquanto ele está aberto.
-function useTravarModal(onFechar: () => void) {
-  const fecharRef = useRef(onFechar);
-  useEffect(() => {
-    fecharRef.current = onFechar;
-  });
-
-  useEffect(() => {
-    function aoTeclar(evento: KeyboardEvent) {
-      if (evento.key === "Escape") fecharRef.current();
-    }
-
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", aoTeclar);
-
-    return () => {
-      document.body.style.overflow = overflowAnterior;
-      document.removeEventListener("keydown", aoTeclar);
-    };
-  }, []);
-}
+// A trava de rolagem + Esc + devolução do foco agora vivem no componente
+// compartilhado src/components/modal/Modal.tsx.
 
 // ---------------------------------------------------------------------------
 // Card da sala
@@ -453,23 +436,19 @@ type FiltroModalProps = {
 function FiltroModal({ valores, onAplicar, onFechar }: FiltroModalProps) {
   // As escolhas só valem quando a pessoa clica em "Aplicar".
   const [rascunho, setRascunho] = useState<Filtros>(valores);
-  useTravarModal(onFechar);
 
   const usandoOsDois = rascunho.alfabetica !== "nenhuma" && rascunho.membros !== "nenhuma";
 
   return (
-    <div className="salas__modal-camada" role="presentation">
-      <div className="salas__modal-fundo" onClick={onFechar} />
-
-      <section className="salas__filtro-modal" role="dialog" aria-modal="true" aria-labelledby="salas-filtro-titulo">
+    <Modal onFechar={onFechar} largura="estreito" rotuladoPor="salas-filtro-titulo">
         <header className="salas__filtro-topo">
           <div>
             <p className="salas__rotulo">FILTRAR SALAS</p>
             <h2 className="salas__filtro-titulo" id="salas-filtro-titulo">Organizar resultados</h2>
           </div>
-          <button className="salas__filtro-fechar" type="button" onClick={onFechar} aria-label="Fechar filtros">
+          <ModalFechar onFechar={onFechar} rotulo="Fechar filtros" variante="cabecalho">
             <Icone nome="close" tamanho={20} />
-          </button>
+          </ModalFechar>
         </header>
 
         <div className="salas__filtro-corpo">
@@ -510,8 +489,7 @@ function FiltroModal({ valores, onAplicar, onFechar }: FiltroModalProps) {
             Aplicar
           </button>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }
 
@@ -547,11 +525,6 @@ function SalaModal({ sala, usuarioId, aulaAberta, onFechar, onAbrirAula, onAtual
   const [erro, setErro] = useState("");
   const [tituloAviso, setTituloAviso] = useState("");
   const [textoAviso, setTextoAviso] = useState("");
-
-  // Enquanto uma aula está aberta por cima, o Esc fecha só a aula.
-  useTravarModal(() => {
-    if (!aulaAberta) onFechar();
-  });
 
   const top5 = useMemo(() => sala.ranking.slice(0, 5), [sala.ranking]);
   const idsDoRanking = top5.map((membro) => membro.user_id).join(",");
@@ -658,22 +631,25 @@ function SalaModal({ sala, usuarioId, aulaAberta, onFechar, onAbrirAula, onAtual
   }
 
   return (
-    <div className="salas__modal-camada" role="presentation">
-      <div className="salas__modal-fundo" onClick={onFechar} />
-
-      <section className="salas__modal" role="dialog" aria-modal="true" aria-labelledby="salas-modal-titulo">
-        <div className="salas__modal-rolagem">
-          <div className="salas__modal-banner">
-            <span className="salas__modal-categoria">{sala.categoria.toUpperCase()}</span>
-            <div className="salas__modal-forma salas__modal-forma--a" />
-            <div className="salas__modal-forma salas__modal-forma--b" />
-            <div className="salas__modal-brilho">✦</div>
-            <button className="salas__modal-fechar" type="button" onClick={onFechar} aria-label="Fechar informações da sala">
+    <Modal
+      onFechar={onFechar}
+      rotuladoPor="salas-modal-titulo"
+      /* Com uma aula aberta por cima, o Esc fecha só a aula (o LessonModal cuida
+         do fechamento); o modal da sala ignora o Esc nesse momento. */
+      fecharComEsc={!aulaAberta}
+    >
+        <div className="modal__rolagem">
+          <div className="modal__banner">
+            <span className="modal__categoria">{sala.categoria.toUpperCase()}</span>
+            <div className="modal__forma modal__forma--a" />
+            <div className="modal__forma modal__forma--b" />
+            <div className="modal__brilho">✦</div>
+            <ModalFechar onFechar={onFechar} rotulo="Fechar informações da sala">
               <Icone nome="close" tamanho={22} />
-            </button>
+            </ModalFechar>
           </div>
 
-          <div className="salas__modal-corpo">
+          <div className="modal__corpo">
             <div className="salas__identidade">
               <div className="salas__modal-icone">{sala.simbolo}</div>
               <div>
@@ -842,17 +818,16 @@ function SalaModal({ sala, usuarioId, aulaAberta, onFechar, onAbrirAula, onAtual
           </div>
         </div>
 
-        <footer className="salas__modal-rodape">
+        <footer className="modal__rodape">
           <p>
             <Icone nome="people" tamanho={17} />
             <strong>{sala.membros} {sala.membros === 1 ? "pessoa" : "pessoas"}</strong> {sala.membros === 1 ? "está aprendendo" : "estão aprendendo"} nesta sala
           </p>
-          <div className="salas__modal-acoes">
+          <div className="modal__acoes">
             <button className="salas__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
           </div>
         </footer>
-      </section>
-    </div>
+    </Modal>
   );
 }
 

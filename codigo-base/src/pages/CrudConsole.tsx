@@ -319,8 +319,8 @@ export function CrudConsole() {
       if (!fQuestao.lesson_id) throw new Error('Selecione a aula.')
       if (!fQuestao.prompt.trim()) throw new Error('Enunciado é obrigatório.')
 
-      let config: Json
-      try { config = JSON.parse(fQuestao.config) as Json }
+      let config: NonNullable<Json>
+      try { config = JSON.parse(fQuestao.config) as NonNullable<Json> }
       catch { throw new Error('A configuração (config) não é um JSON válido.') }
 
       const payload = {
