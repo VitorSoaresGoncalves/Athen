@@ -386,23 +386,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [coursePickerOpen]);
 
-  // Expõe a largura real da sidebar (--sidebar-left-width) para o botão de curso e o notebook.
-  useEffect(() => {
-    const tela = document.querySelector<HTMLElement>(".tela");
-    const sidebar = tela?.querySelector<HTMLElement>(".sidebarL");
-    if (!(tela && sidebar)) return;
-
-    const updateSidebarWidth = () => {
-      tela.style.setProperty("--sidebar-left-width", `${sidebar.getBoundingClientRect().width}px`);
-    };
-
-    updateSidebarWidth();
-    const observer = new ResizeObserver(updateSidebarWidth);
-    observer.observe(sidebar);
-
-    return () => observer.disconnect();
-  }, []);
-
   // Junta módulos e aulas numa sequência única para o SVG e os nós.
   const trail = useMemo<TrailItem[]>(() => dashboardModules.flatMap((module) => [
     { type: "module", module } as const,
@@ -452,21 +435,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const pathEndIndex = Math.max(completedPathEndIndex, activeIndex);
   const activeModuleIndex = Math.max(0, dashboardModules.findIndex((module) => module.id === activeModule?.id));
 
-  // Carrossel: anterior, atual e próximo. Com menos de 3 módulos, mostra só os que existem
-  // (sem repetir o mesmo módulo nas laterais).
-  const carouselItems = useMemo(() => {
-    const total = dashboardModules.length;
-    if (total === 0) return [];
-
-    const indexes = total >= 3
-      ? [(activeModuleIndex - 1 + total) % total, activeModuleIndex, (activeModuleIndex + 1) % total]
-      : Array.from({ length: total }, (_, index) => index);
-
-    return indexes.map((moduleIndex) => ({
-      module: dashboardModules[moduleIndex],
-      current: moduleIndex === activeModuleIndex,
-    }));
-  }, [dashboardModules, activeModuleIndex]);
+  // Carrossel da referência: anterior, atual e próximo, sempre em três posições.
+  const carouselItems = dashboardModules.length > 0
+    ? [
+        dashboardModules[(activeModuleIndex - 1 + dashboardModules.length) % dashboardModules.length],
+        dashboardModules[activeModuleIndex],
+        dashboardModules[(activeModuleIndex + 1) % dashboardModules.length],
+      ].map((module, index) => ({ module, current: index === 1 }))
+    : [];
 
   // O curso atual aparece primeiro. A cor de cada card vem da posição original
   // do curso na lista (o banco novo não tem coluna de cor em "courses").
@@ -859,11 +835,11 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <strong className="progress-percent text-xl tracking-[0.08em]" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
             </div>
             <div className="module-carousel mt-4 flex items-center justify-center gap-0.5" aria-label="Navegação entre módulos">
-              <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
+              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
               <div className="module-carousel__viewport w-[min(100%,330px)] overflow-hidden">
-                <div className="module-carousel__track flex items-end justify-center">
-                  {carouselItems.map(({ module, current }) => (
-                    <div key={module.id} className={`module-carousel__item flex-[0_0_33.3333%] ${current ? "module-carousel__item--current" : ""}`}>
+                <div className="module-carousel__track grid grid-cols-3 items-end gap-0">
+                  {carouselItems.map(({ module, current }, index) => (
+                    <div key={`${module.id}-${index}`} className={`module-carousel__item ${current ? "module-carousel__item--current" : ""}`}>
                       <span className="module-carousel__name" title={module.title} style={{ color: current ? module.theme.primary : module.theme.muted, borderColor: current ? module.theme.primary : module.theme.muted }}>{module.title}</span>
                       <button
                         className="module-carousel__button"
@@ -883,7 +859,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   ))}
                 </div>
               </div>
-              <button className="module-carousel__arrow" type="button" disabled={dashboardModules.length < 2} onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
+              <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(1)} aria-label="Próximo módulo">›</button>
             </div>
           </footer>
         </div>
