@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
+import { ConfirmDialog } from "../components/dialogbox/ConfirmDialog";
 import { anotacoesRepository, cursoRepository, notebookRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -84,6 +85,33 @@ export default function NotebookPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
+  // Aviso discreto mostrado logo após criar um notebook, lembrando de dar um
+  // título. Some assim que o nome for editado/salvo ou ao trocar de contexto.
+  const [avisoNovoNotebook, setAvisoNovoNotebook] = useState(false);
+
+  // Foca o campo de nome quando um notebook recém-criado abre em edição.
+  const nomeNotebookRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (avisoNovoNotebook && editingNotebookName) {
+      nomeNotebookRef.current?.focus();
+      nomeNotebookRef.current?.select();
+    }
+  }, [avisoNovoNotebook, editingNotebookName]);
+
+  // Confirmação pendente (substitui o window.confirm). Guarda os textos do
+  // diálogo e a ação a executar caso o usuário confirme. `tone: "danger"` deixa
+  // o botão de confirmar vermelho (usado no apagar página). `tertiaryLabel`/
+  // `acaoTerciaria` habilitam uma terceira opção (ex.: "Descartar e criar").
+  const [confirmacao, setConfirmacao] = useState<null | {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone?: "danger";
+    acao: () => void;
+    tertiaryLabel?: string;
+    acaoTerciaria?: () => void;
+  }>(null);
+
   const selectedNotebook = notebooks.find(({ notebook }) => notebook.id === selectedId) ?? null;
   const selectedPage = pages.find((page) => page.id === selectedPageId) ?? null;
 
@@ -131,48 +159,89 @@ export default function NotebookPage() {
     const item = notebooks.find(({ notebook }) => notebook.id === id);
     if (!item) return;
     if (id === selectedId) return;
-    if (hasUnsavedChanges() && !window.confirm("Existem alterações não salvas. Deseja trocar de notebook e descartá-las?")) return;
 
-    setSelectedId(id);
-    setNotebookName(item.notebook.title);
-    setEditingNotebookName(false);
-    setLoadingPages(true);
-    setError("");
-    try {
-      const loadedPages = ordenarPaginas(await anotacoesRepository.listarPorNotebook(id));
-      const firstPage = loadedPages[0] ?? null;
-      setPages(loadedPages);
-      selecionarPagina(firstPage, loadedPages, true);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar as anotações.");
-    } finally {
-      setLoadingPages(false);
+    const executar = async () => {
+      setSelectedId(id);
+      setNotebookName(item.notebook.title);
+      setEditingNotebookName(false);
+      setLoadingPages(true);
+      setError("");
+      try {
+        const loadedPages = ordenarPaginas(await anotacoesRepository.listarPorNotebook(id));
+        const firstPage = loadedPages[0] ?? null;
+        setPages(loadedPages);
+        selecionarPagina(firstPage, loadedPages, true);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar as anotações.");
+      } finally {
+        setLoadingPages(false);
+      }
+    };
+
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja trocar de notebook e descartá-las?",
+        confirmLabel: "Descartar e trocar",
+        acao: () => void executar(),
+      });
+      return;
     }
+
+    await executar();
   }
 
-  // `force` pula a confirmação (usado quando acabamos de trocar de notebook, que já confirmou).
+  // `force` pula a confirmação (usado quando acabamos de trocar de notebook ou
+  // de criar uma página, casos em que a troca é a própria ação pedida).
   function selecionarPagina(page: Anotacao | null, pageList = pages, force = false) {
-    if (!force && page?.id !== selectedPageId && hasUnsavedChanges() && !window.confirm("Existem alterações não salvas. Deseja trocar de página e descartá-las?")) return;
-    setSelectedPageId(page?.id ?? null);
-    setEditingPageTitle(false);
-    setPageTitle(page?.title ?? "");
-    setPageText(page?.content ?? "");
-    if (!page && pageList.length === 0) {
-      setPageTitle("");
-      setPageText("");
+    const aplicar = () => {
+      setSelectedPageId(page?.id ?? null);
+      setEditingPageTitle(false);
+      setPageTitle(page?.title ?? "");
+      setPageText(page?.content ?? "");
+      if (!page && pageList.length === 0) {
+        setPageTitle("");
+        setPageText("");
+      }
+    };
+
+    if (!force && page?.id !== selectedPageId && hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja trocar de página e descartá-las?",
+        confirmLabel: "Descartar e trocar",
+        acao: aplicar,
+      });
+      return;
     }
+
+    aplicar();
   }
 
   function fecharNotebook() {
-    if (hasUnsavedChanges() && !window.confirm("Existem alterações não salvas. Deseja voltar e descartá-las?")) return;
-    setSelectedId(null);
-    setPages([]);
-    setSelectedPageId(null);
-    setEditingNotebookName(false);
-    setEditingPageTitle(false);
-    setPageTitle("");
-    setPageText("");
-    setError("");
+    const aplicar = () => {
+      setSelectedId(null);
+      setPages([]);
+      setSelectedPageId(null);
+      setEditingNotebookName(false);
+      setEditingPageTitle(false);
+      setPageTitle("");
+      setPageText("");
+      setError("");
+      setAvisoNovoNotebook(false);
+    };
+
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja voltar para a estante e descartá-las?",
+        confirmLabel: "Sair sem salvar",
+        acao: aplicar,
+      });
+      return;
+    }
+
+    aplicar();
   }
 
   // Detecta alterações antes de trocar de contexto ou fechar o editor.
@@ -191,6 +260,7 @@ export default function NotebookPage() {
       setNotebooks((current) => ordenarNotebooks(current.map((item) => (item.notebook.id === updated.id ? { ...item, notebook: updated } : item))));
       setNotebookName(updated.title);
       setEditingNotebookName(false);
+      setAvisoNovoNotebook(false);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar o nome do notebook.");
     } finally {
@@ -214,8 +284,10 @@ export default function NotebookPage() {
     }
   }
 
-  async function salvarTudo() {
-    if (!selectedNotebook) return;
+  // Retorna a lista de páginas já com o save aplicado, para quem encadeia uma
+  // ação logo depois (ex.: "Salvar e criar") não depender do estado do closure.
+  async function salvarTudo(): Promise<Anotacao[]> {
+    if (!selectedNotebook) return pages;
     setSaving(true);
     setError("");
     try {
@@ -230,16 +302,20 @@ export default function NotebookPage() {
         setNotebooks((current) => ordenarNotebooks(current.map((item) => (item.notebook.id === updatedNotebook.id ? { ...item, notebook: updatedNotebook } : item))));
         setNotebookName(updatedNotebook.title);
       }
+      let paginasPosSave = pages;
       if (updatedPage) {
-        const updatedPages = ordenarPaginas(pages.map((page) => (page.id === updatedPage.id ? updatedPage : page)));
-        setPages(updatedPages);
+        paginasPosSave = ordenarPaginas(pages.map((page) => (page.id === updatedPage.id ? updatedPage : page)));
+        setPages(paginasPosSave);
         setPageTitle(updatedPage.title);
         setPageText(updatedPage.content ?? "");
       }
       setEditingNotebookName(false);
       setEditingPageTitle(false);
+      setAvisoNovoNotebook(false);
+      return paginasPosSave;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar as alterações.");
+      return pages;
     } finally {
       setSaving(false);
     }
@@ -247,39 +323,146 @@ export default function NotebookPage() {
 
   async function criarPagina() {
     if (!selectedNotebook) return;
+
+    const criar = async (base: Anotacao[] = pages) => {
+      setSaving(true);
+      setError("");
+      try {
+        const created = await anotacoesRepository.criar({
+          notebook_id: selectedNotebook.notebook.id,
+          title: "Nova página",
+          content: "",
+          position: base.length,
+        });
+        const updatedPages = ordenarPaginas([...base, created]);
+        setPages(updatedPages);
+        // force: já resolvemos o descarte das alterações antes de chegar aqui.
+        selecionarPagina(created, updatedPages, true);
+      } catch (createError) {
+        setError(createError instanceof Error ? createError.message : "Não foi possível criar a página.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    // Com alterações pendentes, dá a escolha de salvar antes, descartar, ou
+    // cancelar — em vez de descartar o trabalho em silêncio.
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Você tem alterações não salvas. Salve ou descarte antes de criar a nova página.",
+        confirmLabel: "Salvar",
+        acao: async () => {
+          const paginasPosSave = await salvarTudo();
+          await criar(paginasPosSave);
+        },
+        tertiaryLabel: "Descartar",
+        acaoTerciaria: () => void criar(),
+      });
+      return;
+    }
+
+    await criar();
+  }
+
+  async function apagarPagina() {
+    if (!selectedPage) return;
+    const pagina = selectedPage;
+
+    const executar = async () => {
+      setSaving(true);
+      try {
+        await anotacoesRepository.deletar(pagina.id);
+        const remaining = pages.filter((page) => page.id !== pagina.id);
+        setPages(remaining);
+        selecionarPagina(ordenarPaginas(remaining)[0] ?? null, remaining, true);
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar página",
+      message: `Tem certeza que deseja apagar a página "${pageTitle || "Sem título"}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Apagar página",
+      tone: "danger",
+      acao: () => void executar(),
+    });
+  }
+
+  async function criarNotebook() {
     setSaving(true);
     setError("");
     try {
-      const created = await anotacoesRepository.criar({
-        notebook_id: selectedNotebook.notebook.id,
-        title: "Nova página",
-        content: "",
-        position: pages.length,
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) {
+        setError("É necessário estar autenticado para criar um notebook.");
+        return;
+      }
+
+      const created = await notebookRepository.criar({
+        title: "Novo caderno",
+        user_id: authData.user.id,
       });
-      const updatedPages = ordenarPaginas([...pages, created]);
-      setPages(updatedPages);
-      selecionarPagina(created, updatedPages);
+
+      // Insere na lista (sem curso: notebook novo não casa com nenhum título) e
+      // abre o editor direto em modo de edição do nome, com o aviso ligado.
+      setNotebooks((current) => ordenarNotebooks([...current, { notebook: created, curso: null }]));
+      setSelectedId(created.id);
+      setPages([]);
+      setSelectedPageId(null);
+      setNotebookName(created.title);
+      setPageTitle("");
+      setPageText("");
+      setEditingPageTitle(false);
+      setEditingNotebookName(true);
+      setAvisoNovoNotebook(true);
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Não foi possível criar a página.");
+      setError(createError instanceof Error ? createError.message : "Não foi possível criar o notebook.");
     } finally {
       setSaving(false);
     }
   }
 
-  async function apagarPagina() {
-    if (!selectedPage) return;
-    if (!window.confirm(`Apagar a página "${pageTitle || "Sem título"}"?`)) return;
-    setSaving(true);
-    try {
-      await anotacoesRepository.deletar(selectedPage.id);
-      const remaining = pages.filter((page) => page.id !== selectedPage.id);
-      setPages(remaining);
-      selecionarPagina(ordenarPaginas(remaining)[0] ?? null, remaining, true);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
-    } finally {
-      setSaving(false);
-    }
+  async function apagarNotebook() {
+    if (!selectedNotebook) return;
+    const notebookAtual = selectedNotebook.notebook;
+
+    const executar = async () => {
+      setSaving(true);
+      try {
+        // Sem cascade no banco: apaga as páginas antes do notebook para não
+        // deixar órfãs (mesmo passo do CursoNotebook).
+        await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.id)));
+        await notebookRepository.deletar(notebookAtual.id);
+        setNotebooks((current) => current.filter((item) => item.notebook.id !== notebookAtual.id));
+        // Volta para a estante e limpa o editor.
+        setSelectedId(null);
+        setPages([]);
+        setSelectedPageId(null);
+        setEditingNotebookName(false);
+        setEditingPageTitle(false);
+        setNotebookName("");
+        setPageTitle("");
+        setPageText("");
+        setError("");
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar o notebook.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar notebook",
+      message: `Tem certeza que deseja apagar o notebook "${notebookAtual.title}"? Todas as suas páginas serão apagadas junto. Esta ação não pode ser desfeita.`,
+      confirmLabel: "Apagar notebook",
+      tone: "danger",
+      acao: () => void executar(),
+    });
   }
 
   return (
@@ -292,10 +475,16 @@ export default function NotebookPage() {
           {/* Estante: pesquisa e cards em ordem alfabética. */}
           {!selectedNotebook && (
             <>
-              <header className="mb-[32px]">
-                <p className="mb-[10px] text-[10px] font-bold uppercase tracking-[1.4px] text-violet-pale/50">PLATAFORMA / <span className="text-gold">NOTEBOOK</span></p>
-                <h1 className="font-display text-[36px] leading-[1.05] tracking-[-0.8px] text-ink min-[760px]:text-[46px]">Notebook</h1>
-                <p className="mt-[9px] text-[14px] text-muted">Escolha um caderno para abrir suas anotações e acompanhar seus estudos.</p>
+              <header className="mb-[32px] flex items-end justify-between gap-4">
+                <div>
+                  <p className="mb-[10px] text-[10px] font-bold uppercase tracking-[1.4px] text-violet-pale/50">PLATAFORMA / <span className="text-gold">NOTEBOOK</span></p>
+                  <h1 className="font-display text-[36px] leading-[1.05] tracking-[-0.8px] text-ink min-[760px]:text-[46px]">Notebook</h1>
+                  <p className="mt-[9px] text-[14px] text-muted">Escolha um caderno para abrir suas anotações e acompanhar seus estudos.</p>
+                </div>
+                <button type="button" onClick={() => void criarNotebook()} disabled={saving} className="inline-flex h-[48px] shrink-0 cursor-pointer items-center justify-center gap-[9px] rounded-md bg-gold px-[20px] text-[13px] font-bold text-violet outline-none transition hover:bg-gold-light hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-gold disabled:cursor-not-allowed disabled:opacity-55">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  Criar notebook
+                </button>
               </header>
 
               {loading && <p className="mt-10 text-sm text-muted">Carregando seus cadernos...</p>}
@@ -310,19 +499,42 @@ export default function NotebookPage() {
           {selectedNotebook && <div className="flex min-h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-xl border border-[#a486d5]/20 bg-[#1d1a31] shadow-2xl shadow-black/20 min-[1000px]:flex-row">
             <aside className="w-full shrink-0 border-b border-[#a486d5]/20 bg-[#171628] p-5 min-[1000px]:w-[320px] min-[1000px]:border-b-0 min-[1000px]:border-r">
               <button type="button" onClick={fecharNotebook} className="mb-6 text-sm text-[#b8aacb] hover:text-[#f4eeff]">← Voltar para a estante</button>
-              <div className="rounded-lg border border-[#d4b56d]/45 bg-[#f7e7b5] p-4 text-[#302719] shadow-[3px_4px_0_rgba(94,65,28,0.2)]"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#806a3d]">{selectedNotebook.curso?.title || "Sem curso"}</p><div className="mt-3 text-3xl">📖</div><label className="mt-4 block text-xs font-bold text-[#806a3d]" htmlFor="notebook-name">Nome do notebook</label><p className="mt-1 break-words py-1 text-lg font-bold text-[#493a25]">{notebookName || "Anotações"}</p></div><button type="button" onClick={() => void salvarTudo()} disabled={saving} className="mt-3 w-full rounded-md bg-[#a486d5] px-3 py-2 text-sm font-bold text-[#171628] hover:bg-[#c9b8e8] disabled:opacity-60">{saving ? "Salvando..." : "Salvar"}</button><div className="mt-8"><div className="mb-2 flex items-center justify-between"><h2 className="text-xs font-bold uppercase tracking-[0.14em] text-[#a99bbb]">Trocar notebook</h2><span className="text-xs text-[#8f829f]">{notebooks.length}</span></div><div className="max-h-[38vh] space-y-2 overflow-y-auto pr-1 min-[1000px]:max-h-[48vh]">{notebooks.map((item) => <button key={item.notebook.id} type="button" onClick={() => void abrirNotebook(item.notebook.id)} className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition ${item.notebook.id === selectedId ? "border-[#a486d5] bg-[#a486d5]/15 text-[#f4eeff]" : "border-transparent text-[#b8aacb] hover:border-[#a486d5]/25 hover:bg-[#a486d5]/10"}`}><span>📖</span><span className="min-w-0"><strong className="block truncate">{item.notebook.title}</strong><small className="block truncate text-xs text-[#8f829f]">{item.curso?.title || "Sem curso"}</small></span></button>)}</div></div>
+              <div className="rounded-lg border border-[#d4b56d]/45 bg-[#f7e7b5] p-4 text-[#302719] shadow-[3px_4px_0_rgba(94,65,28,0.2)]"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#806a3d]">{selectedNotebook.curso?.title || "Sem curso"}</p><div className="mt-3 text-3xl">📖</div><label className="mt-4 block text-xs font-bold text-[#806a3d]" htmlFor="notebook-name">Nome do notebook</label><p className="mt-1 break-words py-1 text-lg font-bold text-[#493a25]">{notebookName || "Anotações"}</p></div><button type="button" onClick={() => void salvarTudo()} disabled={saving} className="mt-3 w-full rounded-md bg-[#a486d5] px-3 py-2 text-sm font-bold text-[#171628] hover:bg-[#c9b8e8] disabled:opacity-60">{saving ? "Salvando..." : "Salvar"}</button><button type="button" onClick={() => void apagarNotebook()} disabled={saving} className="mt-3 w-full rounded-md border border-[#9b3948]/50 px-3 py-2 text-xs font-bold text-[#d98f9a] outline-none hover:bg-[#9b3948]/10 focus-visible:ring-2 focus-visible:ring-[#9b3948] disabled:opacity-60">Apagar notebook</button><div className="mt-8"><div className="mb-2 flex items-center justify-between"><h2 className="text-xs font-bold uppercase tracking-[0.14em] text-[#a99bbb]">Trocar notebook</h2><span className="text-xs text-[#8f829f]">{notebooks.length}</span></div><div className="max-h-[38vh] space-y-2 overflow-y-auto pr-1 min-[1000px]:max-h-[48vh]">{notebooks.map((item) => <button key={item.notebook.id} type="button" onClick={() => void abrirNotebook(item.notebook.id)} className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition ${item.notebook.id === selectedId ? "border-[#a486d5] bg-[#a486d5]/15 text-[#f4eeff]" : "border-transparent text-[#b8aacb] hover:border-[#a486d5]/25 hover:bg-[#a486d5]/10"}`}><span>📖</span><span className="min-w-0"><strong className="block truncate">{item.notebook.title}</strong><small className="block truncate text-xs text-[#8f829f]">{item.curso?.title || "Sem curso"}</small></span></button>)}</div></div>
             </aside>
 
             <section className="flex min-h-[600px] min-w-0 flex-1 flex-col bg-[#ead18b] text-[#302719]">
-              <header className="flex items-center justify-between gap-4 border-b border-[#c29b55]/70 bg-[#edcf82] px-5 py-4"><div className="flex min-w-0 flex-1 items-center gap-3"><input aria-label="Nome do notebook" value={notebookName} onChange={(event) => setNotebookName(event.target.value)} disabled={!editingNotebookName} className="min-w-0 flex-1 border-b-2 border-[#b58d45]/60 bg-transparent px-0 py-1 font-display text-2xl text-[#493a25] outline-none placeholder:text-[#806a3d] focus:border-[#80602b] disabled:cursor-default disabled:border-transparent" placeholder="Nome do notebook" /><button type="button" onClick={() => (editingNotebookName ? void concluirNomeNotebook() : setEditingNotebookName(true))} disabled={saving} className="shrink-0 rounded-md border border-[#80602b]/45 px-2 py-1 text-xs font-bold text-[#80602b] hover:bg-[#fff3c2] disabled:opacity-60">{editingNotebookName ? "Concluir" : "Editar nome"}</button></div><span className="text-3xl" aria-hidden="true">📖</span></header>
+              <header className="flex items-center justify-between gap-4 border-b border-[#c29b55]/70 bg-[#edcf82] px-5 py-4"><div className="flex min-w-0 flex-1 items-center gap-3"><input ref={nomeNotebookRef} aria-label="Nome do notebook" value={notebookName} onChange={(event) => setNotebookName(event.target.value)} disabled={!editingNotebookName} className="min-w-0 flex-1 border-b-2 border-[#b58d45]/60 bg-transparent px-0 py-1 font-display text-2xl text-[#493a25] outline-none placeholder:text-[#806a3d] focus:border-[#80602b] disabled:cursor-default disabled:border-transparent" placeholder="Nome do notebook" /><button type="button" onClick={() => (editingNotebookName ? void concluirNomeNotebook() : setEditingNotebookName(true))} disabled={saving} className="shrink-0 rounded-md border border-[#80602b]/45 px-2 py-1 text-xs font-bold text-[#80602b] hover:bg-[#fff3c2] disabled:opacity-60">{editingNotebookName ? "Concluir" : "Editar nome"}</button></div><span className="text-3xl" aria-hidden="true">📖</span></header>
+              {avisoNovoNotebook && <p className="border-b border-[#c29b55]/50 bg-[#fff8dc]/70 px-5 py-2 text-xs text-[#806a3d]">Dê um título ao seu caderno ou deixe como "Novo caderno".</p>}
               <div className="flex items-center gap-2 overflow-x-auto border-b border-[#c29b55]/50 bg-[#f0d994] px-4 py-2">{pages.map((page) => <button key={page.id} type="button" onClick={() => selecionarPagina(page)} className={`shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold ${page.id === selectedPageId ? "border-[#80602b] bg-[#80602b] text-[#fff8dc]" : "border-[#c29b55]/55 bg-[#fff3c2]/60 text-[#806a3d] hover:bg-[#fff8dc]"}`}>{page.title || "Sem título"}</button>)}<button type="button" onClick={() => void criarPagina()} disabled={saving} className="shrink-0 rounded-md border border-dashed border-[#80602b]/60 px-3 py-1.5 text-xs font-bold text-[#80602b] hover:bg-[#fff3c2]">+ Nova página</button></div>
-              {loadingPages ? <div className="flex flex-1 items-center justify-center text-sm text-[#806a3d]">Abrindo as anotações...</div> : <div className="flex min-h-0 flex-1 flex-col p-5 min-[1000px]:p-8">{selectedPage ? <><div className="mb-4 flex flex-col gap-3 min-[700px]:flex-row min-[700px]:items-center"><input value={pageTitle} onChange={(event) => setPageTitle(event.target.value)} disabled={!editingPageTitle} className="min-w-0 flex-1 border-b-2 border-[#c29b55] bg-transparent px-1 py-2 font-display text-2xl text-[#493a25] outline-none placeholder:text-[#a38b5c] disabled:cursor-default disabled:border-transparent" placeholder="Nome da página" /><button type="button" onClick={() => (editingPageTitle ? void concluirTituloPagina() : setEditingPageTitle(true))} disabled={saving} className="shrink-0 rounded-md border border-[#80602b]/45 px-3 py-2 text-xs font-bold text-[#80602b] hover:bg-[#fff3c2] disabled:opacity-60">{editingPageTitle ? "Concluir" : "Editar nome"}</button><button type="button" onClick={() => void salvarTudo()} disabled={saving} className="rounded-md bg-[#80602b] px-4 py-2 text-sm font-bold text-[#fff8dc] hover:bg-[#674b22] disabled:opacity-60">{saving ? "Salvando..." : "Salvar"}</button></div><textarea value={pageText} onChange={(event) => setPageText(event.target.value)} placeholder="Escreva suas anotações aqui..." className="min-h-[320px] flex-1 resize-none rounded-md border border-[#c29b55]/70 bg-[#fff8dc]/75 p-5 text-base leading-7 text-[#493a25] outline-none placeholder:text-[#a38b5c] focus:border-[#80602b]" /><div className="mt-3 flex justify-between"><span className="text-xs text-[#8d7547]">As páginas são ordenadas pelo título.</span><button type="button" onClick={() => void apagarPagina()} disabled={saving} className="text-xs font-bold text-[#9b3948] hover:underline">Apagar página</button></div></> : <div className="flex flex-1 flex-col items-center justify-center text-center"><p className="text-5xl">📝</p><h2 className="mt-4 font-display text-2xl">Este notebook ainda está vazio</h2><p className="mt-2 text-sm text-[#806a3d]">Crie uma página para começar a escrever.</p><button type="button" onClick={() => void criarPagina()} className="mt-5 rounded-md bg-[#80602b] px-4 py-2 text-sm font-bold text-[#fff8dc]">Criar primeira página</button></div>}</div>}
+              {loadingPages ? <div className="flex flex-1 items-center justify-center text-sm text-[#806a3d]">Abrindo as anotações...</div> : <div className="flex min-h-0 flex-1 flex-col p-5 min-[1000px]:p-8">{selectedPage ? <><div className="mb-4 flex flex-col gap-3 min-[700px]:flex-row min-[700px]:items-center"><input value={pageTitle} onChange={(event) => setPageTitle(event.target.value)} disabled={!editingPageTitle} className="min-w-0 flex-1 border-b-2 border-[#c29b55] bg-transparent px-1 py-2 font-display text-2xl text-[#493a25] outline-none placeholder:text-[#a38b5c] disabled:cursor-default disabled:border-transparent" placeholder="Nome da página" /><button type="button" onClick={() => (editingPageTitle ? void concluirTituloPagina() : setEditingPageTitle(true))} disabled={saving} className="shrink-0 rounded-md border border-[#80602b]/45 px-3 py-2 text-xs font-bold text-[#80602b] hover:bg-[#fff3c2] disabled:opacity-60">{editingPageTitle ? "Concluir" : "Editar nome"}</button><button type="button" onClick={() => void salvarTudo()} disabled={saving} className="rounded-md bg-[#80602b] px-4 py-2 text-sm font-bold text-[#fff8dc] hover:bg-[#674b22] disabled:opacity-60">{saving ? "Salvando..." : "Salvar"}</button></div><textarea value={pageText} onChange={(event) => setPageText(event.target.value)} placeholder="Escreva suas anotações aqui..." className="min-h-[320px] flex-1 resize-none rounded-md border border-[#c29b55]/70 bg-[#fff8dc]/75 p-5 text-base leading-7 text-[#493a25] outline-none placeholder:text-[#a38b5c] focus:border-[#80602b]" /><div className="mt-3 flex justify-between"><span className="text-xs text-[#8d7547]">As páginas são ordenadas pelo título.</span><button type="button" onClick={() => void apagarPagina()} disabled={saving} className="text-xs font-bold text-[#9b3948] hover:underline disabled:opacity-60">Apagar página</button></div></> : <div className="flex flex-1 flex-col items-center justify-center text-center"><p className="text-5xl">📝</p><h2 className="mt-4 font-display text-2xl">Este notebook ainda está vazio</h2><p className="mt-2 text-sm text-[#806a3d]">Crie uma página para começar a escrever.</p><button type="button" onClick={() => void criarPagina()} className="mt-5 rounded-md bg-[#80602b] px-4 py-2 text-sm font-bold text-[#fff8dc]">Criar primeira página</button></div>}</div>}
               {error && <p className="border-t border-[#9b3948]/30 bg-[#f0c7b8] px-5 py-2 text-xs text-[#74303c]">{error}</p>}
             </section>
           </div>}
         </div>
         </main>
       </div>
+
+      <ConfirmDialog
+        open={confirmacao !== null}
+        title={confirmacao?.title ?? ""}
+        message={confirmacao?.message}
+        confirmLabel={confirmacao?.confirmLabel}
+        tone={confirmacao?.tone}
+        tertiaryLabel={confirmacao?.tertiaryLabel}
+        onTertiary={
+          confirmacao?.acaoTerciaria
+            ? () => {
+                confirmacao.acaoTerciaria?.();
+                setConfirmacao(null);
+              }
+            : undefined
+        }
+        onConfirm={() => {
+          confirmacao?.acao();
+          setConfirmacao(null);
+        }}
+        onCancel={() => setConfirmacao(null)}
+      />
     </PageLayout>
   );
 }
