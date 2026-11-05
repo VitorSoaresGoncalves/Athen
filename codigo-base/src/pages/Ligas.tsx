@@ -1,320 +1,233 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
-import {
-  RankBadge,
-  RankingPodium,
-  type PodiumHeight,
-  type PodiumPlayer,
-  type Tier,
-} from "../components/ranking/RankingPodium";
+import { RankBadge, RankingPodium, type PodiumHeight, type PodiumPlayer, type Tier } from "../components/ranking/RankingPodium";
 import { temporadaRepository } from "../data/repositories";
-import type { Database } from "../types/database";
 import "./Ligas.css";
 
-// ---------------------------------------------------------------------------
-// Ligas — temporadas competitivas (ligas globais por XP).
-//
-// A página consome a temporada corrente do banco (migrações 0026–0029):
-//   - current_season  -> a janela semanal aberta/em apuração;
-//   - my_season_summary -> categoria, grupo, XP de temporada e posição do usuário;
-//   - my_season_group   -> a classificação do PRÓPRIO grupo (Q066: só o seu grupo);
-//   - my_season_history -> histórico das temporadas do usuário.
-//
-// As categorias (Bronze→Mestre) são as faixas competitivas; a identidade exibida
-// é só a padrão (display name/avatar/banner — Q069), e linhas ocultas (conta
-// desativada — Q070) aparecem sem nome/avatar mas com posição/XP.
-// ---------------------------------------------------------------------------
+type Temporada = NonNullable<Awaited<ReturnType<typeof temporadaRepository.atual>>>;
+type Resumo = Awaited<ReturnType<typeof temporadaRepository.meuResumo>>;
+type Classificacao = Awaited<ReturnType<typeof temporadaRepository.minhaClassificacao>>;
+type Participante = Classificacao[number];
+type Estado = { temporada: Temporada | null; resumo: Resumo; grupo: Classificacao };
+type Movimento = "promoted" | "stayed" | "demoted";
+const nomesZonas = { promoted: "Zona de promoção", stayed: "Zona de permanência", demoted: "Zona de rebaixamento" };
 
-type SeasonCategory = Database["public"]["Enums"]["season_category"];
-
-// Jogador do grupo, já normalizado para o pódio/lista.
-type Jogador = { id: string; nome: string; pontos: number; posicao: number; voce: boolean; oculto: boolean };
-
-// A categoria do banco (season_category) é exatamente o Tier visual do cliente.
 const categorias: { tier: Tier; nome: string }[] = [
-  { tier: "bronze", nome: "Bronze" },
-  { tier: "silver", nome: "Prata" },
-  { tier: "gold", nome: "Ouro" },
-  { tier: "platinum", nome: "Platina" },
-  { tier: "diamond", nome: "Diamante" },
-  { tier: "master", nome: "Mestre" },
+  { tier: "bronze", nome: "Bronze" }, { tier: "silver", nome: "Prata" },
+  { tier: "gold", nome: "Ouro" }, { tier: "platinum", nome: "Platina" },
+  { tier: "diamond", nome: "Diamante" }, { tier: "master", nome: "Mestre" },
+];
+const nomeCategoria = (categoria: string) => categorias.find((item) => item.tier === categoria)?.nome ?? "Mestre";
+const tierCategoria = (categoria: string): Tier => categorias.find((item) => item.tier === categoria)?.tier ?? "master";
+const textoXp = (pontos: number) => `${pontos.toLocaleString("pt-BR")} XP`;
+const nomeExibido = (pessoa: Participante) => pessoa.hidden || !pessoa.display_name ? "Participante oculto" : pessoa.display_name;
+const formatarData = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", {
+  timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit",
+});
+
+function tempoRestante(fim: string, agora: number): string {
+  const minutos = Math.floor((new Date(fim).getTime() - agora) / 60_000);
+  if (minutos <= 0) return "encerrando";
+  const dias = Math.floor(minutos / 1440);
+  const horas = Math.floor((minutos % 1440) / 60);
+  if (dias > 0) return `${dias}d ${horas}h`;
+  if (horas > 0) return `${horas}h ${minutos % 60}min`;
+  return `${minutos}min`;
+}
+
+const ordemPodio: { indice: number; altura: PodiumHeight }[] = [
+  { indice: 3, altura: "fourth" }, { indice: 1, altura: "second" },
+  { indice: 0, altura: "first" }, { indice: 2, altura: "third" }, { indice: 4, altura: "fifth" },
 ];
 
-const nomeDaCategoria = Object.fromEntries(categorias.map((c) => [c.tier, c.nome])) as Record<Tier, string>;
-
-// season_category e Tier compartilham as mesmas chaves; mapeamento direto.
-const categoriaParaTier = (categoria: SeasonCategory): Tier => categoria as Tier;
-
-const errMsg = (error: unknown, fallback = "Erro desconhecido.") => (error instanceof Error ? error.message : fallback);
-
-const formatarXp = (pontos: number) => `${pontos.toLocaleString("pt-BR")} XP`;
-
-// Nome exibido de uma linha do grupo, respeitando a ocultação de identidade (Q070).
-const nomeExibido = (nome: string | null, oculto: boolean) =>
-  oculto || !nome ? "Participante oculto" : nome;
-
-// O pódio é exibido na ordem visual: 4º, 2º, 1º, 3º, 5º.
-const ORDEM_DO_PODIO: { indice: number; altura: PodiumHeight }[] = [
-  { indice: 3, altura: "fourth" },
-  { indice: 1, altura: "second" },
-  { indice: 0, altura: "first" },
-  { indice: 2, altura: "third" },
-  { indice: 4, altura: "fifth" },
-];
-
-function montarPodio(jogadores: Jogador[], tier: Tier): PodiumPlayer[] {
-  return ORDEM_DO_PODIO.filter(({ indice }) => jogadores[indice]).map(({ indice, altura }) => ({
-    position: `${jogadores[indice].posicao}º`,
-    name: jogadores[indice].nome,
-    detail: formatarXp(jogadores[indice].pontos),
-    tier,
-    height: altura,
-    isYou: jogadores[indice].voce,
+function montarPodio(grupo: Classificacao, tier: Tier): PodiumPlayer[] {
+  return ordemPodio.filter(({ indice }) => grupo[indice]).map(({ indice, altura }) => ({
+    position: `${grupo[indice].rank_position}º`, name: nomeExibido(grupo[indice]),
+    detail: textoXp(grupo[indice].season_xp), tier, height: altura, isYou: grupo[indice].is_self,
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Página
-// ---------------------------------------------------------------------------
+function Seta({ sobe }: { sobe: boolean }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={sobe ? "M12 19V6M6 11l6-6 6 6" : "M12 5v13M6 13l6 6 6-6"} /></svg>;
+}
+
+function descreverProjecao(pessoa: Participante, categoria: string) {
+  const destino = nomeCategoria(pessoa.projected_category);
+  if (pessoa.movement === "promoted") return `Se a semana fechasse agora, você subiria para ${destino}.`;
+  if (pessoa.movement === "demoted") return `Se a semana fechasse agora, você desceria para ${destino}.`;
+  return `Se a semana fechasse agora, você continuaria em ${nomeCategoria(categoria)}.`;
+}
+
 export default function Ligas() {
+  const [estado, setEstado] = useState<Estado>({ temporada: null, resumo: null, grupo: [] });
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-
-  const [temporadaId, setTemporadaId] = useState<string | null>(null);
-  const [temporadaStatus, setTemporadaStatus] = useState<Database["public"]["Enums"]["season_status"] | null>(null);
-  const [minhaCategoria, setMinhaCategoria] = useState<SeasonCategory | null>(null);
-  const [minhaPosicao, setMinhaPosicao] = useState<number | null>(null);
-  const [meuXp, setMeuXp] = useState(0);
-  const [tamanhoGrupo, setTamanhoGrupo] = useState(0);
-  const [temGrupo, setTemGrupo] = useState(false);
-  const [jogadores, setJogadores] = useState<Jogador[]>([]);
+  const [agora, setAgora] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelado = false;
-
+    let emCurso = false;
     async function carregar() {
-      setCarregando(true);
-      setErro("");
+      if (emCurso) return;
+      emCurso = true;
       try {
         const temporada = await temporadaRepository.atual();
-        if (cancelado) return;
-
-        if (!temporada) {
-          // Nenhuma temporada ativa: estado de formação/espera (Q141).
-          setTemporadaId(null);
-          setTemporadaStatus(null);
-          return;
-        }
-
-        setTemporadaId(temporada.id);
-        setTemporadaStatus(temporada.status);
-
-        const [resumo, grupo] = await Promise.all([
+        const [resumo, grupo] = temporada ? await Promise.all([
           temporadaRepository.meuResumo(temporada.id),
-          temporadaRepository.meuGrupo(temporada.id),
-        ]);
-        if (cancelado) return;
-
-        if (resumo) {
-          setMinhaCategoria(resumo.category);
-          setMinhaPosicao(resumo.final_rank);
-          setMeuXp(resumo.season_xp);
-          setTamanhoGrupo(resumo.group_size);
-          setTemGrupo(Boolean(resumo.group_id));
+          temporadaRepository.minhaClassificacao(temporada.id),
+        ]) : [null, []];
+        if (!cancelado) {
+          setEstado({ temporada, resumo, grupo });
+          setErro("");
         }
-
-        setJogadores(
-          grupo.map((linha) => ({
-            id: linha.user_id,
-            nome: nomeExibido(linha.display_name, linha.hidden),
-            pontos: linha.season_xp,
-            posicao: linha.rank_position,
-            voce: linha.is_self,
-            oculto: linha.hidden,
-          }))
-        );
       } catch (error) {
-        if (!cancelado) setErro(errMsg(error, "Erro ao carregar as ligas."));
+        if (!cancelado) setErro(error instanceof Error ? error.message : "Erro ao carregar as ligas.");
       } finally {
+        emCurso = false;
         if (!cancelado) setCarregando(false);
       }
     }
-
+    const atualizar = () => {
+      if (document.visibilityState !== "visible") return;
+      setAgora(Date.now());
+      void carregar();
+    };
     void carregar();
+    const timer = window.setInterval(atualizar, 60_000);
+    document.addEventListener("visibilitychange", atualizar);
+    window.addEventListener("focus", atualizar);
     return () => {
       cancelado = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", atualizar);
+      window.removeEventListener("focus", atualizar);
     };
   }, []);
 
-  const tierAtual = useMemo<Tier>(
-    () => (minhaCategoria ? categoriaParaTier(minhaCategoria) : "bronze"),
-    [minhaCategoria]
-  );
+  const { temporada, resumo, grupo } = estado;
+  const tier = tierCategoria(resumo?.category ?? "bronze");
+  const eu = grupo.find((pessoa) => pessoa.is_self);
+  const temGrupo = Boolean(resumo?.group_id);
+  const participantes = temGrupo ? grupo : [];
+  const tamanhoGrupo = temGrupo ? participantes.length : resumo?.group_size ?? 0;
+  const minhaPosicao = eu?.rank_position ?? resumo?.final_rank;
+  const meuXp = eu?.season_xp ?? resumo?.season_xp ?? 0;
+  const podio = montarPodio(participantes, tier);
+  const janelaFinal = temporada ? new Date(temporada.ends_at).getTime() - agora <= 24 * 60 * 60 * 1000 : false;
+  // Faixas contíguas preservam a ordem e os empates recebidos do servidor,
+  // inclusive quando os zeros ainda não exibem a marca de rebaixamento.
+  const faixas: { movimento: Movimento; pessoas: Classificacao }[] = [];
+  for (const pessoa of participantes) {
+    const movimento: Movimento = pessoa.season_xp === 0 && !janelaFinal ? "stayed"
+      : pessoa.movement === "promoted" ? "promoted" : pessoa.movement === "demoted" ? "demoted" : "stayed";
+    const ultima = faixas.at(-1);
+    if (ultima?.movimento === movimento) ultima.pessoas.push(pessoa);
+    else faixas.push({ movimento, pessoas: [pessoa] });
+  }
+  if (!faixas.some(faixa => faixa.movimento === "promoted")) faixas.unshift({ movimento: "promoted", pessoas: [] });
+  if (!faixas.some(faixa => faixa.movimento === "demoted")) faixas.push({ movimento: "demoted", pessoas: [] });
+  const positivos = participantes.filter(pessoa => pessoa.season_xp > 0).length;
+  const zerosAguardandoMarca = !janelaFinal && participantes.some(pessoa => pessoa.season_xp === 0 && pessoa.movement === "demoted");
+  const promocaoVazia = tier === "master" ? "Mestre é a categoria mais alta; não há promoção."
+    : positivos < 10 ? `A promoção exige pelo menos 10 participantes com XP. Este grupo tem ${positivos}.`
+    : "Nenhum participante está na zona de promoção nesta atualização.";
+  const rebaixamentoVazio = tier === "bronze" ? "Bronze não tem rebaixamento: é a categoria inicial."
+    : zerosAguardandoMarca ? "Participantes com 0 XP recebem a marca de rebaixamento nas últimas 24 horas."
+    : positivos < 10 ? "O rebaixamento por posição exige pelo menos 10 participantes com XP; quem fecha com 0 XP desce uma categoria."
+    : "Nenhum participante está na zona de rebaixamento nesta atualização.";
+  const inscricao = eu?.entry_kind === "snapshot" ? "Inscrito no início da semana"
+    : eu?.entry_kind === "late" ? "Entrada durante a semana" : "Inscrição registrada nesta temporada";
 
-  // Posição do usuário no grupo (prioriza o resumo; cai para a linha do grupo).
-  const posicaoNoGrupo = useMemo(() => {
-    if (minhaPosicao) return minhaPosicao;
-    const eu = jogadores.find((j) => j.voce);
-    return eu?.posicao ?? null;
-  }, [minhaPosicao, jogadores]);
+  return <PageLayout variant="bare" className="ligas-layout">
+    <div className="ligas"><main className="ligas__main">
+      <div className="ligas__brilho" />
+      <header className="ligas__cabecalho"><div>
+        <p className="ligas__caminho">PLATAFORMA / <span>LIGAS</span></p>
+        <h1 className="ligas__titulo">Ligas</h1>
+        <p className="ligas__subtitulo">{temporada
+          ? `Temporada de ${formatarData(temporada.starts_at)} a ${formatarData(temporada.ends_at)} · termina em ${tempoRestante(temporada.ends_at, agora)}`
+          : "Temporada semanal de XP. Compita no seu grupo e suba de categoria."}</p>
+      </div></header>
 
-  const podio = montarPodio(jogadores, tierAtual);
+      {carregando ? <p className="ligas__subtitulo" role="status">Carregando ligas...</p>
+        : erro && !temporada ? <p className="ligas__subtitulo" role="alert">{erro}</p>
+        : <>
+          {erro && <p className="ligas__aviso" role="alert">Não foi possível atualizar agora ({erro}). Exibindo os últimos dados carregados.</p>}
+          <section className="ligas__seletor" aria-label="Categorias da liga">
+            {categorias.map((categoria) => {
+              const ativa = Boolean(resumo && categoria.tier === tier);
+              return <div key={categoria.tier} className={`ligas__liga${ativa ? " ligas__liga--ativa" : ""}`} aria-current={ativa ? "true" : undefined}>
+                {ativa && <span className="ligas__liga-tag">SUA LIGA</span>}
+                <RankBadge tier={categoria.tier} size={44} />
+                <span className="ligas__liga-nome">{categoria.nome}</span>
+              </div>;
+            })}
+          </section>
 
-  const semTemporada = !carregando && !erro && temporadaId === null;
-  const emFormacao = !carregando && !erro && temporadaId !== null && !temGrupo;
-
-  return (
-    <PageLayout variant="bare">
-      <div className="ligas">
-        <main className="ligas__main">
-          <div className="ligas__brilho" />
-
-          <header className="ligas__cabecalho">
-            <div>
-              <p className="ligas__caminho">PLATAFORMA / <span>LIGAS</span></p>
-              <h1 className="ligas__titulo">Ligas</h1>
-              <p className="ligas__subtitulo">
-                Temporada semanal de XP. Compita no seu grupo e suba de categoria.
-              </p>
-            </div>
-          </header>
-
-          {carregando ? (
-            <p className="ligas__subtitulo">Carregando ligas...</p>
-          ) : erro ? (
-            <p className="ligas__subtitulo">{erro}</p>
-          ) : semTemporada ? (
-            <section className="ligas__painel">
-              <p className="ligas__rotulo">SEM TEMPORADA ATIVA</p>
-              <h2 className="ligas__painel-titulo">Aguardando a próxima temporada</h2>
-              <p className="ligas__progresso-texto">
-                Nenhuma temporada está aberta agora. Estude para entrar automaticamente
-                quando a próxima começar.
-              </p>
-            </section>
-          ) : (
-            <>
-              {/* Faixas competitivas (Bronze→Mestre). Destaca a sua categoria. */}
-              <section className="ligas__seletor" aria-label="Categorias da liga">
-                {categorias.map((categoria) => {
-                  const ativa = categoria.tier === tierAtual;
-                  return (
-                    <div
-                      key={categoria.tier}
-                      className={`ligas__liga${ativa ? " ligas__liga--ativa" : ""}`}
-                      aria-current={ativa ? "true" : undefined}
-                    >
-                      {ativa && <span className="ligas__liga-tag">SUA LIGA</span>}
-                      <RankBadge tier={categoria.tier} size={44} />
-                      <span className="ligas__liga-nome">{categoria.nome}</span>
-                    </div>
-                  );
-                })}
+          {!temporada ? <section className="ligas__painel">
+            <p className="ligas__rotulo">SEM TEMPORADA ATIVA</p>
+            <h2 className="ligas__painel-titulo">Aguardando a próxima temporada</h2>
+            <p className="ligas__progresso-texto">A temporada desta semana ainda não foi aberta. Aguarde a atualização automática.</p>
+          </section> : !resumo ? <section className="ligas__painel">
+            <p className="ligas__rotulo">VOCÊ AINDA NÃO ESTÁ NA LIGA</p>
+            <h2 className="ligas__painel-titulo">Conclua uma aula para entrar</h2>
+            <p className="ligas__progresso-texto">Ao concluir uma aula nesta semana você entra na temporada. Sua categoria anterior é preservada; a primeira participação começa em Bronze.</p>
+          </section> : <>
+            <div className="ligas__colunas">
+              <section className="ligas__painel ligas__podio">
+                <div className="ligas__painel-cabecalho"><div>
+                  <p className="ligas__rotulo">LIGA {nomeCategoria(tier).toUpperCase()}</p>
+                  <h2 className="ligas__painel-titulo">Top 5 do seu grupo</h2>
+                </div><span className="ligas__painel-resumo">{tamanhoGrupo} {tamanhoGrupo === 1 ? "participante" : "participantes"}</span></div>
+                {!temGrupo ? <p className="ligas__subtitulo">Seu grupo ainda está em formação. Volte em instantes.</p>
+                  : podio.length > 0 ? <RankingPodium players={podio} hideTier ariaLabel={`Top 5 do seu grupo na liga ${nomeCategoria(tier)}`} />
+                  : <p className="ligas__subtitulo">Ninguém pontuou no seu grupo ainda.</p>}
               </section>
-
-              <div className="ligas__colunas">
-                {/* Pódio do próprio grupo */}
-                <section className="ligas__painel ligas__podio">
-                  <div className="ligas__painel-cabecalho">
-                    <div>
-                      <p className="ligas__rotulo">LIGA {nomeDaCategoria[tierAtual].toUpperCase()}</p>
-                      <h2 className="ligas__painel-titulo">Top 5 do seu grupo</h2>
-                    </div>
-                    <span className="ligas__painel-resumo">
-                      {tamanhoGrupo} {tamanhoGrupo === 1 ? "participante" : "participantes"}
-                    </span>
-                  </div>
-                  {emFormacao ? (
-                    <p className="ligas__subtitulo">
-                      Seu grupo ainda está em formação. Volte em instantes.
-                    </p>
-                  ) : podio.length > 0 ? (
-                    <RankingPodium players={podio} hideTier ariaLabel={`Top 5 do seu grupo na liga ${nomeDaCategoria[tierAtual]}`} />
-                  ) : (
-                    <p className="ligas__subtitulo">Ninguém pontuou no seu grupo ainda.</p>
-                  )}
-                </section>
-
-                {/* Resumo do usuário */}
-                <aside className="ligas__painel ligas__resumo">
-                  <p className="ligas__rotulo">SUA TEMPORADA</p>
-                  {minhaCategoria ? (
-                    <>
-                      <div className="ligas__resumo-liga">
-                        <RankBadge tier={tierAtual} size={44} />
-                        <div>
-                          <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria[tierAtual]}</h2>
-                          {temporadaStatus === "closing" && (
-                            <p className="ligas__resumo-proxima">Apuração em andamento</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="ligas__numeros">
-                        <div>
-                          <span className="ligas__numero-rotulo">POSIÇÃO</span>
-                          <strong className="ligas__numero-valor">
-                            {posicaoNoGrupo ? `${posicaoNoGrupo}º` : "—"}
-                          </strong>
-                          <span className="ligas__numero-detalhe">de {tamanhoGrupo}</span>
-                        </div>
-                        <div>
-                          <span className="ligas__numero-rotulo">XP DA TEMPORADA</span>
-                          <strong className="ligas__numero-valor">{meuXp.toLocaleString("pt-BR")}</strong>
-                          <span className="ligas__numero-detalhe">só aprendizagem elegível</span>
-                        </div>
-                      </div>
-
-                      <p className="ligas__progresso-texto">
-                        Sua categoria pode subir ou descer ao fim da temporada conforme sua
-                        posição no grupo. O XP vitalício e o nível não zeram.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="ligas__progresso-texto">
-                      Você ainda não está inscrito nesta temporada. Conclua uma aula para entrar.
-                    </p>
-                  )}
-                </aside>
-              </div>
-
-              {/* Classificação completa do próprio grupo */}
-              <section className="ligas__painel ligas__tabela">
-                <div className="ligas__painel-cabecalho">
-                  <div>
-                    <p className="ligas__rotulo">CLASSIFICAÇÃO DO SEU GRUPO</p>
-                    <h2 className="ligas__painel-titulo">Liga {nomeDaCategoria[tierAtual]}</h2>
-                  </div>
-                  <span className="ligas__painel-resumo">Ordenado por XP da temporada</span>
+              <aside className="ligas__painel ligas__resumo">
+                <p className="ligas__rotulo">SUA SEMANA</p>
+                <div className="ligas__resumo-liga"><RankBadge tier={tier} size={44} /><div>
+                  <h2 className="ligas__painel-titulo">Liga {nomeCategoria(tier)}</h2>
+                  <p className="ligas__resumo-proxima">{inscricao}</p>
+                  {temporada.status === "closing" && <p className="ligas__resumo-proxima">Apuração em andamento</p>}
+                </div></div>
+                <div className="ligas__numeros">
+                  <div><span className="ligas__numero-rotulo">POSIÇÃO</span><strong className="ligas__numero-valor">{minhaPosicao ? `${minhaPosicao}º` : "—"}</strong><span className="ligas__numero-detalhe">de {tamanhoGrupo}</span></div>
+                  <div><span className="ligas__numero-rotulo">XP DA SEMANA</span><strong className="ligas__numero-valor">{meuXp.toLocaleString("pt-BR")}</strong><span className="ligas__numero-detalhe">só aprendizagem elegível</span></div>
                 </div>
-
-                {jogadores.length === 0 ? (
-                  <p className="ligas__subtitulo">Nenhum participante pontuou no seu grupo ainda.</p>
-                ) : (
-                  <ol className="ligas__lista">
-                    {jogadores.map((jogador) => (
-                      <li
-                        key={jogador.id}
-                        className={["ligas__linha", jogador.voce ? "ligas__linha--voce" : ""].join(" ").trim()}
-                      >
-                        <span className="ligas__linha-posicao">{jogador.posicao}º</span>
-                        <span className="ligas__linha-avatar" aria-hidden="true">{jogador.nome.charAt(0)}</span>
-                        <span className="ligas__linha-nome">
-                          {jogador.nome}
-                          {jogador.voce && <span className="ligas__linha-voce">VOCÊ</span>}
-                        </span>
-                        {/* Coluna mantida vazia só para preservar a grade do CSS. */}
-                        <span className="ligas__linha-zona" aria-hidden="true" />
-                        <span className="ligas__linha-pontos">{formatarXp(jogador.pontos)}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </section>
-            </>
-          )}
-        </main>
-      </div>
-    </PageLayout>
-  );
+                {eu && temGrupo && <p className="ligas__progresso-texto">{descreverProjecao(eu, tier)}</p>}
+                {eu?.season_xp === 0 && tier !== "bronze" && <p className="ligas__progresso-texto">Você ainda não fez XP nesta semana. Quem fecha a semana com 0 XP desce uma categoria; a marca de rebaixamento aparece nas últimas 24 horas.</p>}
+                <p className="ligas__progresso-texto">A projeção muda conforme os outros pontuam; só vale no fechamento da semana.</p>
+              </aside>
+            </div>
+            {temGrupo && <section className="ligas__painel ligas__tabela">
+              <div className="ligas__painel-cabecalho"><div>
+                <p className="ligas__rotulo">CLASSIFICAÇÃO DO SEU GRUPO</p><h2 className="ligas__painel-titulo">Liga {nomeCategoria(tier)}</h2>
+              </div></div>
+              {participantes.length === 0 ? <p className="ligas__subtitulo">Nenhum participante pontuou no seu grupo ainda.</p> : <div className="ligas__faixas">
+                {faixas.map(({ movimento, pessoas }, indice) => <section key={`${movimento}-${indice}`} aria-label={nomesZonas[movimento]} className={`ligas__faixa ligas__faixa--${movimento}`}>
+                  <header className="ligas__faixa-cabecalho">
+                    <h3>{movimento !== "stayed" && <Seta sobe={movimento === "promoted"} />}{nomesZonas[movimento]}</h3>
+                    <span>{pessoas.length} {pessoas.length === 1 ? "participante" : "participantes"}</span>
+                  </header>
+                  {pessoas.length === 0 ? <p className="ligas__faixa-vazia">{movimento === "promoted" ? promocaoVazia : rebaixamentoVazio}</p> : <ol className="ligas__lista">
+                {pessoas.map((pessoa) => {
+                  const zona = movimento === "promoted" ? " ligas__linha--promocao" : movimento === "demoted" ? " ligas__linha--rebaixamento" : "";
+                  const nome = nomeExibido(pessoa);
+                  return <li key={pessoa.user_id} className={`ligas__linha${zona}${pessoa.is_self ? " ligas__linha--voce" : ""}`}>
+                    <span className="ligas__linha-posicao">{pessoa.rank_position}º</span>
+                    <span className="ligas__linha-avatar" aria-hidden="true">{!pessoa.hidden && pessoa.avatar_url
+                      ? <img src={pessoa.avatar_url} alt="" className="ligas__linha-foto" /> : nome.charAt(0).toUpperCase()}</span>
+                    <span className="ligas__linha-nome">{nome}{pessoa.is_self && <span className="ligas__linha-voce">VOCÊ</span>}</span>
+                    <span className="ligas__linha-zona">{movimento !== "stayed" && <span className={`ligas__zona ligas__zona--${movimento === "promoted" ? "sobe" : "desce"}`}><Seta sobe={movimento === "promoted"} />{movimento === "promoted" ? "Sobe" : "Desce"}</span>}</span>
+                    <span className="ligas__linha-pontos">{textoXp(pessoa.season_xp)}</span>
+                  </li>;
+                })}
+                  </ol>}
+                </section>)}
+              </div>}
+            </section>}
+          </>}
+        </>}
+    </main></div>
+  </PageLayout>;
 }

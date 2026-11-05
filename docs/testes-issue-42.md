@@ -1,6 +1,6 @@
 # Suíte de testes — Issue 42 (missões, ligas/temporadas e PAC)
 
-Plano de testes do que foi entregue na issue 42 (migrações `0023`–`0040` e a UI de ligas/missões). Complementa o [guia geral de testes](testes.md): aqui o foco é o comportamento novo de servidor (XP, missões, temporadas, alerta) e as telas que o consomem.
+Plano de testes do que foi entregue na issue 42 (migrações `0023`–`0041` e a UI de ligas/missões). Complementa o [guia geral de testes](testes.md): aqui o foco é o comportamento novo de servidor (XP, missões, temporadas, alerta) e as telas que o consomem.
 
 > **Natureza das verificações.** A maior parte das regras vive no SQL (server-authoritative). Portanto, a validação primária é por **ensaio em Postgres real** (local via Docker ou o projeto de ensaio `Athen-Teste`), não por cliques na UI. O pipeline de frontend cobre compilação/tipos; não valida RLS, XP nem a aplicação das migrações.
 
@@ -8,7 +8,7 @@ Plano de testes do que foi entregue na issue 42 (migrações `0023`–`0040` e a
 
 | Item | Como |
 | --- | --- |
-| Banco com todas as migrações | Em um projeto local descartável, `supabase db reset` aplica `0001`–`0040` + `seed.sql`. Para verificar a `0040` num banco existente, use uma cópia isolada e confira o histórico aplicado antes do `db push`. |
+| Banco com todas as migrações | Em um projeto local descartável, `supabase db reset` aplica `0001`–`0041` + `seed.sql`. Para verificar migrações num banco existente, use uma cópia isolada e confira o histórico aplicado antes do `db push`. |
 | Extensões de operação | `pg_cron` e `pg_net` habilitados (Dashboard → Database → Extensions). Local já vem com ambas; no remoto foram habilitadas manualmente. |
 | Secret do webhook | `season_alert_webhook` no Supabase Vault (só para o teste de entrega do alerta — seção 6). |
 | Seed base | `supabase/seed.sql` (contas, cursos, salas). Senha das contas: `test123!`. |
@@ -156,6 +156,12 @@ Pré: `pg_net` habilitado e `season_alert_webhook` no Vault com a URL **limpa** 
 
 ### Harness SQL automático (T1–T9)
 
+Com a `0041`, `npm run test:issue42` executa também `live-standings.sql`, em transação revertida. O ensaio cobre XP corrente sem bônus/sala, empates no corte, projeção comparada ao fechamento real, grupo pequeno, piso Bronze, teto Mestre, entrada inicial/tardia, privacidade do próprio grupo e identidade oculta. O cenário antigo de identidade oculta foi ajustado para gerar créditos no ledger, em vez de plantar um saldo consolidado numa temporada aberta.
+
+`tests/e2e/ligas.spec.ts` também verifica datas/prazo, atualização de 60 segundos e retorno de visibilidade, falha preservando dados, projeções, fotos, zonas, contorno do usuário, marca dos zeros nas últimas 24 horas, estado sem inscrição e descrição neutra para legado. Capturas de tela e verificações de largura são feitas em 360/768/1440px. Esses E2E usam respostas simuladas; as regras de projeção são verificadas no SQL real.
+
+As zonas são verificadas dentro da lista: participantes elegíveis aparecem nas faixas de promoção/rebaixamento, mantendo a sequência de posições antes e depois da janela final. O cenário Bronze com oito participantes (seis com XP e dois zerados) verifica as faixas vazias explicativas e a permanência dos oito usuários, sem inventar promoção abaixo do mínimo nem rebaixamento no Bronze. A sessão simulada cobre o avanço de quatro dias do relógio para não expirar durante essa verificação.
+
 `legacy-overlap-check.sql` cobre a coexistência de inscrições antigas e novas com UUIDs diferentes. Antes da `0040`, crie uma tabela temporária `review_entries_before as table public.season_entries`; execute a migração e a checagem na mesma transação com `ROLLBACK`. Esse ensaio passou no remoto `testeAthen`, preservando as inscrições existentes e garantindo correspondência de todos os participantes legados por semana e usuário.
 
 As regressões da revisão do PR #52 estão em `codigo-base/supabase/testes-issue-42/review-fixes.sql`: permissões de funções internas, ordem da virada, inscrição tardia e conclusão de aula sem questões. `legacy-upgrade-fixture.sql` e `legacy-upgrade-check.sql` verificam a cópia de um crédito e de uma temporada da antiga `0023_ligas.sql`. Rode esses arquivos em um banco de ensaio com `0040` aplicada, dentro de uma transação encerrada com `ROLLBACK`. Para testar o upgrade, aplique a fixture antes da `0040` na mesma transação e execute a checagem depois. O teste de clique no fundo e foco do modal está em `codigo-base/tests/components/Modal.test.tsx`.
@@ -170,7 +176,7 @@ Rodar contra um banco de **ensaio** (nunca produção):
 # a connection string aponta para o banco de ensaio (local ou Athen-Teste)
 SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:55322/postgres npm run test:issue42
 ```
-Pré-requisitos no alvo: migrações `0001`–`0040` aplicadas e `supabase/seed.sql` carregado (fornece as contas/cursos). O runner recusa rodar contra a connection string do projeto de produção.
+Pré-requisitos no alvo: migrações `0001`–`0041` aplicadas e `supabase/seed.sql` carregado (fornece as contas/cursos). O runner recusa rodar contra a connection string do projeto de produção.
 
 Saída de sucesso: `HARNESS ISSUE 42: OK`. Qualquer falha imprime a mensagem da asserção (ex.: `T5.1b: zero deveria cair para bronze...`) e sai com erro.
 

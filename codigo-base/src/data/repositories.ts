@@ -70,6 +70,7 @@ type RankingAmigosCurso = FunctionReturn<'friends_course_pac'>[number];
 type TemporadaAtual = FunctionReturn<'current_season'>[number];
 type ResumoTemporada = FunctionReturn<'my_season_summary'>[number];
 type GrupoTemporada = FunctionReturn<'my_season_group'>[number];
+type ClassificacaoTemporada = FunctionReturn<'my_season_standings'>[number];
 type HistoricoTemporada = FunctionReturn<'my_season_history'>[number];
 
 // Missões globais/curso para a UI (migração 0031).
@@ -1536,6 +1537,13 @@ export const temporadaRepository = {
   async meuGrupo(idTemporada: string): Promise<GrupoTemporada[]> {
     const { data, error } = await supabase.rpc('my_season_group', { p_season_id: idTemporada });
     if (error) throw new Error(`Erro ao obter o grupo da temporada: ${error.message}`);
+    return data ?? [];
+  },
+
+  // XP corrente e projeções calculados pelo servidor para o próprio grupo.
+  async minhaClassificacao(idTemporada: string): Promise<ClassificacaoTemporada[]> {
+    const { data, error } = await supabase.rpc('my_season_standings', { p_season_id: idTemporada });
+    if (error) throw new Error(`Erro ao obter a classificação da temporada: ${error.message}`);
     return data ?? [];
   },
 
