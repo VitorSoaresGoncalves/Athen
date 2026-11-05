@@ -286,85 +286,11 @@
   border-radius: 16px;
 }
 
-/* ---------- Pop-up da sala ---------- */
-.salas__modal-camada { @apply fixed grid place-items-center p-[28px] z-[30]; inset: 0; }
-.salas__modal-fundo {
-  @apply absolute;
-  inset: 0;
-  background: rgba(8, 3, 20, 0.78);
-  backdrop-filter: blur(8px);
-  animation: salas-aparecer 0.25s ease both;
-}
-.salas__modal {
-  @apply relative flex flex-col overflow-hidden bg-[#1b0f35];
-  width: min(1040px, calc(100vw - 64px));
-  height: min(844px, calc(100vh - 56px));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  box-shadow:
-    0 30px 100px rgba(2, 0, 10, 0.68),
-    0 0 0 1px color-mix(in srgb, var(--color-gold) 5%, transparent);
-  animation: salas-modal-entrada 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.salas__modal-rolagem {
-  @apply min-h-0 flex-1 overflow-y-auto;
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
-}
-
-.salas__modal-banner {
-  @apply relative h-[148px] flex-none overflow-hidden;
-  background:
-    radial-gradient(circle at 65% 40%, color-mix(in srgb, var(--color-gold) 28%, transparent), transparent 22%),
-    linear-gradient(115deg, #5e234f 0%, #9e3f55 52%, #d3794f 100%);
-}
-.salas__modal-banner::before {
-  content: "";
-  @apply absolute top-[-120px] right-[70px] h-[210px] w-[480px];
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 50%;
-  transform: rotate(-9deg);
-}
-.salas__modal-banner::after {
-  content: "";
-  @apply absolute right-[190px] bottom-[-85px] h-[120px] w-[280px];
-  border: 22px solid rgba(255, 255, 255, 0.06);
-  border-radius: 50%;
-  transform: rotate(-9deg);
-}
-.salas__modal-categoria {
-  @apply absolute top-[28px] left-[32px] px-[11px] py-[7px] text-[9px] tracking-[1.3px];
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.84);
-  background: rgba(26, 8, 31, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 20px;
-}
-.salas__modal-forma {
-  @apply absolute;
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 50%;
-}
-.salas__modal-forma--a { @apply top-[25px] right-[110px] size-[80px]; }
-.salas__modal-forma--b { @apply top-[32px] right-[222px] size-[14px] bg-[rgba(255,255,255,0.16)]; }
-.salas__modal-brilho {
-  @apply absolute top-[56px] right-1/2 text-[24px] text-gold-light;
-  transform: rotate(12deg);
-}
-.salas__modal-fechar {
-  @apply absolute top-[20px] right-[20px] grid size-[40px] cursor-pointer place-items-center text-[#fff];
-  background: rgba(16, 7, 30, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.19);
-  border-radius: 12px;
-  backdrop-filter: blur(5px);
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-.salas__modal-fechar:hover {
-  background: rgba(16, 7, 30, 0.62);
-  transform: rotate(4deg);
-}
-
-.salas__modal-corpo { @apply px-[32px] pb-[28px]; }
+/* ---------- Pop-up da sala ----------
+   A moldura (camada, fundo, painel, banner, botão de fechar, corpo e rodapé)
+   vem do componente compartilhado em src/components/modal/Modal.css. Aqui ficam
+   só as partes específicas do pop-up de sala (identidade, trilha, ranking,
+   mural, código de acesso...). */
 .salas__identidade {
   @apply relative z-[2] grid min-h-[114px] grid-cols-[78px_1fr_auto] items-center gap-[18px];
 }
@@ -510,26 +436,10 @@
 .salas__aviso-titulo { @apply block text-[9px] text-[#f4eeff]; font-weight: 600; }
 .salas__aviso-texto { @apply mt-[5px] text-[8px] leading-[1.45] text-violet-pale/70; }
 
-/* Rodapé do pop-up */
-.salas__modal-rodape {
-  @apply flex min-h-[74px] flex-none items-center justify-between px-[32px];
-  background: rgba(19, 10, 39, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 -10px 30px rgba(8, 3, 20, 0.18);
-}
-.salas__modal-rodape > p { @apply flex items-center gap-[8px] text-[10px] text-violet-pale/70; }
-.salas__modal-rodape > p svg { @apply text-gold; }
-.salas__modal-rodape > p strong { @apply text-violet-pale; font-weight: 600; }
-.salas__modal-acoes { @apply flex gap-[10px]; }
-
-/* ---------- Animações ---------- */
+/* ---------- Animações (específicas do conteúdo dos pop-ups) ---------- */
 @keyframes salas-revelar {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes salas-aparecer { from { opacity: 0; } }
-@keyframes salas-modal-entrada {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -550,35 +460,17 @@
   .salas__banner { @apply h-[82px]; }
   .salas__icone { @apply top-[56px]; }
   .salas__conteudo { @apply pt-[32px]; }
-  .salas__modal { height: calc(100vh - 32px); }
-  .salas__modal-banner { @apply h-[124px]; }
   .salas__identidade { @apply min-h-[100px]; }
 }
 
-/* ---------- Pop-up de filtros ---------- */
-.salas__filtro-modal {
-  @apply relative flex flex-col overflow-hidden bg-[#1b0f35];
-  width: min(460px, calc(100vw - 64px));
-  max-height: calc(100vh - 56px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  box-shadow:
-    0 30px 100px rgba(2, 0, 10, 0.68),
-    0 0 0 1px color-mix(in srgb, var(--color-gold) 5%, transparent);
-  animation: salas-modal-entrada 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
+/* ---------- Pop-up de filtros ----------
+   A moldura vem do Modal compartilhado (largura="estreito"); aqui ficam só o
+   cabeçalho, o corpo e as opções do filtro. */
 .salas__filtro-topo {
   @apply flex flex-none items-start justify-between px-[28px] pt-[26px] pb-[20px];
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .salas__filtro-titulo { @apply font-display text-[22px] leading-[1.2]; }
-.salas__filtro-fechar {
-  @apply grid size-[36px] cursor-pointer place-items-center bg-[rgba(255,255,255,0.05)] text-violet-pale;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 11px;
-  transition: background-color 0.2s ease;
-}
-.salas__filtro-fechar:hover { background-color: rgba(255, 255, 255, 0.1); }
 
 .salas__filtro-corpo { @apply flex min-h-0 flex-col gap-[22px] overflow-y-auto px-[28px] py-[22px]; }
 .salas__filtro-secao-titulo { @apply font-display mb-[4px] text-[15px] leading-[1.2]; }

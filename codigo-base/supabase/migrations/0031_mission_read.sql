@@ -1,15 +1,13 @@
--- 0027_missoes_leitura.sql
--- Leitura das missões globais/de curso para a UI (página /missoes e detalhe).
+-- 0031_mission_read.sql
+-- Leitura das missões globais/curso para a UI (página /missoes e TopDown).
 --
--- Contexto: 0024/0025/0026 criaram o catálogo, as ocorrências, as atribuições, o
--- avanço de progresso e a concessão única do bônus (lançado em xp_credits com
--- source='mission_bonus', competitive=false). Faltava uma leitura que junte, para
--- o usuário autenticado, a ocorrência corrente + a definição + o progresso dele.
--- A materialização das ocorrências até aqui era sob demanda (ao finalizar
--- atividade); para a lista mostrar as missões do período mesmo antes de qualquer
--- atividade (Q020/Q072), esta leitura materializa as ocorrências GLOBAIS do
--- período corrente de forma idempotente (reutilizando ensure_occurrence) e então
--- retorna a junção.
+-- Contexto: 0024/0025 criaram o catálogo, as ocorrências, as atribuições e o
+-- avanço/concessão. Faltava uma leitura que junte, para o usuário autenticado,
+-- a ocorrência corrente + a definição + o progresso dele. A materialização das
+-- ocorrências até aqui era sob demanda (ao finalizar atividade); para a lista
+-- mostrar as missões do período mesmo antes de qualquer atividade (Q020/Q072),
+-- esta leitura materializa as ocorrências GLOBAIS do período corrente de forma
+-- idempotente (reutilizando ensure_occurrence) e então retorna a junção.
 --
 -- Diárias de CURSO: lista as ocorrências já materializadas dos cursos em que o
 -- usuário tem atividade individual (elas são criadas quando ele estuda o curso);

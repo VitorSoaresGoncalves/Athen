@@ -15,6 +15,11 @@
 --   * courses.duration_minutes é calculado pelos gatilhos da migration 0021;
 --     não é definido aqui.
 --   * UUIDs são fixos para manter FKs estáveis e permitir reexecução segura.
+--   * crypt/gen_salt vêm do pgcrypto. No Supabase hospedado a extensão fica no
+--     schema `extensions` (fora do search_path padrão), então incluímos ambos os
+--     schemas abaixo para o seed funcionar tanto local quanto no remoto.
+
+set search_path = public, extensions;
 
 -- ===========================================================================
 -- 1. CONTAS (auth.users + auth.identities) — senha "test123!"

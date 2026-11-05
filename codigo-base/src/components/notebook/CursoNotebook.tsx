@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { anotacoesRepository, notebookRepository } from "../../data/repositories";
+import { ConfirmDialog } from "../dialogbox/ConfirmDialog";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
 
@@ -26,9 +27,14 @@ function sortPages(pages: Anotacao[]): Anotacao[] {
   });
 }
 
+function ordenarNotebooks(items: Notebook[]): Notebook[] {
+  return [...items].sort((a, b) => a.title.localeCompare(b.title, "pt-BR", { sensitivity: "base" }));
+}
+
 export function CursoNotebook({ course }: CourseNotebookProps) {
   const courseTitle = notebookTitleFor(course);
   const [userId, setUserId] = useState<string | null>(null);
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [notebook, setNotebook] = useState<Notebook | null>(null);
   const [pages, setPages] = useState<Anotacao[]>([]);
   const [annotation, setAnnotation] = useState<Anotacao | null>(null);
@@ -43,6 +49,23 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   const [error, setError] = useState("");
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 440, height: 420 });
+
+  // Dropdown de seleção de notebook (lista no estilo do projeto, não a nativa).
+  const [dropdownAberto, setDropdownAberto] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Confirmação pendente (substitui o window.confirm). `tone: "danger"` deixa o
+  // botão de confirmar vermelho (usado nos apagar). `tertiaryLabel`/
+  // `acaoTerciaria` habilitam uma terceira opção (ex.: "Descartar").
+  const [confirmacao, setConfirmacao] = useState<null | {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    tone?: "danger";
+    acao: () => void;
+    tertiaryLabel?: string;
+    acaoTerciaria?: () => void;
+  }>(null);
   const dragRef = useRef({ active: false, offsetX: 0, offsetY: 0 });
   const resizeRef = useRef({ active: false, direction: "se" as ResizeDirection, startX: 0, startY: 0, startLeft: 0, startTop: 0, startWidth: 440, startHeight: 420 });
 
@@ -57,14 +80,18 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       setUserId(currentUserId);
 
       if (!currentUserId) {
+        setNotebooks([]);
         setNotebook(null);
         setPages([]);
         setAnnotation(null);
         return;
       }
 
-      const notebooks = await notebookRepository.listarPorUsuario(currentUserId);
-      const courseNotebook = notebooks.find((item) => item.title === courseTitle) ?? null;
+      const todosNotebooks = await notebookRepository.listarPorUsuario(currentUserId);
+      // Mantém a lista completa para o seletor; o caderno do curso é só o
+      // selecionado inicial (ligação por título — ver aviso do course_id acima).
+      setNotebooks(ordenarNotebooks(todosNotebooks));
+      const courseNotebook = todosNotebooks.find((item) => item.title === courseTitle) ?? null;
       setNotebook(courseNotebook);
 
       if (!courseNotebook) {
@@ -143,6 +170,25 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     };
   }, [open]);
 
+  // Fecha o dropdown de notebooks ao clicar fora ou apertar Esc.
+  useEffect(() => {
+    if (!dropdownAberto) return;
+
+    function aoClicarFora(event: MouseEvent) {
+      if (!dropdownRef.current?.contains(event.target as Node)) setDropdownAberto(false);
+    }
+    function aoTeclar(event: KeyboardEvent) {
+      if (event.key === "Escape") setDropdownAberto(false);
+    }
+
+    document.addEventListener("mousedown", aoClicarFora);
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("mousedown", aoClicarFora);
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [dropdownAberto]);
+
   function openNotebook() {
     setPosition({
       x: Math.max(16, Math.round((window.innerWidth - size.width) / 2)),
@@ -197,8 +243,13 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   function selectPage(nextPage: Anotacao) {
     if (nextPage.id === annotation?.id) return;
     if (hasUnsavedChanges()) {
-      const discardChanges = window.confirm("Existem alterações não salvas. Deseja trocar de página e descartá-las?");
-      if (!discardChanges) return;
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja trocar de página e descartá-las?",
+        confirmLabel: "Descartar e trocar",
+        acao: () => setPageState(nextPage),
+      });
+      return;
     }
     setPageState(nextPage);
   }
@@ -218,6 +269,49 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
+  // Carrega as páginas do caderno escolhido e passa a exibi-lo. É a ação crua,
+  // sem checar alterações não salvas (quem chama resolve isso antes).
+  async function abrirNotebookSelecionado(alvo: Notebook) {
+    setNotebook(alvo);
+    setSaving(true);
+    setError("");
+    try {
+      const loadedPages = sortPages(await anotacoesRepository.listarPorNotebook(alvo.id));
+      setPages(loadedPages);
+      setPageState(loadedPages[0] ?? null);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar o notebook.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Troca o caderno exibido no painel. Protege anotação não salva com o mesmo
+  // fluxo de três opções (salvar / descartar / cancelar).
+  function trocarNotebook(id: string) {
+    setDropdownAberto(false);
+    if (id === notebook?.id) return;
+    const alvo = notebooks.find((item) => item.id === id);
+    if (!alvo) return;
+
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Você tem alterações não salvas. Salve ou descarte antes de trocar de notebook.",
+        confirmLabel: "Salvar",
+        acao: async () => {
+          await saveNotebook();
+          await abrirNotebookSelecionado(alvo);
+        },
+        tertiaryLabel: "Descartar",
+        acaoTerciaria: () => void abrirNotebookSelecionado(alvo),
+      });
+      return;
+    }
+
+    void abrirNotebookSelecionado(alvo);
+  }
+
   async function createNotebook() {
     if (!userId) {
       setError("É necessário estar autenticado para criar um notebook.");
@@ -231,6 +325,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         title: notebookTitleFor(course),
         user_id: userId,
       });
+      setNotebooks((current) => ordenarNotebooks([...current, createdNotebook]));
       setNotebook(createdNotebook);
       setPages([]);
       setPageState(null);
@@ -266,24 +361,50 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     }
   }
 
+  // Protege a anotação não salva antes de criar uma página pelo botão "+":
+  // deixa salvar, descartar ou cancelar, em vez de descartar em silêncio.
+  function novaPagina() {
+    if (hasUnsavedChanges()) {
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Você tem alterações não salvas. Salve ou descarte antes de criar a nova página.",
+        confirmLabel: "Salvar",
+        acao: async () => {
+          const paginasPosSave = await saveNotebook();
+          await createPage(notebook?.id, paginasPosSave);
+        },
+        tertiaryLabel: "Descartar",
+        acaoTerciaria: () => void createPage(),
+      });
+      return;
+    }
+
+    void createPage();
+  }
+
   // Salva a página atual (o título do notebook é o do curso e não é editado aqui).
-  async function saveNotebook() {
-    if (!notebook || !annotation) return;
+  // Retorna a lista de páginas já com o save aplicado, para quem encadeia uma
+  // ação logo depois (ex.: "Salvar e criar") não depender do closure.
+  async function saveNotebook(): Promise<Anotacao[]> {
+    if (!notebook || !annotation) return pages;
 
     setSaving(true);
     setError("");
     try {
       const title = pageTitle.trim() || "Sem título";
       const updatedPage = await anotacoesRepository.atualizar(annotation.id, { title, content: noteText });
-      setPages(sortPages(pages.map((page) => page.id === updatedPage.id ? updatedPage : page)));
+      const paginasPosSave = sortPages(pages.map((page) => page.id === updatedPage.id ? updatedPage : page));
+      setPages(paginasPosSave);
       setAnnotation(updatedPage);
       setPageTitle(title);
       setSavedPageTitle(title);
       setEditingPageTitle(false);
       setNoteText(updatedPage.content ?? "");
       setSavedNoteText(updatedPage.content ?? "");
+      return paginasPosSave;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar o notebook.");
+      return pages;
     } finally {
       setSaving(false);
     }
@@ -291,49 +412,75 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
 
   async function deleteCurrentPage() {
     if (!annotation) return;
-    const shouldDelete = window.confirm(`Apagar a página "${pageTitle || "Sem título"}"?`);
-    if (!shouldDelete) return;
+    const pagina = annotation;
 
-    setSaving(true);
-    setError("");
-    try {
-      await anotacoesRepository.deletar(annotation.id);
-      const remainingPages = sortPages(pages.filter((page) => page.id !== annotation.id));
-      setPages(remainingPages);
-      setPageState(remainingPages[0] ?? null);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
-    } finally {
-      setSaving(false);
-    }
+    const executar = async () => {
+      setSaving(true);
+      setError("");
+      try {
+        await anotacoesRepository.deletar(pagina.id);
+        const remainingPages = sortPages(pages.filter((page) => page.id !== pagina.id));
+        setPages(remainingPages);
+        setPageState(remainingPages[0] ?? null);
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar a página.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar página",
+      message: `Tem certeza que deseja apagar a página "${pageTitle || "Sem título"}"? Esta ação não pode ser desfeita.`,
+      confirmLabel: "Apagar página",
+      tone: "danger",
+      acao: () => void executar(),
+    });
   }
 
   async function deleteNotebook() {
     if (!notebook) return;
-    const shouldDelete = window.confirm("Apagar o notebook e todas as suas páginas?");
-    if (!shouldDelete) return;
+    const notebookAtual = notebook;
 
-    setSaving(true);
-    setError("");
-    try {
-      await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.id)));
-      await notebookRepository.deletar(notebook.id);
-      setNotebook(null);
-      setPages([]);
-      setPageState(null);
-      setOpen(false);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar o notebook.");
-    } finally {
-      setSaving(false);
-    }
+    const executar = async () => {
+      setSaving(true);
+      setError("");
+      try {
+        await Promise.all(pages.map((page) => anotacoesRepository.deletar(page.id)));
+        await notebookRepository.deletar(notebookAtual.id);
+        setNotebooks((current) => current.filter((item) => item.id !== notebookAtual.id));
+        setNotebook(null);
+        setPages([]);
+        setPageState(null);
+        setOpen(false);
+      } catch (deleteError) {
+        setError(deleteError instanceof Error ? deleteError.message : "Não foi possível apagar o notebook.");
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    setConfirmacao({
+      title: "Apagar notebook",
+      message: "Tem certeza que deseja apagar o notebook? Todas as suas páginas serão apagadas junto. Esta ação não pode ser desfeita.",
+      confirmLabel: "Apagar notebook",
+      tone: "danger",
+      acao: () => void executar(),
+    });
   }
 
   function closeNotebook() {
     if (hasUnsavedChanges()) {
-      const discardChanges = window.confirm("Existem alterações não salvas. Deseja fechar e descartar essas alterações?");
-      if (!discardChanges) return;
-      setPageState(annotation);
+      setConfirmacao({
+        title: "Alterações não salvas",
+        message: "Existem alterações não salvas. Deseja fechar e descartá-las?",
+        confirmLabel: "Fechar sem salvar",
+        acao: () => {
+          setPageState(annotation);
+          setOpen(false);
+        },
+      });
+      return;
     }
 
     setOpen(false);
@@ -342,6 +489,11 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   const actionLabel = loading ? "Carregando notebook" : notebook ? "Abrir notebook" : "Criar notebook";
   const compactNotebook = size.width <= 360 || size.height <= 320;
   const minimumNotebook = size.width <= 280 || size.height <= 240;
+
+  // Lista do dropdown: o caderno atual no topo, os demais em ordem alfabética
+  const notebooksNaLista = notebook
+    ? [notebook, ...notebooks.filter((item) => item.id !== notebook.id)]
+    : notebooks;
 
   return (
     <>
@@ -370,7 +522,45 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
             className={`flex cursor-grab touch-none items-center border-b border-[#c29b55]/70 bg-[#edcf82] active:cursor-grabbing ${minimumNotebook ? "gap-1 px-1.5 py-1" : compactNotebook ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2"}`}
             onPointerDown={startDragging}
           >
-            <span id="course-notebook-title" className={`min-w-0 flex-1 truncate font-bold ${minimumNotebook ? "text-xs" : compactNotebook ? "text-sm" : "text-base"}`}>Anotações</span>
+            <div ref={dropdownRef} id="course-notebook-title" className="relative min-w-0 flex-1">
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => setDropdownAberto((aberto) => !aberto)}
+                disabled={saving}
+                aria-haspopup="listbox"
+                aria-expanded={dropdownAberto}
+                title="Trocar de notebook"
+                className={`flex w-full items-center gap-1.5 rounded font-bold text-[#302719] outline-none hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-[#9a7432] disabled:cursor-default ${minimumNotebook ? "px-1 py-0.5 text-xs" : compactNotebook ? "px-1.5 py-0.5 text-sm" : "px-2 py-1 text-base"}`}
+              >
+                <span className="min-w-0 flex-1 truncate text-left">{notebook?.title || "Sem título"}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-70"><path d="m6 9 6 6 6-6" /></svg>
+              </button>
+
+              {dropdownAberto && (
+                <ul
+                  role="listbox"
+                  className="absolute left-0 top-full z-50 mt-1 max-h-[200px] w-[220px] max-w-[80vw] overflow-y-auto rounded-lg border border-[#c29b55]/70 bg-[#f7e7b5] py-1 shadow-[6px_8px_22px_rgba(0,0,0,0.35)]"
+                >
+                  {notebooksNaLista.map((item) => {
+                    const ativo = item.id === notebook?.id;
+                    return (
+                      <li key={item.id} role="option" aria-selected={ativo}>
+                        <button
+                          type="button"
+                          onClick={() => trocarNotebook(item.id)}
+                          disabled={saving}
+                          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition disabled:opacity-60 ${ativo ? "bg-[#80602b] font-bold text-[#fff8dc]" : "text-[#4a3a1e] hover:bg-[#edcf82]"}`}
+                        >
+                          <span className="shrink-0 text-xs opacity-70">{ativo ? "📖" : ""}</span>
+                          <span className="min-w-0 flex-1 truncate">{item.title || "Sem título"}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
             <button type="button" className={`rounded leading-none hover:bg-black/10 ${minimumNotebook ? "px-1 text-base" : compactNotebook ? "px-1.5 text-lg" : "px-2 text-xl"}`} onPointerDown={(event) => event.stopPropagation()} onClick={closeNotebook} aria-label="Fechar notebook">×</button>
           </header>
 
@@ -389,7 +579,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
                 </button>
               ))}
             </div>
-            <button type="button" className="shrink-0 border-l border-[#c29b55]/45 px-3 text-lg font-bold text-[#80602b] hover:bg-[#d9bc70]/60" onClick={() => void createPage()} disabled={saving} aria-label="Criar nova página">+</button>
+            <button type="button" className="shrink-0 border-l border-[#c29b55]/45 px-3 text-lg font-bold text-[#80602b] hover:bg-[#d9bc70]/60" onClick={() => novaPagina()} disabled={saving} aria-label="Criar nova página">+</button>
           </div>
 
           <div className={`flex min-h-0 flex-1 flex-col ${minimumNotebook ? "p-1.5" : compactNotebook ? "p-2" : "p-3"}`}>
@@ -437,7 +627,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
                 <p className="font-bold text-[#806a3d]">Nenhuma página ainda</p>
                 <p className="mt-1 text-xs text-[#a38b5c]">Crie uma página para começar suas anotações.</p>
-                <button type="button" className="mt-3 rounded bg-[#80602b] px-3 py-1.5 text-xs font-bold text-[#fff8dc]" onClick={() => void createPage()} disabled={saving}>Criar página</button>
+                <button type="button" className="mt-3 rounded bg-[#80602b] px-3 py-1.5 text-xs font-bold text-[#fff8dc]" onClick={() => novaPagina()} disabled={saving}>Criar página</button>
               </div>
             )}
 
@@ -461,6 +651,28 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
           <button type="button" aria-label="Ajustar tamanho pelo canto inferior direito" className="absolute bottom-0 right-0 z-20 h-3 w-3 cursor-nwse-resize opacity-0" onPointerDown={(event) => startResizing(event, "se")} />
         </section>
       )}
+
+      <ConfirmDialog
+        open={confirmacao !== null}
+        title={confirmacao?.title ?? ""}
+        message={confirmacao?.message}
+        confirmLabel={confirmacao?.confirmLabel}
+        tone={confirmacao?.tone}
+        tertiaryLabel={confirmacao?.tertiaryLabel}
+        onTertiary={
+          confirmacao?.acaoTerciaria
+            ? () => {
+                confirmacao.acaoTerciaria?.();
+                setConfirmacao(null);
+              }
+            : undefined
+        }
+        onConfirm={() => {
+          confirmacao?.acao();
+          setConfirmacao(null);
+        }}
+        onCancel={() => setConfirmacao(null)}
+      />
     </>
   );
 }

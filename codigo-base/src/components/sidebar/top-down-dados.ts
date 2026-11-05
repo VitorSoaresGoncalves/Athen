@@ -14,8 +14,8 @@ type MissaoSala = Database["public"]["Tables"]["missions"]["Row"];
 type MissaoGlobal = Database["public"]["Functions"]["my_missions"]["Returns"][number];
 type EscopoMissao = Database["public"]["Enums"]["mission_scope"];
 
-// Resumo unificado de missão para o TopDown: mistura globais, de curso e de sala
-// num mesmo cartão, com rótulo de contexto. prazo é o instante de fim
+// Resumo unificado de missão para o TopDown (Q072): mistura globais, de curso e
+// de sala num mesmo cartão, com rótulo de contexto. prazo é o instante de fim
 // (null = sem prazo), usado para ordenar pelo mais próximo.
 export type MissaoResumo = {
     id: string;
@@ -33,7 +33,7 @@ const ROTULO_ESCOPO_GLOBAL: Record<EscopoMissao, string> = {
     course_daily: "Diária de curso",
 };
 
-// Limite de cartões no resumo: até três pendentes, as mais urgentes.
+// Limite de cartões no resumo (Q072: até três pendentes, as mais urgentes).
 const LIMITE_RESUMO = 3;
 
 function mensagemDeErro(motivo: unknown, padrao: string) {
@@ -41,7 +41,7 @@ function mensagemDeErro(motivo: unknown, padrao: string) {
 }
 
 // Ordena por prazo mais próximo (sem prazo vai por último) e desempata por id
-// estável, mantendo apresentação determinística.
+// estável, mantendo apresentação determinística (Q072).
 function ordenarPorPrazo(a: MissaoResumo, b: MissaoResumo) {
     const pa = a.prazo ? new Date(a.prazo).getTime() : Number.POSITIVE_INFINITY;
     const pb = b.prazo ? new Date(b.prazo).getTime() : Number.POSITIVE_INFINITY;
@@ -111,7 +111,7 @@ export function useTopDownDados(cursoId?: string) {
             }
 
             // Missões: combina globais/curso (my_missions) com as de sala, mantém só
-            // as pendentes, ordena pelo prazo mais próximo e limita a três.
+            // as pendentes, ordena pelo prazo mais próximo e limita a três (Q072).
             const resumo: MissaoResumo[] = [];
             let houveErroMissoes = false;
 

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
+import { Modal, ModalFechar } from "../components/modal/Modal";
+import { LessonModal } from "../components/lesson/LessonModal";
 import {
   aulaRepository,
   avaliacaoRepository,
@@ -57,6 +59,14 @@ function hashTexto(texto: string) {
   return hash;
 }
 
+// Cor de destaque de cada módulo na aula (igual às Salas). Usa a cor do banco
+// quando ela é um hex válido; senão, cai numa paleta fixa por posição.
+const CORES_MODULO = ["#a855f7", "#38bdf8", "#f59e0b", "#34d399", "#f472b6", "#f97316"];
+function corDoModulo(cor: string | null, indice: number) {
+  const candidata = cor?.trim();
+  return candidata && /^#[0-9a-fA-F]{3,8}$/.test(candidata) ? candidata : CORES_MODULO[indice % CORES_MODULO.length];
+}
+
 // Busca sem diferenciar maiúsculas e acentos.
 const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const mensagemDoErro = (erro: unknown) => (erro instanceof Error ? erro.message : "Algo deu errado. Tente novamente.");
@@ -110,6 +120,10 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [entrando, setEntrando] = useState(false);
+  // Aula aberta por cima do pop-up do curso (roda como atividade do curso).
+  const [aulaAberta, setAulaAberta] = useState<{ aula: AulaView; modulo: ModuloComAulas; indice: number } | null>(null);
+  // Recarrega a trilha/desempenho sem piscar o "Carregando" (ex.: após concluir uma aula).
+  const [recarregarToken, setRecarregarToken] = useState(0);
 
   // Avaliação do próprio usuário (undefined = carregando, null = ainda não avaliou).
   const [minhaAvaliacao, setMinhaAvaliacao] = useState<{ rating: number; comment: string } | null | undefined>(undefined);
@@ -125,24 +139,14 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
   const aulasConcluidas = modulos.reduce((soma, modulo) => soma + modulo.aulas.filter((aula) => aula.concluida).length, 0);
   const progresso = totalAulas > 0 ? Math.round((aulasConcluidas / totalAulas) * 100) : 0;
 
-  // Esc + trava de rolagem.
-  useEffect(() => {
-    function aoTeclar(evento: KeyboardEvent) { if (evento.key === "Escape") onFechar(); }
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", aoTeclar);
-    return () => {
-      document.body.style.overflow = overflowAnterior;
-      document.removeEventListener("keydown", aoTeclar);
-    };
-  }, [onFechar]);
-
   // Carrega módulos/aulas (com conclusões), matrícula, avaliação própria e desempenho.
   useEffect(() => {
     let cancelado = false;
 
     async function carregar() {
-      setCarregando(true);
+      // Só mostra o "Carregando" na primeira vez; recargas (após concluir uma
+      // aula) atualizam a trilha em silêncio.
+      if (recarregarToken === 0) setCarregando(true);
       setErro("");
       try {
         const { data: userData } = await supabase.auth.getUser();
@@ -186,7 +190,7 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
 
     void carregar();
     return () => { cancelado = true; };
-  }, [curso.id]);
+  }, [curso.id, recarregarToken]);
 
   // Matricula (se preciso) e abre a trilha no Dashboard.
   async function entrar() {
@@ -246,22 +250,26 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
   const simbolo = inicial ?? SIMBOLOS[hashTexto(curso.id) % SIMBOLOS.length];
 
   return (
-    <div className="catalogo__modal-camada" role="presentation">
-      <div className="catalogo__modal-fundo" onClick={onFechar} />
-
-      <section className="catalogo__modal" role="dialog" aria-modal="true" aria-labelledby="catalogo-modal-titulo">
-        <div className="catalogo__modal-rolagem">
-          <div className="catalogo__modal-banner">
-            <span className="catalogo__modal-categoria">{(curso.category || "Geral").toUpperCase()}</span>
-            <div className="catalogo__modal-forma catalogo__modal-forma--a" />
-            <div className="catalogo__modal-forma catalogo__modal-forma--b" />
-            <div className="catalogo__modal-brilho">✦</div>
-            <button className="catalogo__modal-fechar" type="button" onClick={onFechar} aria-label="Fechar informações do curso">
+    <>
+    <Modal
+      onFechar={onFechar}
+      rotuladoPor="catalogo-modal-titulo"
+      /* Com uma aula aberta por cima, o Esc fecha só a aula (o LessonModal cuida
+         do fechamento); o pop-up do curso ignora o Esc nesse momento. */
+      fecharComEsc={aulaAberta === null}
+    >
+        <div className="modal__rolagem">
+          <div className="modal__banner">
+            <span className="modal__categoria">{(curso.category || "Geral").toUpperCase()}</span>
+            <div className="modal__forma modal__forma--a" />
+            <div className="modal__forma modal__forma--b" />
+            <div className="modal__brilho">✦</div>
+            <ModalFechar onFechar={onFechar} rotulo="Fechar informações do curso">
               <Icone nome="close" tamanho={22} />
-            </button>
+            </ModalFechar>
           </div>
 
-          <div className="catalogo__modal-corpo">
+          <div className="modal__corpo">
             <div className="catalogo__identidade">
               <div className="catalogo__modal-icone">{simbolo}</div>
               <div>
@@ -272,9 +280,11 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
               <div className="catalogo__meta">
                 <div><span>Categoria:</span><strong>{curso.category || "Geral"}</strong></div>
                 <div><span>Educador:</span><strong>{educador}</strong></div>
-                <div>
+                <div className="catalogo__meta-tags">
                   <span>Tags:</span>
-                  {curso.tags.length > 0 ? curso.tags.map((tag) => <span className="catalogo__tag" key={tag}>{tag}</span>) : <strong>—</strong>}
+                  {curso.tags.length > 0
+                    ? <span className="catalogo__meta-chips">{curso.tags.map((tag) => <span className="catalogo__tag" key={tag}>{tag}</span>)}</span>
+                    : <strong>—</strong>}
                 </div>
               </div>
             </div>
@@ -318,10 +328,16 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
                           <div className="catalogo__aulas">
                             {modulo.aulas.length === 0 && <p className="catalogo__vazio-modulos">Nenhuma aula neste módulo.</p>}
                             {modulo.aulas.map((aula) => (
-                              <div className={`catalogo__aula${aula.concluida ? " catalogo__aula--concluida" : ""}`} key={aula.id}>
+                              <button
+                                type="button"
+                                className={`catalogo__aula catalogo__aula--botao${aula.concluida ? " catalogo__aula--concluida" : ""}`}
+                                key={aula.id}
+                                onClick={() => setAulaAberta({ aula, modulo, indice })}
+                              >
                                 <span className="catalogo__aula-play"><Icone nome={aula.concluida ? "check" : "play"} tamanho={13} /></span>
                                 <span>{aula.title}</span>
-                              </div>
+                                <small>{aula.concluida ? "Concluída" : "Fazer aula"}</small>
+                              </button>
                             ))}
                           </div>
                         )}
@@ -408,20 +424,38 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
           </div>
         </div>
 
-        <footer className="catalogo__modal-rodape">
+        <footer className="modal__rodape">
           <p>
             <Icone nome="clock" tamanho={17} />
             <strong>{totalAulas} {totalAulas === 1 ? "aula" : "aulas"}</strong> em {modulos.length} {modulos.length === 1 ? "módulo" : "módulos"}
           </p>
-          <div className="catalogo__modal-acoes">
+          <div className="modal__acoes">
             <button className="catalogo__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
             <button className="catalogo__botao-primario catalogo__botao-entrar" type="button" onClick={() => void entrar()} disabled={entrando}>
               {entrando ? "Abrindo..." : matriculado ? "Continuar curso" : "Matricular-se"} <Icone nome="arrow" tamanho={18} />
             </button>
           </div>
         </footer>
-      </section>
-    </div>
+    </Modal>
+
+    {/* Aula aberta por cima: roda como atividade do curso (sem salaId, então o
+        XP vai para o XP global). Ao concluir, a trilha recarrega em silêncio. */}
+    {aulaAberta && (
+      <LessonModal
+        key={aulaAberta.aula.id}
+        aula={aulaAberta.aula}
+        moduloTitulo={aulaAberta.modulo.title}
+        cursoId={curso.id}
+        cor={corDoModulo(aulaAberta.modulo.color, aulaAberta.indice)}
+        jaConcluida={aulaAberta.aula.concluida}
+        onFechar={() => setAulaAberta(null)}
+        onConcluida={() => {
+          setRecarregarToken((token) => token + 1);
+          onAtualizar();
+        }}
+      />
+    )}
+    </>
   );
 }
 

@@ -155,7 +155,7 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
 
                     
                 {/* Missões ativas: resumo com até três pendentes (globais, de curso
-                    e de sala), ordenadas pelo prazo mais próximo. */}
+                    e de sala), ordenadas pelo prazo mais próximo (Q072). */}
                 <Bloco cor={cor} titulo="Missões">
                     {carregando ? (
                         <Mensagem>Carregando...</Mensagem>

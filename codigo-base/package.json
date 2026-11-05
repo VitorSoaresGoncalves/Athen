@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "seed:demo:local": "supabase db query --local --file supabase/seeds/demo-users.sql",
+    "seed:demo:remote": "supabase db query --linked --project-ref ugsfebcxqpdujjocdhhj --file supabase/seeds/demo-users.sql",
     "dev": "vite",
     "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
@@ -11,6 +13,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:db": "tsx supabase/testes/run-testes.ts",
+    "test:issue42": "tsx supabase/testes-issue-42/run-harness.ts",
     "test:check": "tsc -p tsconfig.test.json --noEmit",
     "test:e2e": "playwright test",
     "preview": "vite preview",
@@ -27,7 +30,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
-    "supabase": "^2.122.0"
+    "supabase": "^2.121.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

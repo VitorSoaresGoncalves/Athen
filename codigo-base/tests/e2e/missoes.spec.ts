@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 
-// E2E da página de Missões (/missoes) e do detalhe (/missoes/:id). Mocka a auth
-// e as RPC my_missions / my_mission_detail. O resumo do TopDown depende de curso
-// ativo no dashboard e é exercitado no spec do dashboard; aqui cobrimos a página
-// dedicada e o detalhe. As missões de sala têm fluxo próprio e não entram aqui.
+// E2E da pagina de Missoes e navegacao (U3, U4, U5 do plano da issue 42). Mocka
+// auth e a RPC my_missions / my_mission_detail. O TopDown (U6) depende de curso
+// ativo no dashboard e e exercitado no spec do dashboard; aqui cobrimos a pagina
+// dedicada e o detalhe.
 
 const userId = '11111111-1111-4111-8111-111111111111'
 const occPendente = 'occ-pendente-0001'
@@ -53,23 +53,23 @@ async function prepare(page: Page, options: { missions?: unknown[]; detail?: unk
   })
 }
 
-test('lista pendentes e concluídas com contexto, meta, progresso e bônus', async ({ page }, testInfo) => {
+test('U3: lista pendentes e concluídas com contexto, meta, progresso e bônus', async ({ page }, testInfo) => {
   await prepare(page)
   await page.goto('/missoes')
   await expect(page.getByRole('heading', { name: 'Missões', exact: true })).toBeVisible()
-  // Seções pendentes e concluídas.
+  // Seções
   await expect(page.getByRole('heading', { name: 'Pendentes', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Concluídas', exact: true })).toBeVisible()
-  // Rótulo de contexto (global e curso) e bônus de XP.
+  // Rótulo de contexto (global e curso) e bônus
   await expect(page.getByText('Diária global').first()).toBeVisible()
   await expect(page.getByText('Diária de curso · Lógica de Programação')).toBeVisible()
   await expect(page.getByText('+2 XP')).toBeVisible()
-  // A concluída aparece na sua seção.
+  // A concluída aparece na sua seção
   await expect(page.getByText('Estude em três dias')).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('missoes-lista.png'), animations: 'disabled' })
 })
 
-test('detalhe mostra critério, meta, prazo com fuso e recompensa', async ({ page }) => {
+test('U4: detalhe mostra critério, meta, prazo com fuso e recompensa', async ({ page }) => {
   await prepare(page)
   await page.goto('/missoes/' + occPendente)
   await expect(page.getByRole('heading', { name: 'Conclua uma aula', exact: true })).toBeVisible()
@@ -81,13 +81,13 @@ test('detalhe mostra critério, meta, prazo com fuso e recompensa', async ({ pag
   await expect(page.getByText(/BRT/)).toBeVisible()
 })
 
-test('detalhe indisponível quando a ocorrência não existe', async ({ page }) => {
+test('U4: detalhe indisponível quando a ocorrência não existe', async ({ page }) => {
   await prepare(page, { detail: [] })
   await page.goto('/missoes/inexistente')
   await expect(page.getByText(/Esta missão não está disponível/)).toBeVisible()
 })
 
-test('navegação tem "Missões" ao lado de "Ligas" e leva à página', async ({ page }) => {
+test('U5: navegação tem "Missões" ao lado de "Ligas" e leva à página', async ({ page }) => {
   await prepare(page)
   await page.goto('/missoes')
   // O item de navegação existe e aponta para /missoes.
