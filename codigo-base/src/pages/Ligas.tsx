@@ -9,6 +9,8 @@ type Resumo = Awaited<ReturnType<typeof temporadaRepository.meuResumo>>;
 type Classificacao = Awaited<ReturnType<typeof temporadaRepository.minhaClassificacao>>;
 type Participante = Classificacao[number];
 type Estado = { temporada: Temporada | null; resumo: Resumo; grupo: Classificacao };
+type Movimento = "promoted" | "stayed" | "demoted";
+const nomesZonas = { promoted: "Zona de promoção", stayed: "Zona de permanência", demoted: "Zona de rebaixamento" };
 
 const categorias: { tier: Tier; nome: string }[] = [
   { tier: "bronze", nome: "Bronze" }, { tier: "silver", nome: "Prata" },
@@ -112,6 +114,27 @@ export default function Ligas() {
   const meuXp = eu?.season_xp ?? resumo?.season_xp ?? 0;
   const podio = montarPodio(participantes, tier);
   const janelaFinal = temporada ? new Date(temporada.ends_at).getTime() - agora <= 24 * 60 * 60 * 1000 : false;
+  // Faixas contíguas preservam a ordem e os empates recebidos do servidor,
+  // inclusive quando os zeros ainda não exibem a marca de rebaixamento.
+  const faixas: { movimento: Movimento; pessoas: Classificacao }[] = [];
+  for (const pessoa of participantes) {
+    const movimento: Movimento = pessoa.season_xp === 0 && !janelaFinal ? "stayed"
+      : pessoa.movement === "promoted" ? "promoted" : pessoa.movement === "demoted" ? "demoted" : "stayed";
+    const ultima = faixas.at(-1);
+    if (ultima?.movimento === movimento) ultima.pessoas.push(pessoa);
+    else faixas.push({ movimento, pessoas: [pessoa] });
+  }
+  if (!faixas.some(faixa => faixa.movimento === "promoted")) faixas.unshift({ movimento: "promoted", pessoas: [] });
+  if (!faixas.some(faixa => faixa.movimento === "demoted")) faixas.push({ movimento: "demoted", pessoas: [] });
+  const positivos = participantes.filter(pessoa => pessoa.season_xp > 0).length;
+  const zerosAguardandoMarca = !janelaFinal && participantes.some(pessoa => pessoa.season_xp === 0 && pessoa.movement === "demoted");
+  const promocaoVazia = tier === "master" ? "Mestre é a categoria mais alta; não há promoção."
+    : positivos < 10 ? `A promoção exige pelo menos 10 participantes com XP. Este grupo tem ${positivos}.`
+    : "Nenhum participante está na zona de promoção nesta atualização.";
+  const rebaixamentoVazio = tier === "bronze" ? "Bronze não tem rebaixamento: é a categoria inicial."
+    : zerosAguardandoMarca ? "Participantes com 0 XP recebem a marca de rebaixamento nas últimas 24 horas."
+    : positivos < 10 ? "O rebaixamento por posição exige pelo menos 10 participantes com XP; quem fecha com 0 XP desce uma categoria."
+    : "Nenhum participante está na zona de rebaixamento nesta atualização.";
   const inscricao = eu?.entry_kind === "snapshot" ? "Inscrito no início da semana"
     : eu?.entry_kind === "late" ? "Entrada durante a semana" : "Inscrição registrada nesta temporada";
 
@@ -179,13 +202,15 @@ export default function Ligas() {
             {temGrupo && <section className="ligas__painel ligas__tabela">
               <div className="ligas__painel-cabecalho"><div>
                 <p className="ligas__rotulo">CLASSIFICAÇÃO DO SEU GRUPO</p><h2 className="ligas__painel-titulo">Liga {nomeCategoria(tier)}</h2>
-              </div><div className="ligas__legenda">
-                <span className="ligas__legenda-item ligas__legenda-item--promocao"><Seta sobe />Zona de promoção</span>
-                <span className="ligas__legenda-item ligas__legenda-item--rebaixamento"><Seta sobe={false} />Zona de rebaixamento</span>
               </div></div>
-              {participantes.length === 0 ? <p className="ligas__subtitulo">Nenhum participante pontuou no seu grupo ainda.</p> : <ol className="ligas__lista">
-                {participantes.map((pessoa) => {
-                  const movimento = pessoa.season_xp === 0 && !janelaFinal ? "stayed" : pessoa.movement;
+              {participantes.length === 0 ? <p className="ligas__subtitulo">Nenhum participante pontuou no seu grupo ainda.</p> : <div className="ligas__faixas">
+                {faixas.map(({ movimento, pessoas }, indice) => <section key={`${movimento}-${indice}`} aria-label={nomesZonas[movimento]} className={`ligas__faixa ligas__faixa--${movimento}`}>
+                  <header className="ligas__faixa-cabecalho">
+                    <h3>{movimento !== "stayed" && <Seta sobe={movimento === "promoted"} />}{nomesZonas[movimento]}</h3>
+                    <span>{pessoas.length} {pessoas.length === 1 ? "participante" : "participantes"}</span>
+                  </header>
+                  {pessoas.length === 0 ? <p className="ligas__faixa-vazia">{movimento === "promoted" ? promocaoVazia : rebaixamentoVazio}</p> : <ol className="ligas__lista">
+                {pessoas.map((pessoa) => {
                   const zona = movimento === "promoted" ? " ligas__linha--promocao" : movimento === "demoted" ? " ligas__linha--rebaixamento" : "";
                   const nome = nomeExibido(pessoa);
                   return <li key={pessoa.user_id} className={`ligas__linha${zona}${pessoa.is_self ? " ligas__linha--voce" : ""}`}>
@@ -197,7 +222,9 @@ export default function Ligas() {
                     <span className="ligas__linha-pontos">{textoXp(pessoa.season_xp)}</span>
                   </li>;
                 })}
-              </ol>}
+                  </ol>}
+                </section>)}
+              </div>}
             </section>}
           </>}
         </>}

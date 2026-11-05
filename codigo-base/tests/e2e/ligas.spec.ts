@@ -23,7 +23,8 @@ async function prepareLigas(page: Page, options: Options = {}) {
   await page.addInitScript(({ user }) => {
     localStorage.setItem('sb-example-auth-token', JSON.stringify({
       access_token: 'test-token', refresh_token: 'test-refresh', token_type: 'bearer',
-      expires_at: Math.floor(Date.now() / 1000) + 3600, user,
+      // A suíte avança até quatro dias para exercitar a janela final da semana.
+      expires_at: Math.floor(Date.now() / 1000) + 14 * 24 * 3600, user,
     }))
   }, { user })
 
@@ -146,6 +147,12 @@ test('mostra projeção, zonas, foto e preserva o contorno do usuário', async (
   ] })
   await expect(page.getByText('Inscrito no início da semana')).toBeVisible()
   await expect(page.getByText('Se a semana fechasse agora, você subiria para Ouro.')).toBeVisible()
+  const promocao = page.getByRole('region', { name: 'Zona de promoção' })
+  const rebaixamento = page.getByRole('region', { name: 'Zona de rebaixamento' })
+  await expect(promocao.locator('.ligas__linha')).toHaveCount(1)
+  await expect(rebaixamento.locator('.ligas__linha')).toHaveCount(1)
+  await expect(promocao.getByText('Aluno', { exact: false })).toBeVisible()
+  await expect(rebaixamento.getByText('Bruno', { exact: true })).toBeVisible()
   const eu = page.locator('.ligas__linha--voce')
   await expect(eu).toHaveClass(/ligas__linha--promocao/)
   await expect(eu.locator('img')).toBeVisible()
@@ -153,9 +160,32 @@ test('mostra projeção, zonas, foto e preserva o contorno do usuário', async (
   expect(await eu.evaluate(el => getComputedStyle(el).boxShadow)).not.toBe('none')
   await expect(page.locator('.ligas__linha').filter({ hasText: 'Bruno' }).getByText('Desce', { exact: true })).toBeVisible()
   await expect(page.locator('.ligas__linha').filter({ hasText: 'Zero' }).getByText('Desce', { exact: true })).toHaveCount(0)
+  await expect(page.locator('.ligas__linha-posicao')).toHaveText(['1º', '2º', '3º'])
   await page.screenshot({ path: testInfo.outputPath('ligas-zonas.png'), fullPage: true, animations: 'disabled' })
   await page.clock.fastForward(4 * 24 * 60 * 60 * 1000)
   await expect(page.locator('.ligas__linha').filter({ hasText: 'Zero' }).getByText('Desce', { exact: true })).toBeVisible()
+  await expect(rebaixamento.locator('.ligas__linha')).toHaveCount(2)
+  await expect(page.locator('.ligas__linha-posicao')).toHaveText(['1º', '2º', '3º'])
+})
+
+test('zonas na lista explicam grupo Bronze sem participantes elegíveis', async ({ page }, testInfo) => {
+  await prepareLigas(page, {
+    summary: { season_id: seasonId, category: 'bronze', group_id: 'g1', group_size: 8 },
+    group: Array.from({ length: 8 }, (_, index) => ({
+      user_id: index === 0 ? userId : `u${index}`, display_name: `Participante ${index + 1}`,
+      season_xp: index < 6 ? 60 - index : 0, rank_position: index + 1,
+      is_self: index === 0, hidden: false, movement: 'stayed', projected_category: 'bronze',
+    })),
+  })
+  const promocao = page.getByRole('region', { name: 'Zona de promoção' })
+  const permanencia = page.getByRole('region', { name: 'Zona de permanência' })
+  const rebaixamento = page.getByRole('region', { name: 'Zona de rebaixamento' })
+  await expect(promocao).toContainText('pelo menos 10 participantes com XP')
+  await expect(rebaixamento).toContainText('Bronze não tem rebaixamento')
+  await expect(promocao.locator('.ligas__linha')).toHaveCount(0)
+  await expect(permanencia.locator('.ligas__linha')).toHaveCount(8)
+  await expect(rebaixamento.locator('.ligas__linha')).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('ligas-zonas-bronze.png'), fullPage: true, animations: 'disabled' })
 })
 
 test('mostra entrada dedicada para usuário sem inscrição', async ({ page }) => {

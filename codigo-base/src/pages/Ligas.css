@@ -132,20 +132,22 @@
 .ligas__podio > :last-child { @apply my-auto; }
 
 /* ---------- Classificação completa ---------- */
-.ligas__legenda { @apply flex flex-wrap gap-[10px]; }
-.ligas__legenda-item {
-  @apply flex h-[26px] items-center gap-[6px] px-[10px] text-[10px];
-  font-weight: 700;
-  border-radius: 8px;
+.ligas__faixas { @apply flex flex-col gap-[14px]; }
+.ligas__faixa { @apply min-w-0 rounded-[12px] border border-white/10 p-[12px]; }
+.ligas__faixa--promoted {
+  border-color: rgba(52,211,153,0.4);
+  background: linear-gradient(90deg, rgba(52,211,153,0.09), transparent);
 }
-.ligas__legenda-item--promocao {
-  @apply bg-[rgba(52,211,153,0.14)] text-[#34d399];
-  border: 1px solid rgba(52,211,153,0.35);
+.ligas__faixa--demoted {
+  border-color: rgba(244,63,94,0.4);
+  background: linear-gradient(90deg, rgba(244,63,94,0.09), transparent);
 }
-.ligas__legenda-item--rebaixamento {
-  @apply bg-[rgba(244,63,94,0.12)] text-[#fb7185];
-  border: 1px solid rgba(244,63,94,0.35);
-}
+.ligas__faixa-cabecalho { @apply mb-[12px] flex flex-wrap items-center justify-between gap-[8px]; }
+.ligas__faixa-cabecalho h3 { @apply flex items-center gap-[6px] font-body text-[12px]; font-weight: 700; }
+.ligas__faixa-cabecalho > span { @apply text-[10px] text-violet-pale/70; }
+.ligas__faixa--promoted h3 { color: #34d399; }
+.ligas__faixa--demoted h3 { color: #fb7185; }
+.ligas__faixa-vazia { @apply text-[12px] leading-[1.5] text-violet-pale/80; }
 
 .ligas__lista { @apply flex list-none flex-col gap-[6px] p-0; }
 
@@ -196,7 +198,7 @@
   font-weight: 700;
 }
 
-.ligas__legenda-item svg, .ligas__zona svg {
+.ligas__faixa-cabecalho svg, .ligas__zona svg {
   @apply size-[14px] fill-none stroke-current;
   stroke-width: 2.6;
   stroke-linecap: round;
