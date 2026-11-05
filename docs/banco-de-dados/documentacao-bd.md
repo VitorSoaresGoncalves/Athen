@@ -92,4 +92,6 @@ Na interface, a marca de queda para zero XP aparece nas últimas 24 horas. Esse 
 
 ## Verificação
 
+Para popular o ambiente de teste com grupos competitivos e missões, consulte os [dados de demonstração](../dados-demonstracao.md). O seed opcional cria somente contas identificadas como fictícias e grupos próprios, sem reatribuir inscrições existentes; não faz parte das migrações nem do seed base de reset.
+
 Consulte [Testes](../testes.md) para o alcance das verificações e as limitações do runner SQL legado. Uma passagem no typecheck ou nos exemplos de frontend não valida RLS, XP ou aplicação das migrações.

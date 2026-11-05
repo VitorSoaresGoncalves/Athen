@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "seed:demo:local": "supabase db query --local --file supabase/seeds/demo-users.sql",
+    "seed:demo:remote": "supabase db query --linked --project-ref ugsfebcxqpdujjocdhhj --file supabase/seeds/demo-users.sql",
     "dev": "vite",
     "typecheck": "tsc -b",
     "build": "tsc -b && vite build",
