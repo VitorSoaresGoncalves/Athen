@@ -9,7 +9,7 @@
 //     npx tsx supabase/testes-issue-42/run-harness.ts
 //   (ou via o script npm: npm run test:issue42)
 //
-// Pre-requisitos no banco alvo: migracoes 0001-0040 aplicadas e seed base
+// Pre-requisitos no banco alvo: migracoes 0001-0041 aplicadas e seed base
 // (supabase/seed.sql) carregado (fornece as contas/cursos usados).
 
 import { readFileSync } from 'node:fs'
@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path'
 import { Client } from 'pg'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const harnessPath = join(here, 'harness.sql')
+const harnessPaths = ['harness.sql', 'live-standings.sql'].map(file => join(here, file))
 
 async function main() {
   const connectionString = process.env.SUPABASE_DB_URL
@@ -33,14 +33,14 @@ async function main() {
     process.exit(2)
   }
 
-  const sql = readFileSync(harnessPath, 'utf8')
+  const scripts = harnessPaths.map(path => readFileSync(path, 'utf8'))
   const client = new Client({ connectionString })
 
   try {
     await client.connect()
     // O harness ja contem begin/rollback e os asserts; uma falha de assert
     // chega aqui como erro de query, abortando com exit != 0.
-    await client.query(sql)
+    for (const sql of scripts) await client.query(sql)
     // console.warn: a config de ESLint do projeto só permite warn/error.
     console.warn('HARNESS ISSUE 42: OK (todas as assercoes passaram; rollback aplicado)')
   } catch (err) {

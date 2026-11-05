@@ -1416,6 +1416,7 @@ export type Database = {
         Row: {
           category: Database["public"]["Enums"]["season_category"]
           created_at: string
+          entry_kind: string | null
           final_rank: number | null
           group_id: string | null
           id: string
@@ -1430,6 +1431,7 @@ export type Database = {
         Insert: {
           category?: Database["public"]["Enums"]["season_category"]
           created_at?: string
+          entry_kind?: string | null
           final_rank?: number | null
           group_id?: string | null
           id?: string
@@ -1446,6 +1448,7 @@ export type Database = {
         Update: {
           category?: Database["public"]["Enums"]["season_category"]
           created_at?: string
+          entry_kind?: string | null
           final_rank?: number | null
           group_id?: string | null
           id?: string
@@ -2214,6 +2217,22 @@ export type Database = {
           season_xp: number
           starts_at: string
           status: Database["public"]["Enums"]["season_status"]
+        }[]
+      }
+      my_season_standings: {
+        Args: { p_season_id: string }
+        Returns: {
+          avatar_url: string
+          banner_url: string
+          display_name: string
+          entry_kind: string
+          hidden: boolean
+          is_self: boolean
+          movement: string
+          projected_category: Database["public"]["Enums"]["season_category"]
+          rank_position: number
+          season_xp: number
+          user_id: string
         }[]
       }
       my_season_summary: {

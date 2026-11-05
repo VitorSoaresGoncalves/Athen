@@ -85,6 +85,8 @@ Para considerar uma mudança visual concluída:
 
 Esses critérios orientam alterações; não significam que todas as telas existentes já foram auditadas ou atendem a todos eles. As fontes acima documentam o padrão atual e suas diferenças de implementação.
 
+Na página Ligas, a temporada mostra datas e prazo restante no cabeçalho. O resumo informa o tipo de inscrição conhecido e a projeção recebida do banco. A classificação usa fundo verde/vermelho, setas e rótulos “Sobe”/“Desce”; o usuário recebe contorno dourado que preserva a cor da zona. Fotos respeitam a ocultação de identidade. As seis categorias são informativas, com cursor normal e sem deslocamento ao passar o mouse. A página atualiza a cada minuto enquanto visível e ao recuperar visibilidade/foco; em falha de atualização, preserva o conteúdo com aviso de dados anteriores. Até 760px, a navegação dessa página passa ao fluxo superior e permite rolagem horizontal, liberando a largura do conteúdo.
+
 ## Esboços e imagens
 
 Capturas, sketches e vídeos listados no [índice de documentação](README.md) são referências históricas. Confira o código e o comportamento da tela para reproduzir seu estado atual. Mudanças na identidade compartilhada devem manter este guia e os tokens coerentes.

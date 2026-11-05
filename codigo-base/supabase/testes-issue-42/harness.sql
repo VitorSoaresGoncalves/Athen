@@ -181,8 +181,12 @@ begin
     insert into public.season_groups (season_id, category, group_index, capacity)
     values (v_s2, 'silver', 1, 30) returning id into v_g2;
     insert into public.season_entries (season_id, user_id, group_id, category, season_xp, identity_hidden) values
-      (v_s2, u_elisa,  v_g2, 'silver', 50, true),
-      (v_s2, u_felipe, v_g2, 'silver', 30, false);
+      (v_s2, u_elisa,  v_g2, 'silver', 0, true),
+      (v_s2, u_felipe, v_g2, 'silver', 0, false);
+    -- A liga aberta agora lê o ledger; não usa o saldo consolidado da entrada.
+    insert into public.xp_events (user_id, origin, context, amount, idempotency_key, occurred_at) values
+      (u_elisa, 'learning_base', 'course', 50, 'harness:hidden:elisa', now()),
+      (u_felipe, 'learning_base', 'course', 30, 'harness:hidden:felipe', now());
 
     -- Lê como a Elisa (SECURITY DEFINER usa auth.uid()).
     perform set_config('request.jwt.claims', json_build_object('sub', u_elisa::text)::text, true);
