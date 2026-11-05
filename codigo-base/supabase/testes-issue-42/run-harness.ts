@@ -1,8 +1,8 @@
 // run-harness.ts — Executa o harness SQL da issue 42 contra um banco de ENSAIO.
 //
-// Usa a connection string de SUPABASE_DB_URL (NUNCA produção). Aplica o harness
-// numa unica execucao; o proprio harness roda em transacao e da ROLLBACK, entao
-// nao persiste dados. Sai com codigo != 0 se qualquer assercao falhar.
+// Usa a connection string de SUPABASE_DB_URL (NUNCA produção). Cada script
+// roda em transacao e da ROLLBACK, sem persistir dados. Uma falha interrompe
+// a sequencia e sai com codigo != 0; fechar a conexao reverte a transacao aberta.
 //
 // Uso:
 //   SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:55322/postgres \
@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path'
 import { Client } from 'pg'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const harnessPaths = ['harness.sql', 'live-standings.sql'].map(file => join(here, file))
+const harnessPaths = ['harness.sql', 'live-standings.sql', 'missions.sql'].map(file => join(here, file))
 
 async function main() {
   const connectionString = process.env.SUPABASE_DB_URL
