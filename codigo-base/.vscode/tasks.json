@@ -1,0 +1,46 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Athen: lint",
+      "type": "npm",
+      "script": "lint",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "Athen: typecheck",
+      "type": "npm",
+      "script": "typecheck"
+    },
+    {
+      "label": "Athen: testes unitários",
+      "type": "npm",
+      "script": "test:run",
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "Athen: testes de componentes",
+      "type": "npm",
+      "script": "test:run -- tests/components",
+      "group": "test"
+    },
+    {
+      "label": "Athen: build",
+      "type": "npm",
+      "script": "build",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Athen: E2E",
+      "type": "npm",
+      "script": "test:e2e",
+      "group": "test"
+    },
+    {
+      "label": "Athen: desenvolvimento",
+      "type": "npm",
+      "script": "dev",
+      "isBackground": true
+    }
+  ]
+}

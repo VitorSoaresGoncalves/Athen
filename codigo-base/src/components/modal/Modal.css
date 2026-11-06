@@ -1,0 +1,169 @@
+@reference "../../index.css";
+
+/* ==========================================================================
+   Casca compartilhada de pop-up (Modal).
+
+   Reúne a "moldura" que antes estava duplicada em Catalogo.css e Salas.css
+   (camada, fundo, painel, banner, botão de fechar, rolagem e rodapé). O miolo
+   de cada pop-up (identidade, trilha, ranking, mural...) continua no CSS da
+   página, porque é específico de cada tela.
+
+   Segue a mesma convenção das páginas: Tailwind via @apply + tokens do
+   index.css (--color-gold, --color-violet-mid), tamanhos em px.
+   ========================================================================== */
+
+.modal__camada {
+  @apply fixed grid place-items-center p-[28px];
+  inset: 0;
+  z-index: 30;
+}
+/* "acima" empilha sobre um modal base já aberto (ex.: a aula sobre a sala). */
+.modal__camada--acima { z-index: 40; }
+
+.modal__camada,
+.modal__camada *,
+.modal__camada *::before,
+.modal__camada *::after {
+  box-sizing: border-box;
+}
+
+.modal__fundo {
+  @apply absolute;
+  inset: 0;
+  background: rgba(8, 3, 20, 0.78);
+  backdrop-filter: blur(8px);
+  animation: modal-aparecer 0.25s ease both;
+}
+
+.modal__painel {
+  @apply relative flex flex-col overflow-hidden bg-[#1b0f35];
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow:
+    0 30px 100px rgba(2, 0, 10, 0.68),
+    0 0 0 1px color-mix(in srgb, var(--color-gold) 5%, transparent);
+  animation: modal-entrada 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+/* Painel largo (detalhe de curso/sala). */
+.modal__painel--detalhe {
+  width: min(1040px, calc(100vw - 64px));
+  height: min(844px, calc(100vh - 56px));
+}
+/* Painel estreito (filtros). */
+.modal__painel--estreito {
+  width: min(460px, calc(100vw - 64px));
+  max-height: calc(100vh - 56px);
+}
+
+.modal__rolagem {
+  @apply min-h-0 flex-1 overflow-y-auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
+}
+
+/* ---------- Banner decorativo ---------- */
+.modal__banner {
+  @apply relative h-[148px] flex-none overflow-hidden;
+  background:
+    radial-gradient(circle at 65% 40%, color-mix(in srgb, var(--color-gold) 28%, transparent), transparent 22%),
+    linear-gradient(115deg, #5e234f 0%, #9e3f55 52%, #d3794f 100%);
+}
+.modal__banner::before {
+  content: "";
+  @apply absolute top-[-120px] right-[70px] h-[210px] w-[480px];
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 50%;
+  transform: rotate(-9deg);
+}
+.modal__banner::after {
+  content: "";
+  @apply absolute right-[190px] bottom-[-85px] h-[120px] w-[280px];
+  border: 22px solid rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+  transform: rotate(-9deg);
+}
+.modal__categoria {
+  @apply absolute top-[28px] left-[32px] px-[11px] py-[7px] text-[9px] tracking-[1.3px];
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.84);
+  background: rgba(26, 8, 31, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+}
+.modal__forma {
+  @apply absolute;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 50%;
+}
+.modal__forma--a { @apply top-[25px] right-[110px] size-[80px]; }
+.modal__forma--b { @apply top-[32px] right-[222px] size-[14px] bg-[rgba(255,255,255,0.16)]; }
+.modal__brilho {
+  @apply absolute top-[56px] right-1/2 text-[24px] text-gold-light;
+  transform: rotate(12deg);
+}
+
+/* ---------- Botão de fechar ---------- */
+.modal__fechar {
+  @apply grid cursor-pointer place-items-center;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+/* Sobre o banner colorido (detalhe de curso/sala). */
+.modal__fechar--banner {
+  @apply absolute top-[20px] right-[20px] size-[40px] text-[#fff];
+  background: rgba(16, 7, 30, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.19);
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
+}
+.modal__fechar--banner:hover {
+  background: rgba(16, 7, 30, 0.62);
+  transform: rotate(4deg);
+}
+/* Sobre fundo liso (cabeçalho de filtros). */
+.modal__fechar--cabecalho {
+  @apply size-[36px] bg-[rgba(255,255,255,0.05)] text-violet-pale;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+}
+.modal__fechar--cabecalho:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+/* ---------- Corpo e rodapé ---------- */
+.modal__corpo { @apply px-[32px] pb-[28px]; }
+
+.modal__rodape {
+  @apply flex min-h-[74px] flex-none items-center justify-between px-[32px];
+  background: rgba(19, 10, 39, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -10px 30px rgba(8, 3, 20, 0.18);
+}
+.modal__rodape > p { @apply flex items-center gap-[8px] text-[10px] text-violet-pale/70; }
+.modal__rodape > p svg { @apply text-gold; }
+.modal__rodape > p strong { @apply text-violet-pale; font-weight: 600; }
+.modal__acoes { @apply flex gap-[10px]; }
+
+/* ---------- Animações ---------- */
+@keyframes modal-aparecer { from { opacity: 0; } }
+@keyframes modal-entrada {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal__camada *,
+  .modal__camada *::before,
+  .modal__camada *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 760px) {
+  .modal__camada { @apply p-[10px]; }
+  .modal__painel--detalhe { width: calc(100vw - 20px); height: calc(100vh - 20px); }
+  .modal__corpo { @apply px-[16px] pb-[18px]; }
+  .modal__rodape { @apply flex-wrap gap-[10px] px-[16px] py-[12px]; }
+  .modal__acoes { @apply ml-auto; }
+}
+@media (max-height: 800px) {
+  .modal__painel--detalhe { height: calc(100vh - 32px); }
+  .modal__banner { @apply h-[124px]; }
+}

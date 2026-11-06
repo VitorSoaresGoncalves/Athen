@@ -5,9 +5,13 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import checkFile from 'eslint-plugin-check-file';
 import tseslint from 'typescript-eslint';
 
+
+
 export default tseslint.config(
+  
   {
-    ignores: ['dist', 'node_modules', 'build'],
+    ignores: ['dist', 'node_modules', 'build','src/types/database.ts'],
+    
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -35,12 +39,11 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
 
-      // Nomenclatura de arquivos (kebab-case)
+      //Nomenclatura de arquivos Type e JavaScript (PascalCase)
       'check-file/filename-naming-convention': [
         'error',
         {
-          // 'src/components/**/*.{jsx,tsx}': 'PASCAL_CASE',
-          '**/*.{js,jsx,ts,tsx,css,scss,html}': 'KEBAB_CASE',
+          '**/*.{jsx,tsx}': 'PASCAL_CASE',
         },
         {
           ignoreMiddleExtensions: true,

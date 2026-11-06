@@ -1,0 +1,98 @@
+@reference "../index.css";
+
+/* ==========================================================================
+   Página Notificações — usa os tokens globais de design (index.css):
+   canvas · surface · ink · muted · line · gold · violet(-mid/-pale)
+   Mesmo esqueleto visual das demais páginas internas da plataforma.
+   ========================================================================== */
+
+/* ---------- Base ---------- */
+.notificacoes {
+  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  line-height: normal;
+}
+
+.notificacoes,
+.notificacoes *,
+.notificacoes *::before,
+.notificacoes *::after {
+  box-sizing: border-box;
+}
+
+:where(.notificacoes) :where(h1, h2, h3, p, ul) { margin: 0; }
+:where(.notificacoes) :where(h1, h2, h3) { font-weight: 400; }
+:where(.notificacoes) :where(button) { font: inherit; color: inherit; }
+
+/* O deslocamento da SidebarLeft é responsabilidade do PageLayout. */
+.notificacoes__main {
+  @apply relative isolate min-h-svh min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+}
+
+.notificacoes__brilho {
+  @apply pointer-events-none fixed top-[-200px] right-[-120px] h-[560px] w-[700px];
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(164, 134, 213, 0.18), rgba(14, 8, 32, 0) 68%);
+}
+
+/* ---------- Cabeçalho (padrão compartilhado entre as páginas) ---------- */
+.notificacoes__cabecalho { @apply mb-[32px] flex items-end justify-between gap-[16px]; }
+.notificacoes__caminho {
+  @apply mb-[10px] text-[10px] tracking-[1.4px] text-muted;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.notificacoes__caminho span { @apply text-gold; }
+.notificacoes__titulo { @apply font-display text-[46px] leading-[1.05] tracking-[-0.8px] text-ink; }
+.notificacoes__subtitulo { @apply mt-[9px] text-[14px] text-muted; }
+
+/* ---------- Botão secundário (marcar todas) ---------- */
+.notificacoes__botao-secundario {
+  @apply inline-flex h-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-line bg-surface px-[18px] text-[13px] font-bold text-violet-pale;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.notificacoes__botao-secundario:hover {
+  border-color: color-mix(in srgb, var(--color-violet-mid) 50%, transparent);
+  @apply text-ink;
+}
+
+/* ---------- Estados (carregando / erro / vazio) ---------- */
+.notificacoes__estado {
+  @apply mt-[24px] rounded-xl border border-dashed border-line bg-surface/70 px-6 py-14 text-center text-sm text-muted;
+}
+.notificacoes__estado--erro { @apply border-red-300/40 text-red-200; }
+
+/* ---------- Lista ---------- */
+.notificacoes__lista {
+  @apply mt-[24px] flex max-w-[680px] list-none flex-col gap-[8px] p-0;
+}
+.notificacoes__item {
+  @apply flex w-full cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface px-[16px] py-[13px] text-left;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.notificacoes__item:hover {
+  border-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent);
+  transform: translateY(-1px);
+}
+/* Não lidas ganham um leve destaque dourado. */
+.notificacoes__item--nova {
+  border-color: color-mix(in srgb, var(--color-gold) 30%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 7%, var(--color-surface));
+}
+.notificacoes__icone { @apply shrink-0 text-[22px] leading-none; }
+.notificacoes__conteudo { @apply min-w-0 flex-1; }
+.notificacoes__linha-topo { @apply flex items-start justify-between gap-3; }
+.notificacoes__item-titulo { @apply text-[14px] font-bold text-ink; }
+.notificacoes__quando { @apply shrink-0 whitespace-nowrap text-[11px] text-muted; }
+.notificacoes__mensagem { @apply mt-[3px] text-[13px] leading-[1.45] text-muted; }
+.notificacoes__tipo { @apply mt-[6px] block text-[11px] font-bold text-gold; }
+.notificacoes__ponto {
+  @apply mt-[6px] block h-[9px] w-[9px] shrink-0 rounded-full bg-gold;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 760px) {
+  .notificacoes__main { @apply px-[20px] pt-[28px]; }
+  .notificacoes__cabecalho { @apply flex-col items-start gap-[14px]; }
+  .notificacoes__titulo { @apply text-[36px]; }
+}

@@ -1,0 +1,279 @@
+@reference "../index.css";
+
+/* ==========================================================================
+   Página Configurações — mesmo esqueleto visual de Catálogo/Salas, com os
+   tokens globais de design (index.css): canvas · surface · ink · muted · line
+   · gold · violet(-mid/-pale). Os campos e as funções da página são os mesmos;
+   só o visual foi alinhado ao padrão da plataforma.
+   ========================================================================== */
+
+/* ---------- Base ---------- */
+.configuracoes {
+  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  line-height: normal;
+}
+
+.configuracoes,
+.configuracoes *,
+.configuracoes *::before,
+.configuracoes *::after {
+  box-sizing: border-box;
+}
+
+:where(.configuracoes) :where(h1, h2, h3, p) { margin: 0; }
+:where(.configuracoes) :where(h1, h2, h3) { font-weight: 400; }
+:where(.configuracoes) :where(button, input, select) { font: inherit; color: inherit; }
+
+/* O deslocamento da SidebarLeft é responsabilidade do PageLayout. */
+.configuracoes__main {
+  @apply relative isolate min-h-svh min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+}
+
+.configuracoes__brilho {
+  @apply pointer-events-none fixed top-[-200px] right-[-120px] h-[560px] w-[700px];
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(164, 134, 213, 0.18), rgba(14, 8, 32, 0) 68%);
+}
+
+/* ---------- Cabeçalho (padrão compartilhado entre as páginas) ---------- */
+.configuracoes__cabecalho { @apply mb-[32px]; }
+.configuracoes__caminho {
+  @apply mb-[10px] text-[10px] tracking-[1.4px] text-muted;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.configuracoes__caminho span { @apply text-gold; }
+.configuracoes__titulo { @apply font-display text-[46px] leading-[1.05] tracking-[-0.8px] text-ink; }
+.configuracoes__subtitulo { @apply mt-[9px] max-w-[650px] text-[14px] leading-[1.6] text-muted; }
+
+/* ---------- Conteúdo ---------- */
+.configuracoes-content {
+  @apply grid gap-[20px];
+  align-content: start;
+  max-width: 920px;
+}
+
+/* ---------- Cards ---------- */
+.configuracoes-card,
+.configuracoes-danger,
+.configuracoes-confirmation {
+  @apply bg-surface;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(5, 4, 18, 0.24);
+}
+
+.configuracoes-card { padding: clamp(20px, 3vw, 32px); }
+
+.configuracoes-card__heading {
+  @apply mb-[24px] flex items-start justify-between gap-[20px];
+}
+
+.configuracoes-card h2,
+.configuracoes-danger h2 {
+  @apply font-display text-ink;
+  font-size: clamp(1.4rem, 3vw, 1.75rem);
+}
+
+.configuracoes-card__eyebrow {
+  @apply mb-[7px] text-[10px] tracking-[1.4px] text-muted;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.configuracoes-card__icon {
+  @apply grid size-[42px] flex-none place-items-center text-gold;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 48%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-gold) 10%, transparent);
+  font-size: 1.35rem;
+}
+
+/* ---------- Campos ---------- */
+.configuracoes-fields {
+  @apply grid gap-[18px];
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.configuracoes-field {
+  @apply grid gap-[7px] text-ink;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.configuracoes-field--full { grid-column: 1 / -1; }
+
+.configuracoes-field input {
+  @apply w-full bg-canvas text-ink;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  outline: none;
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 400;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.configuracoes-field input::placeholder { @apply text-muted; }
+.configuracoes-field input:focus {
+  border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 10%, transparent);
+}
+.configuracoes-field input:disabled {
+  cursor: not-allowed;
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-canvas) 60%, transparent);
+  opacity: 1;
+}
+.configuracoes-field small {
+  @apply text-muted;
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.configuracoes-divider {
+  height: 1px;
+  margin: 28px 0 24px;
+  background: var(--color-line);
+}
+
+.configuracoes-subheading { @apply mb-[18px]; }
+.configuracoes-subheading h3,
+.configuracoes-notification h3 {
+  @apply text-ink;
+  font-size: 1rem;
+}
+.configuracoes-subheading p,
+.configuracoes-notification p {
+  @apply mt-[5px] text-muted;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+/* ---------- Notificações ---------- */
+.configuracoes-notifications { @apply grid gap-[10px]; }
+.configuracoes-notification {
+  @apply flex items-center justify-between gap-[20px];
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.configuracoes-notification:first-child { padding-top: 0; }
+.configuracoes-notification:last-child { padding-bottom: 0; border-bottom: 0; }
+
+.configuracoes-switch {
+  position: relative;
+  width: 54px;
+  height: 30px;
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--color-violet-mid) 70%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--color-violet) 45%, transparent);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.configuracoes-switch span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-violet-pale);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.configuracoes-switch--enabled {
+  border-color: var(--color-gold);
+  background: color-mix(in srgb, var(--color-gold) 55%, #3a2d08);
+}
+.configuracoes-switch--enabled span {
+  background: var(--color-gold);
+  transform: translateX(22px);
+}
+
+/* ---------- Zona de atenção ---------- */
+.configuracoes-danger {
+  @apply flex items-center justify-between gap-[24px];
+  padding: clamp(20px, 3vw, 28px);
+  border-color: rgba(255, 134, 134, 0.4);
+  background: rgba(76, 24, 50, 0.5);
+}
+.configuracoes-danger p:not(.configuracoes-card__eyebrow) {
+  @apply mt-[8px];
+  max-width: 680px;
+  color: #f5c9d4;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* ---------- Botões ---------- */
+.configuracoes-danger__button,
+.configuracoes-button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, filter 0.2s ease, background 0.2s ease;
+}
+.configuracoes-danger__button {
+  flex: 0 0 auto;
+  border: 1px solid #ff9ba8;
+  color: #ffe9ed;
+  background: rgba(147, 32, 66, 0.65);
+}
+.configuracoes-danger__button:hover,
+.configuracoes-button:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* ---------- Confirmação de exclusão ---------- */
+.configuracoes-confirmation {
+  @apply flex items-center justify-between gap-[20px];
+  padding: 18px 20px;
+  border-color: rgba(255, 134, 134, 0.35);
+  background: rgba(76, 24, 50, 0.42);
+}
+.configuracoes-confirmation p {
+  color: #f5c9d4;
+  font-size: 0.88rem;
+}
+.configuracoes-confirmation__actions { @apply flex gap-[10px]; }
+
+.configuracoes-button--primary {
+  border: 0;
+  color: var(--color-violet);
+  background: var(--color-gold);
+  box-shadow: 0 9px 30px color-mix(in srgb, var(--color-gold) 16%, transparent);
+}
+.configuracoes-button--secondary {
+  border: 1px solid var(--color-line);
+  color: var(--color-violet-pale);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+}
+.configuracoes-button--danger {
+  border: 1px solid #ff9ba8;
+  color: #ffe9ed;
+  background: rgba(147, 32, 66, 0.72);
+}
+
+/* ---------- Ações / feedback ---------- */
+.configuracoes-actions {
+  @apply flex flex-wrap items-center gap-[16px];
+}
+.configuracoes-feedback {
+  @apply text-muted;
+  font-size: 0.86rem;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 760px) {
+  .configuracoes__main { @apply px-[20px] pt-[28px]; }
+  .configuracoes__titulo { @apply text-[36px]; }
+  .configuracoes-fields { grid-template-columns: 1fr; }
+  .configuracoes-danger { flex-direction: column; align-items: flex-start; }
+}

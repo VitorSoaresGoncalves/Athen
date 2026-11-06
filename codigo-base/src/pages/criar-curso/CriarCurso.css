@@ -1,0 +1,206 @@
+@reference "../../index.css";
+
+/* ==========================================================================
+   Página Criar Curso — mesmo esqueleto visual das demais páginas internas.
+   Usa os tokens globais (index.css): canvas · surface · ink · muted · line ·
+   gold · violet(-mid/-pale). Adaptação do fluxo de criação do upstream
+   (embertoni/kiro-athen) ao visual da plataforma Athen.
+   ========================================================================== */
+
+/* ---------- Base ---------- */
+.criar-curso {
+  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  line-height: normal;
+}
+.criar-curso,
+.criar-curso *,
+.criar-curso *::before,
+.criar-curso *::after {
+  box-sizing: border-box;
+}
+:where(.criar-curso) :where(h1, h2, h3, p) { margin: 0; }
+:where(.criar-curso) :where(h1, h2, h3) { font-weight: 400; }
+:where(.criar-curso) :where(button, input, select, textarea) { font: inherit; color: inherit; }
+
+.criar-curso__main {
+  @apply relative isolate mx-auto min-h-svh w-full max-w-[920px] px-[56px] pt-[42px] pb-[64px];
+}
+.criar-curso__brilho {
+  @apply pointer-events-none fixed top-[-200px] right-[-120px] h-[560px] w-[700px];
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(164, 134, 213, 0.18), rgba(14, 8, 32, 0) 68%);
+}
+
+/* ---------- Cabeçalho (padrão compartilhado) ---------- */
+.criar-curso__cabecalho { @apply mb-[28px]; }
+.criar-curso__caminho {
+  @apply mb-[10px] text-[10px] tracking-[1.4px] text-muted;
+  font-weight: 700;
+}
+.criar-curso__caminho span { @apply text-gold; }
+.criar-curso__titulo { @apply font-display text-[46px] leading-[1.05] tracking-[-0.8px] text-ink; }
+.criar-curso__subtitulo { @apply mt-[9px] text-[14px] text-muted; }
+
+/* ---------- Cartões ---------- */
+.criar-curso__cartao {
+  @apply mb-[18px] rounded-[16px] border border-line bg-surface p-[22px];
+}
+.criar-curso__cartao-cabecalho { @apply mb-[14px] flex items-center justify-between; }
+.criar-curso__cartao-titulo { @apply font-display text-[20px] text-ink; }
+
+.criar-curso__modulo { @apply bg-surface; }
+
+/* ---------- Campos ---------- */
+.criar-curso__grade-campos { @apply grid gap-[14px]; }
+.criar-curso__campo { @apply flex flex-col gap-[6px]; }
+.criar-curso__rotulo-campo { @apply text-[12px] tracking-[0.4px] text-violet-pale; font-weight: 600; }
+.criar-curso__dica { @apply text-[11px] text-muted; }
+
+.criar-curso__input,
+.criar-curso__select,
+.criar-curso__area {
+  @apply w-full bg-[rgba(255,255,255,0.03)] px-[14px] py-[11px] text-[14px] text-ink;
+  border: 1px solid var(--color-line);
+  border-radius: 11px;
+  outline: 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.criar-curso__input::placeholder,
+.criar-curso__area::placeholder { @apply text-muted; }
+.criar-curso__input:focus,
+.criar-curso__select:focus,
+.criar-curso__area:focus {
+  border-color: color-mix(in srgb, var(--color-gold) 48%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 8%, transparent);
+}
+.criar-curso__input:disabled,
+.criar-curso__select:disabled,
+.criar-curso__area:disabled { opacity: 0.55; cursor: not-allowed; }
+.criar-curso__area { @apply resize-y; min-height: 84px; }
+.criar-curso__select option { color: var(--color-ink); background: var(--color-surface); }
+
+.criar-curso__input--flex { @apply flex-1; }
+.criar-curso__input--numero { @apply w-[88px]; }
+
+.criar-curso__campo--cor { @apply max-w-[120px]; }
+.criar-curso__cor {
+  @apply h-[42px] w-[64px] cursor-pointer p-[3px];
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-line);
+  border-radius: 11px;
+}
+
+/* ---------- Aulas ---------- */
+.criar-curso__aula {
+  @apply mt-[16px] flex flex-col gap-[12px] rounded-[13px] p-[16px];
+  border: 1px dashed color-mix(in srgb, var(--color-violet-mid) 32%, transparent);
+  background: rgba(255, 255, 255, 0.02);
+}
+.criar-curso__aula-cabecalho { @apply flex items-center justify-between; }
+.criar-curso__aula-titulo-rotulo { @apply text-[14px] text-ink; font-weight: 600; }
+
+/* ---------- Questões ---------- */
+.criar-curso__questao {
+  @apply mt-[6px] flex flex-col gap-[11px] rounded-[12px] p-[14px];
+  background: rgba(46, 27, 76, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.criar-curso__questao-cabecalho { @apply flex items-center gap-[10px]; }
+.criar-curso__questao-rotulo { @apply text-[13px] text-ink; font-weight: 600; }
+.criar-curso__xp { @apply mr-auto text-[12px] text-gold; font-weight: 700; }
+
+/* ---------- Editor de config da questão ---------- */
+.criar-curso__config { @apply mt-[2px] flex flex-col gap-[8px]; }
+.criar-curso__config-dica { @apply text-[12px] leading-[1.5] text-muted; }
+.criar-curso__config-linha { @apply flex items-center gap-[8px]; }
+.criar-curso__config-seta { @apply text-[15px] text-violet-pale; }
+.criar-curso__config-rodape { @apply flex flex-wrap items-center gap-[12px]; }
+.criar-curso__soma { @apply text-[13px] text-muted; }
+.criar-curso__soma strong { @apply text-gold; }
+.criar-curso__checkbox {
+  @apply size-[18px] shrink-0 cursor-pointer;
+  accent-color: var(--color-gold);
+}
+
+/* ---------- Botões ---------- */
+.criar-curso__botao-primario {
+  @apply inline-flex h-[48px] cursor-pointer items-center justify-center gap-[9px] bg-gold px-[22px] text-[13px] text-violet;
+  font-weight: 700;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 9px 30px color-mix(in srgb, var(--color-gold) 16%, transparent);
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.criar-curso__botao-primario:hover:not(:disabled) {
+  @apply bg-gold-light;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--color-gold) 24%, transparent);
+}
+.criar-curso__botao-primario:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.criar-curso__botao-secundario {
+  @apply inline-flex h-[48px] cursor-pointer items-center justify-center gap-[8px] rounded-[12px] border border-line bg-surface px-[18px] text-[13px] text-violet-pale;
+  font-weight: 600;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+.criar-curso__botao-secundario:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-violet-mid) 50%, transparent);
+  @apply text-ink;
+}
+.criar-curso__botao-secundario:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Botão leve (adicionar aula/questão/par/alternativa) */
+.criar-curso__botao-leve {
+  @apply inline-flex w-fit cursor-pointer items-center gap-[6px] rounded-[10px] px-[12px] py-[8px] text-[12px] text-gold;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-gold) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 22%, transparent);
+  transition: background-color 0.2s ease;
+}
+.criar-curso__botao-leve:hover:not(:disabled) { background: color-mix(in srgb, var(--color-gold) 16%, transparent); }
+.criar-curso__botao-leve:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.criar-curso__remover {
+  @apply inline-flex cursor-pointer items-center gap-[5px] rounded-[9px] px-[10px] py-[6px] text-[12px];
+  color: #e8909e;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease;
+}
+.criar-curso__remover:hover:not(:disabled) { background: rgba(194, 69, 90, 0.18); }
+
+.criar-curso__remover-mini {
+  @apply grid size-[32px] shrink-0 cursor-pointer place-items-center rounded-[9px] text-[13px];
+  color: #e8909e;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background-color 0.2s ease;
+}
+.criar-curso__remover-mini:hover:not(:disabled) { background: rgba(194, 69, 90, 0.22); }
+.criar-curso__remover-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.criar-curso__add-modulo { @apply mt-[4px]; }
+
+/* ---------- Erro e ações ---------- */
+.criar-curso__erro {
+  @apply mt-[16px] rounded-[11px] px-[16px] py-[12px] text-[13px];
+  color: #fecaca;
+  background: rgba(194, 69, 90, 0.12);
+  border: 1px solid rgba(194, 69, 90, 0.3);
+}
+.criar-curso__acoes { @apply mt-[24px] flex flex-wrap justify-end gap-[12px]; }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 760px) {
+  .criar-curso__main { @apply px-[20px] pt-[28px]; }
+  .criar-curso__titulo { @apply text-[36px]; }
+  .criar-curso__acoes { @apply flex-col; }
+  .criar-curso__acoes > button { @apply w-full; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .criar-curso *, .criar-curso *::before, .criar-curso *::after {
+    transition: none !important;
+  }
+}

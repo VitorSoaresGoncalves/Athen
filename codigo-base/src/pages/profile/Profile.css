@@ -1,0 +1,5 @@
+@reference "../../index.css";
+
+/* Os tokens de design (cores e fontes) e o reset base agora ficam centralizados
+   em src/index.css. Esta página usa esses tokens compartilhados; mantemos aqui
+   só o que é específico do perfil, caso precise no futuro. */
