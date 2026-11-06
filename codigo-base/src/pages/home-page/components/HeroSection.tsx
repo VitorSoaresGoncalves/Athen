@@ -65,7 +65,7 @@ export default function HeroSection({ stats, loading, loggedIn }: HeroSectionPro
         className="text-5xl md:text-7xl leading-tight max-w-3xl mb-6"
         style={{ fontFamily: "var(--font-display)", color: "#FFCC00", textShadow: "0 0 60px rgba(255,204,0,0.25)" }}
       >
-        teste qualquer coisa.
+        Aprenda qualquer coisa.
         <br />
         <span style={{ color: "#F4EEFF" }}>Do seu jeito.</span>
       </h1>
