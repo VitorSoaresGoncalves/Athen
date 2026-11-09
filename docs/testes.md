@@ -1,8 +1,19 @@
 # Testes e validações
 
-Execute os comandos a partir de `codigo-base/`, após o [setup local](../codigo-base/README.md). O catálogo executável está em [package.json](../codigo-base/package.json); a automação de CI está no [workflow](../.github/workflows/ci.yml).
+Referência atual da branch `test/updates`. Execute os comandos em `codigo-base/`. O [mapa detalhado dos testes](mapa-dos-testes.md) explica cada suíte, sua utilidade, as páginas cobertas, diagramas e limites. As fontes executáveis são [package.json](../codigo-base/package.json) e [ci.yml](../.github/workflows/ci.yml).
 
-## Pipeline para mudanças de código
+## Preparação
+
+Instale as dependências e o navegador usado pelo runner:
+
+```bash
+npm ci
+npx playwright install chromium
+```
+
+O MCP Playwright é uma ferramenta de exploração para o agente. Não é necessário instalá-lo para executar as suítes versionadas pelo terminal ou pelo GitHub Actions.
+
+## Pipeline local para mudanças de código
 
 ```bash
 npm run lint
@@ -10,53 +21,75 @@ npm run typecheck
 npm run test:run
 npm run test:check
 npm run build
-```
-
-| Verificação | O que cobre |
-| --- | --- |
-| `lint` | Regras configuradas no ESLint; não comprova aderência completa aos guias de estilo ou produto |
-| `typecheck` | Compilação dos projetos TypeScript configurados |
-| `test:run` | Testes `*.test.ts` e `*.test.tsx` sob `tests/`, com Vitest/jsdom |
-| `test:check` | Tipagem do projeto de testes |
-| `build` | Compilação TypeScript e assets de produção do Vite |
-
-O pre-commit em [Husky](../codigo-base/.husky/pre-commit) usa lint-staged e faz verificações locais; confira o arquivo ao investigar falhas. Ele não substitui a execução completa acima.
-
-Para o comportamento da issue 42 (missões, ligas/temporadas, PAC, agendador e alerta), o plano de testes dedicado — com seed de cenário e casos de servidor/UI — está em [Suíte de testes da Issue 42](testes-issue-42.md).
-
-## Interface e E2E
-
-Para mudanças visuais ou de navegação, execute também:
-
-```bash
 npm run test:e2e
 ```
 
-A [configuração Playwright](../codigo-base/playwright.config.ts) usa Chromium e prepara um build/preview em `127.0.0.1:4173`, com variáveis Supabase fictícias. Ela pode reutilizar um servidor existente fora da CI: confira o processo ao interpretar os resultados. Se faltar o navegador, instale-o com `npx playwright install chromium`.
+| Verificação | Alcance |
+| --- | --- |
+| `lint` | Regras configuradas no ESLint; não comprova aderência completa aos guias |
+| `typecheck` | Tipos dos projetos da aplicação e Vite |
+| `test:run` | 26 testes Vitest de configuração de questões, prazos/contextos de missões e Modal real |
+| `test:check` | Tipos de `src`, `tests`, Vitest e configurações Playwright |
+| `build` | TypeScript e assets de produção Vite |
+| `test:e2e` | 70 cenários Chromium, com HTTP simulado e cobertura das 16 rotas ativas |
 
-O teste existente verifica título e cabeçalho da página inicial. Não testa login real nem os fluxos autenticados de curso, aula, sala ou perfil. Os valores fictícios usados pelo E2E não servem para acesso funcional ao banco.
+Os exemplos de soma e contador foram removidos por não cobrirem comportamento do produto. As regressões de dashboard/ligas foram mantidas e os testes de missões passaram a comparar valores e navegação real. O [catálogo](mapa-dos-testes.md) relaciona os casos por página e arquivo.
 
-`tests/e2e/dashboard.spec.ts` também exercita o dashboard com sessão e respostas HTTP controladas: conclusão sem questões, falhas da leitura e da RPC, parâmetros das consultas do TopDown, navegação do carrossel e geometria em 1280, 1440 e 1920px. As capturas de dashboard e seletor ficam em `test-results/`. Esses testes não validam autenticação real, aplicação da migração `0022` ou políticas RLS de um banco remoto.
+O [Husky](../codigo-base/.husky/pre-commit) executa somente lint-staged/ESLint nos arquivos staged compatíveis. Não substitui o pipeline. Use `npm test` para acompanhar Vitest durante desenvolvimento e `npm run test:run -- tests/components/Modal.test.tsx` para focar um arquivo.
 
-## Cobertura existente
+## Interface determinística
 
-Conferência em 2026-10-23: os testes Vitest existentes são exemplos de [soma](../codigo-base/tests/unit/sum.test.ts) e [contador](../codigo-base/tests/components/ExampleCounter.test.tsx). O [E2E](../codigo-base/tests/e2e/home-page.spec.ts) cobre a página inicial. Aprovação dessas verificações não comprova correção dos fluxos de domínio ou permissões do banco.
+A [configuração principal](../codigo-base/playwright.config.ts) inicia seu próprio build/preview em `127.0.0.1:4173`, com URL/chave Supabase fictícias. Não reutiliza servidor existente: libere a porta antes de executar. Usa dois workers, Chromium, pt-BR e fuso de Brasília.
 
-Ao acrescentar testes, exercite comportamento observável pelo ponto de entrada usado pelo chamador; evite depender da organização interna da implementação.
+As novas suítes usam [fixtures HTTP](../codigo-base/tests/e2e/support/platform.ts) independentes por teste, sem reproduzir algoritmos SQL. Dashboard e ligas mantêm seus cenários controlados específicos. O fluxo padrão simulado está em [study-journey.spec.ts](../codigo-base/tests/e2e/study-journey.spec.ts).
 
-## Runner SQL legado
+```bash
+npm run test:e2e -- tests/e2e/platform-pages.spec.ts
+npm run test:e2e -- --list
+```
 
-`npm run test:db` aponta para [run-testes.ts](../codigo-base/supabase/testes/run-testes.ts). É um menu interativo que usa `SUPABASE_DB_URL` do ambiente do processo e executa SQL de criação, atualização e exclusão.
+Falhas guardam screenshot/trace em `test-results/`; o relatório padrão fica em `playwright-report/`. Capturas de sucesso dos testes antigos não são comparação automática com baseline visual. `--list` apenas descobre casos, sem executar asserções.
 
-Limitações encontradas na leitura:
+## Banco de dados atual e jornada real
 
-- Os scripts SQL usam tabelas antigas, como `public."Usuario"`, diferentes do [modelo atual](banco-de-dados/documentacao-bd.md).
-- O runner resolve arquivos como `./01_create.sql` pelo diretório de execução; o comando do manifesto parte de `codigo-base/`, não de `supabase/testes/`.
-- Falhas dos scripts são reportadas, mas o retorno booleano não vira uma falha global do processo em cada opção do menu.
-- O runner não configura um banco isolado nem faz parte da CI atual.
+Use **banco local descartável de ensaio**, com migrações numeradas e `supabase/seed.sql`. Não use produção. Com Docker iniciado:
 
-Portanto, esse comando não é uma validação automatizada confiável do esquema atual. Para alterar SQL, declare o ambiente de teste e verifique as regras afetadas, incluindo permissões e efeitos persistidos. A correção do runner e a criação dessa cobertura são trabalho de código separado desta documentação.
+```bash
+npx supabase start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit
+```
+
+Forneça `SUPABASE_DB_URL` no ambiente do processo. Para a configuração local versionada, em PowerShell:
+
+```powershell
+$env:SUPABASE_DB_URL = 'postgresql://postgres:postgres@127.0.0.1:55322/postgres'
+npm run test:db
+npm run test:e2e:live
+```
+
+`test:db` agora chama `test:issue42`: [run-harness.ts](../codigo-base/supabase/testes-issue-42/run-harness.ts) executa `harness.sql`, `live-standings.sql`, `missions.sql` e `review-fixes.sql`. Habilita asserções PL/pgSQL, limita conexão/query, interrompe a sequência em falha e reverte os ensaios. O quarto script recebe a transação pelo runner. Há limpeza temporária de tabelas em alguns ensaios: rollback não elimina bloqueios/interferência durante a execução; mantenha o alvo isolado.
+
+A [jornada real](../codigo-base/tests/live/local-study.spec.ts) usa [configuração própria](../codigo-base/playwright.live.config.ts), preview em 4175 e URL/chave da pilha **local**, obtidas sem imprimir segredos por `supabase status -o json`. Recusa API não loopback. Cadastra uma conta aleatória, faz login, matricula-se no curso do seed, responde uma aula, verifica XP/progresso após reload, lê missões e sai. Não usa interceptação HTTP ou sessão fictícia. Não gera traces de credenciais; mantém screenshots de falha. Sem backend local, falha explicitamente na preparação.
+
+Cada execução real deixa sua conta e atividade no banco descartável para diagnóstico, preservando dados preexistentes. Os testes SQL e a jornada real devem rodar sequencialmente. As suítes real e simulada também devem rodar sequencialmente, pois ambas escrevem `dist/`. A jornada não exige `SUPABASE_DB_URL`; usa Auth/PostgREST reais.
+
+O [plano da issue 42](testes-issue-42.md) traz ensaios adicionais. Fixtures/checagens de upgrade ainda exigem migração entre etapas, na mesma transação revertida. Entrega real do alerta e operação do cron não são comprovadas pelos testes de interface.
+
+## Material SQL legado
+
+`npm run test:db:legacy` preserva o menu antigo de `supabase/testes/` para consulta histórica. Ele usa tabelas antigas, resolve SQL pelo diretório atual, persiste mudanças e não propaga todas as falhas corretamente. **Não é gate do esquema atual nem integra a CI.** Seu detalhamento e limitações estão no [mapa](mapa-dos-testes.md).
+
+## Automação
+
+O GitHub Actions executa, em eventos elegíveis:
+
+1. `quality`: lint, tipos, Vitest, tipos dos testes e build.
+2. Após `quality`, `e2e`: os 70 casos simulados.
+3. Também após `quality`, `integration`: Supabase descartável, harness SQL e jornada real; encerra a pilha mesmo em falha.
+
+Os gatilhos e artefatos estão no [workflow](../.github/workflows/ci.yml). As novas etapas foram ensaiadas localmente; aprovação remota depende da execução do workflow.
+
+A Vercel tem apenas [rewrite de rotas versionado](../codigo-base/vercel.json), sem comando de testes declarado. Configuração de Preview/build no painel não foi inspecionada. Um build de hospedagem não equivale à execução das suítes.
 
 ## Mudanças exclusivamente documentais
 
-Confira caminhos e links locais, exemplos de comandos contra o manifesto e afirmações técnicas contra as fontes referenciadas. Relate separadamente verificações executadas e inspeções por leitura; reserve o pipeline da aplicação para mudanças de código ou configuração executável.
+Confira links e caminhos locais, comandos contra o manifesto e afirmações contra as fontes. Relate separadamente leitura, descoberta de testes e execução das asserções. Não execute novamente todo o pipeline apenas para alterar texto sem efeito no código.
