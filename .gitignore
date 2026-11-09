@@ -3,3 +3,6 @@
 # links recreated per-machine after cloning, so they are not versioned.
 /.claude/skills/
 /.kiro/skills/
+
+# Evidências locais da exploração pelo MCP; os testes versionados ficam em tests/.
+/.playwright-mcp/

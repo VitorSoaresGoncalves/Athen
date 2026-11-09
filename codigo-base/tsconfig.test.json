@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src", "tests", "vitest.config.ts"]
+  "include": ["src", "tests", "vitest.config.ts", "playwright*.config.ts"]
 }

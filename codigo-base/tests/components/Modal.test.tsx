@@ -38,3 +38,22 @@ it('recebe foco ao abrir e mantém a navegação dentro do diálogo', () => {
   fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
   expect(last).toHaveFocus()
 })
+
+it('fecha com Escape e devolve o foco ao botão de abertura', () => {
+  render(<Example />)
+  const trigger = screen.getByRole('button', { name: 'Abrir' })
+  trigger.focus()
+  fireEvent.click(trigger)
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(trigger).toHaveFocus()
+})
+
+it('clicar no conteúdo mantém o diálogo aberto', () => {
+  render(<Example />)
+  fireEvent.click(screen.getByRole('button', { name: 'Abrir' }))
+  const action = screen.getByRole('button', { name: 'Primeira ação' })
+  fireEvent.mouseDown(action)
+  fireEvent.mouseUp(action)
+  expect(screen.getByRole('dialog', { name: 'Exemplo' })).toBeInTheDocument()
+})

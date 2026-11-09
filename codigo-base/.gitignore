@@ -20,6 +20,7 @@ dist/
 .vitest/
 
 test-results/
+playwright-report/
 
 # Editor directories and files
 !.vscode/extensions.json
