@@ -5,7 +5,7 @@ const TAGS = ["⚡ XP & Níveis", "🏅 Medalhas", "🏆 Rankings", "🔓 Conqui
 
 interface GamificationSectionProps {
   learner: Learner | null; // usuário logado ou, para visitantes, o líder do ranking
-  leaderXp: number;
+  leaderXp: number; // teste 
   isMine: boolean;
   loading: boolean;
 }
@@ -44,7 +44,6 @@ export default function GamificationSection({ learner, leaderXp, isMine, loading
           ))}
         </div>
       </div>
-
       <div className="flex-1 flex justify-center">
         <LevelCard learner={learner} leaderXp={leaderXp} isMine={isMine} loading={loading} />
       </div>
