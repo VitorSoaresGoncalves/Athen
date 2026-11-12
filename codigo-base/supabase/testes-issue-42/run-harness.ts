@@ -19,6 +19,7 @@ import { Client } from 'pg'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const harnessPaths = ['harness.sql', 'live-standings.sql', 'missions.sql'].map(file => join(here, file))
+const reviewPath = join(here, 'review-fixes.sql')
 
 async function main() {
   const connectionString = process.env.SUPABASE_DB_URL
@@ -34,13 +35,23 @@ async function main() {
   }
 
   const scripts = harnessPaths.map(path => readFileSync(path, 'utf8'))
-  const client = new Client({ connectionString })
+  const review = readFileSync(reviewPath, 'utf8')
+  const client = new Client({ connectionString, connectionTimeoutMillis: 10_000, query_timeout: 60_000 })
 
   try {
     await client.connect()
+    await client.query('set plpgsql.check_asserts = on')
     // O harness ja contem begin/rollback e os asserts; uma falha de assert
     // chega aqui como erro de query, abortando com exit != 0.
     for (const sql of scripts) await client.query(sql)
+    // Este ensaio complementar não contém BEGIN/ROLLBACK próprios.
+    // A transação pertence ao runner, inclusive em caso de asserção falhar.
+    await client.query('begin')
+    try {
+      await client.query(review)
+    } finally {
+      await client.query('rollback')
+    }
     // console.warn: a config de ESLint do projeto só permite warn/error.
     console.warn('HARNESS ISSUE 42: OK (todas as assercoes passaram; rollback aplicado)')
   } catch (err) {

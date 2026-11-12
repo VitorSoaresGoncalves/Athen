@@ -17,4 +17,4 @@ Referência de orientação, conferida com o código em 2026-10-23. Para versõe
 
 O código atual faz consultas pelo SDK e mantém estado nas telas; há cache próprio de perfil na sidebar. TanStack Query não consta do manifesto nem da implementação atual consultada. Veja a [arquitetura](arquitetura.md).
 
-Vercel aparece nas referências históricas como destino de hospedagem. A configuração efetiva de hospedagem, variáveis e fallback de rotas precisa ser conferida no ambiente; não há `vercel.json` versionado neste checkout.
+Vercel aparece nas referências históricas como destino de hospedagem. O arquivo `codigo-base/vercel.json` versionado define o fallback das rotas para `index.html`, sem declarar testes. Comandos de build, variáveis e eventos de deploy precisam ser conferidos no ambiente. O [guia de testes](testes.md) distingue as validações locais, GitHub Actions e Vercel.

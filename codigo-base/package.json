@@ -12,10 +12,12 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:db": "tsx supabase/testes/run-testes.ts",
+    "test:db": "npm run test:issue42",
+    "test:db:legacy": "tsx supabase/testes/run-testes.ts",
     "test:issue42": "tsx supabase/testes-issue-42/run-harness.ts",
     "test:check": "tsc -p tsconfig.test.json --noEmit",
     "test:e2e": "playwright test",
+    "test:e2e:live": "playwright test --config playwright.live.config.ts",
     "preview": "vite preview",
     "prepare": "cd .. && husky codigo-base/.husky && node scripts/link-skills.mjs"
   },
