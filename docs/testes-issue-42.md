@@ -156,6 +156,8 @@ Pré: `pg_net` habilitado e `season_alert_webhook` no Vault com a URL **limpa** 
 
 ### Harness SQL automático (T1–T9)
 
+O catálogo efetivo e os limites de cada caso estão no [mapa atual](mapa-dos-testes.md). `npm run test:db` é o atalho para `test:issue42`; o runner executa também `review-fixes.sql`, envolvendo-o em transação com rollback garantido. Os três primeiros arquivos mantêm suas transações próprias. O job `integration` do GitHub Actions repete o harness e uma jornada de estudante com Supabase local real; o resultado do workflow precisa ser conferido na execução remota.
+
 Com a `0041`, `npm run test:issue42` executa também `live-standings.sql`, em transação revertida. O ensaio cobre XP corrente sem bônus/sala, empates no corte, projeção comparada ao fechamento real, grupo pequeno, piso Bronze, teto Mestre, entrada inicial/tardia, privacidade do próprio grupo e identidade oculta. O cenário antigo de identidade oculta foi ajustado para gerar créditos no ledger, em vez de plantar um saldo consolidado numa temporada aberta.
 
 O mesmo runner executa `missions.sql`, adaptado ao modelo corrente de `xp_events`/`season_*`. Os casos M1–M6 verificam materialização sem duplicação por período; avanço de missão pela RPC pública `finalize_attempt`; bônus único no ledger e no saldo global, excluído do XP competitivo; repetição sem novo crédito nem alteração da data de conquista; conclusão de aula sem questões pela `complete_empty_lesson`; e isolamento de atribuições/progresso entre dois estudantes, com RLS e bloqueio da finalização de tentativa alheia. A concessão interna de bônus deve permanecer sem `EXECUTE` para `authenticated`.
@@ -168,7 +170,7 @@ As zonas são verificadas dentro da lista: participantes elegíveis aparecem nas
 
 `legacy-overlap-check.sql` cobre a coexistência de inscrições antigas e novas com UUIDs diferentes. Antes da `0040`, crie uma tabela temporária `review_entries_before as table public.season_entries`; execute a migração e a checagem na mesma transação com `ROLLBACK`. Esse ensaio passou no remoto `testeAthen`, preservando as inscrições existentes e garantindo correspondência de todos os participantes legados por semana e usuário.
 
-As regressões da revisão do PR #52 estão em `codigo-base/supabase/testes-issue-42/review-fixes.sql`: permissões de funções internas, ordem da virada, inscrição tardia e conclusão de aula sem questões. `legacy-upgrade-fixture.sql` e `legacy-upgrade-check.sql` verificam a cópia de um crédito e de uma temporada da antiga `0023_ligas.sql`. Rode esses arquivos em um banco de ensaio com `0040` aplicada, dentro de uma transação encerrada com `ROLLBACK`. Para testar o upgrade, aplique a fixture antes da `0040` na mesma transação e execute a checagem depois. O teste de clique no fundo e foco do modal está em `codigo-base/tests/components/Modal.test.tsx`.
+As regressões da revisão do PR #52 estão em `codigo-base/supabase/testes-issue-42/review-fixes.sql`: permissões de funções internas, ordem da virada, inscrição tardia e conclusão de aula sem questões. Esse arquivo agora integra o harness, que controla sua transação e rollback. `legacy-upgrade-fixture.sql` e `legacy-upgrade-check.sql` verificam a cópia de um crédito e de uma temporada da antiga `0023_ligas.sql` e continuam como ensaio separado: aplique a fixture antes da `0040`, a migração e a checagem depois, na mesma transação encerrada com `ROLLBACK`. O teste de clique no fundo e foco do modal está em `codigo-base/tests/components/Modal.test.tsx`.
 
 Os casos de servidor estão automatizados em `codigo-base/supabase/testes-issue-42/harness.sql`, executado pelo runner `run-harness.ts` (ou pelo script npm). O harness:
 - É **auto-verificável**: cada caso usa `assert`; a falha de qualquer asserção aborta com erro (o runner sai com código ≠ 0).
@@ -197,7 +199,7 @@ Rodar: `npm run test:e2e` (toda a suíte) — requer Chromium (`npx playwright i
 
 ### Pendente / complementar
 - **U6 (TopDown)** com missões globais/curso: o resumo depende de curso ativo no dashboard; coberto parcialmente pelo `dashboard.spec.ts`. Um caso dedicado pode ser acrescentado.
-- O harness cobre os casos determinísticos de servidor; os cenários nominais de corte em grupo grande (T5.2) e a entrega real do alerta ao webhook (seção 6, exige `pg_net`) continuam como verificação manual/ensaio.
+- `live-standings.sql` cobre corte de grupo com dez positivos, empate na promoção e comparação com o fechamento real. Outras combinações de empate/distribuição e a entrega real do alerta ao webhook (seção 6, exige `pg_net`) continuam complementares. O catálogo T1–T9 é um plano: nem todo item planejado tem uma asserção no harness, conforme o [mapa atual](mapa-dos-testes.md).
 - **Pipeline do projeto** (`lint`/`typecheck`/`test:run`/`test:check`/`build`): cobre compilação/tipos, complementa o harness e os E2E.
 
 ## 8. Critérios de aceite (resumo)

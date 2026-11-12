@@ -43,7 +43,7 @@ Curso e Sala são contextos diferentes de execução e pontuação. Consulte as 
 
 ## Hospedagem e integrações
 
-O build produz assets estáticos em `codigo-base/dist/`. Vercel é o destino citado no material histórico; o deploy e o fallback das rotas precisam ser verificados no ambiente de hospedagem. Este checkout não contém `vercel.json` nem configuração local `supabase/config.toml`.
+O build produz assets estáticos em `codigo-base/dist/`. Vercel é o destino citado no material histórico; `codigo-base/vercel.json` define o fallback das rotas para `index.html`, sem declarar testes. A configuração local `codigo-base/supabase/config.toml` permite iniciar a pilha de ensaio. Deploy, variáveis e comandos do painel da hospedagem precisam ser verificados no ambiente.
 
 O perfil usa o bucket `avatars` para avatar e banner. A existência do bucket e suas políticas precisam ser verificadas no ambiente; a chamada no cliente não garante o provisionamento do recurso.
 
@@ -51,7 +51,7 @@ No diagrama, `Resend SMTP` representa o envio de e-mails de autenticação e a e
 
 `Edge Functions` representa a execução de funções no backend, com acesso ao banco e envio de e-mails por meio do Resend SMTP.
 
-O [workflow de CI](../.github/workflows/ci.yml) executa lint, verificação de tipos, testes, build e E2E. O agrupamento CI/CD reúne GitHub Actions e `Supabase CLI / migrações`, com responsabilidades distintas: validação da aplicação e aplicação das migrações SQL, respectivamente.
+O [workflow de CI](../.github/workflows/ci.yml) executa lint, verificação de tipos, Vitest, build e E2E simulados. O job `integration` também inicia Supabase descartável, executa o harness SQL e uma jornada real pelo navegador; veja [Testes](testes.md). O agrupamento CI/CD reúne GitHub Actions e `Supabase CLI / migrações`, com responsabilidades distintas: validação da aplicação e aplicação das migrações SQL, respectivamente.
 
 ## Propostas e divergências conhecidas
 
