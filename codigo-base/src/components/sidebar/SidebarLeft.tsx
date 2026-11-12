@@ -285,7 +285,7 @@ export function SidebarLeft() {
                     aria-label="Ir para o Dashboard"
                 >
                     <img src="/Athen.png" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-[10px] object-cover" />
-                    <span className="font-display text-[28px] lowercase leading-none tracking-[2px] text-gold">athen</span>
+                    <span className="font-display text-[28px] lowercase leading-none tracking-[2px] text-gold">atthen</span>
                 </Link>
 
                 <NavLink
