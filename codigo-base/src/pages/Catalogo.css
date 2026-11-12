@@ -48,7 +48,7 @@
 
 /* ---------- Botão primário (gold, texto violeta) ---------- */
 .catalogo__botao-primario {
-  @apply inline-flex h-[48px] cursor-pointer items-center justify-center gap-[9px] bg-gold px-[20px] text-[13px] text-violet;
+  @apply inline-flex h-[48px] cursor-pointer items-center justify-center gap-[9px] bg-blue-600 px-[20px] text-[13px] text-red-500;
   font-weight: 700;
   border: 0;
   border-radius: 12px;

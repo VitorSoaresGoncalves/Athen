@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ROUTES, logoColor, logoGhost, type HomeStats } from "../data";
+import { ROUTES, chess, logoColor, logoGhost, type HomeStats } from "../data";
 
 interface HeroSectionProps {
   stats: HomeStats | null;
@@ -49,7 +49,7 @@ export default function HeroSection({ stats, loading, loggedIn }: HeroSectionPro
 
       <div className="flex items-center gap-4 mb-8">
         <img
-          src={logoColor}
+          src={chess}
           alt="Athen"
           className="w-40 h-40 rounded-2xl object-cover shadow-xl"
         />

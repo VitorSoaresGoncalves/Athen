@@ -3,7 +3,7 @@
 
 export const logoColor = "/Athen.png";
 export const logoGhost = "/Athen_ghost.png";
-
+export const chess = "/chess.png";
 // Ajuste aqui se as rotas do seu app forem diferentes.
 export const ROUTES = {
   login: "/login-page",
