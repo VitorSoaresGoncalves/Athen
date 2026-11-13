@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
 import { Modal, ModalFechar } from "../components/modal/Modal";
@@ -27,11 +27,15 @@ type ModuloComAulas = Modulo & { aulas: AulaView[] };
 // ---------------------------------------------------------------------------
 // Ícones (só os que esta página usa)
 // ---------------------------------------------------------------------------
-type NomeIcone = "search" | "filter" | "plus" | "close" | "arrow" | "play" | "chevron" | "check" | "clock";
+type NomeIcone = "search" | "sliders" | "plus" | "close" | "arrow" | "play" | "chevron" | "check" | "clock" | "grid" | "rows" | "prev" | "next";
 
 const caminhos: Record<NomeIcone, ReactNode> = {
   search: <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></>,
-  filter: <path d="M4 7h16M7 12h10M10 17h4" />,
+  sliders: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
+  grid: <><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></>,
+  rows: <><rect x="3" y="5" width="18" height="5.5" rx="1.5" /><rect x="3" y="13.5" width="18" height="5.5" rx="1.5" /></>,
+  prev: <path d="m15 6-6 6 6 6" />,
+  next: <path d="m9 6 6 6-6 6" />,
   plus: <path d="M12 5v14M5 12h14" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
   arrow: <path d="M5 12h14M14 7l5 5-5 5" />,
@@ -476,6 +480,201 @@ type CursoComMeta = {
   matriculado: boolean;
 };
 
+type ModoExibicao = "carrosseis" | "todos";
+
+// ---------------------------------------------------------------------------
+// Card de curso (usado na grade e nos carrosséis)
+// ---------------------------------------------------------------------------
+function CartaoCurso({ item, onAbrir }: { item: CursoComMeta; onAbrir: (item: CursoComMeta) => void }) {
+  const { curso } = item;
+  return (
+    <button type="button" className={`catalogo__card catalogo__card--${item.tom}`} onClick={() => onAbrir(item)}>
+      <div className={`catalogo__card-banner catalogo__card-banner--${item.tom}`}>
+        {curso.cover_url && <img src={curso.cover_url} alt="" className="catalogo__card-img" />}
+        {curso.category && <span className="catalogo__card-tag">{curso.category}</span>}
+        <span className="catalogo__card-aulas" title="Aulas do curso">
+          <Icone nome="play" tamanho={13} /> {item.aulas}
+        </span>
+      </div>
+      <div className={`catalogo__card-icone catalogo__card-icone--${item.tom}`} aria-hidden="true">{DEFAULT_COURSE_ICON}</div>
+      <div className="catalogo__card-corpo">
+        <h3 className="catalogo__card-titulo">{curso.title}</h3>
+        <p className="catalogo__card-educador">Educador: <strong>{item.educador}</strong></p>
+
+        <div className="catalogo__card-dados">
+          <p><strong>Conteúdo:</strong> {item.modulos} {item.modulos === 1 ? "módulo" : "módulos"} · {item.aulas} {item.aulas === 1 ? "aula" : "aulas"}</p>
+          <p className="catalogo__card-selos">
+            {item.matriculado && <span className="catalogo__selo catalogo__selo--ativo">Matriculado</span>}
+            {item.avaliacoes > 0
+              ? <span className="catalogo__selo"><strong>{item.nota.toFixed(1)}</strong> ★ ({item.avaliacoes})</span>
+              : <span className="catalogo__selo">Sem avaliações</span>}
+          </p>
+        </div>
+
+        {curso.description && <p className="catalogo__card-desc">{curso.description}</p>}
+        <span className="catalogo__card-mais">Ver curso <Icone nome="arrow" tamanho={16} /></span>
+      </div>
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Carrossel horizontal (rolagem com snap + setas nas laterais)
+// ---------------------------------------------------------------------------
+type CarrosselProps = {
+  titulo: string;
+  descricao: string;
+  itens: CursoComMeta[];
+  onAbrir: (item: CursoComMeta) => void;
+};
+
+function Carrossel({ titulo, descricao, itens, onAbrir }: CarrosselProps) {
+  const idTitulo = useId();
+  const trilhaRef = useRef<HTMLDivElement>(null);
+  const [limites, setLimites] = useState({ inicio: true, fim: true });
+
+  const atualizarLimites = useCallback(() => {
+    const trilha = trilhaRef.current;
+    if (!trilha) return;
+    setLimites({
+      inicio: trilha.scrollLeft <= 4,
+      fim: trilha.scrollLeft + trilha.clientWidth >= trilha.scrollWidth - 4,
+    });
+  }, []);
+
+  useEffect(() => {
+    atualizarLimites();
+    const trilha = trilhaRef.current;
+    if (!trilha || typeof ResizeObserver === "undefined") return;
+    const observador = new ResizeObserver(atualizarLimites);
+    observador.observe(trilha);
+    return () => observador.disconnect();
+  }, [atualizarLimites, itens.length]);
+
+  function rolar(direcao: 1 | -1) {
+    const trilha = trilhaRef.current;
+    if (!trilha) return;
+    trilha.scrollBy({ left: direcao * trilha.clientWidth * 0.85, behavior: "smooth" });
+  }
+
+  return (
+    <section className="catalogo__secao" aria-labelledby={idTitulo}>
+      <div className="catalogo__secao-topo">
+        <h2 className="catalogo__secao-titulo" id={idTitulo}>{titulo}</h2>
+        <p className="catalogo__secao-desc">{descricao}</p>
+      </div>
+
+      <div className="catalogo__carrossel">
+        {!limites.inicio && (
+          <button type="button" className="catalogo__seta catalogo__seta--prev" aria-label={`Anterior: ${titulo}`} onClick={() => rolar(-1)}>
+            <Icone nome="prev" tamanho={20} />
+          </button>
+        )}
+        <div className="catalogo__trilha" ref={trilhaRef} onScroll={atualizarLimites} role="list">
+          {itens.map((item) => (
+            <div className="catalogo__trilha-item" role="listitem" key={item.curso.id}>
+              <CartaoCurso item={item} onAbrir={onAbrir} />
+            </div>
+          ))}
+        </div>
+        {!limites.fim && (
+          <button type="button" className="catalogo__seta catalogo__seta--next" aria-label={`Próximo: ${titulo}`} onClick={() => rolar(1)}>
+            <Icone nome="next" tamanho={20} />
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Painel de filtros (botão + pop-over)
+// ---------------------------------------------------------------------------
+type FiltrosProps = {
+  categorias: string[];
+  categoria: string;
+  verTodos: boolean;
+  // Com "Meus cursos" ativo a exibição é sempre em grade; a opção some do painel.
+  mostrarExibicao: boolean;
+  onCategoria: (categoria: string) => void;
+  onVerTodos: (valor: boolean) => void;
+  onLimpar: () => void;
+};
+
+function PainelFiltros({ categorias, categoria, verTodos, mostrarExibicao, onCategoria, onVerTodos, onLimpar }: FiltrosProps) {
+  const [aberto, setAberto] = useState(false);
+  const raizRef = useRef<HTMLDivElement>(null);
+  const idPainel = useId();
+  const ativos = (categoria ? 1 : 0) + (mostrarExibicao && verTodos ? 1 : 0);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (evento: MouseEvent) => {
+      if (raizRef.current && !raizRef.current.contains(evento.target as Node)) setAberto(false);
+    };
+    const esc = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [aberto]);
+
+  return (
+    <div className="catalogo__filtros" ref={raizRef}>
+      <button
+        type="button"
+        className={`catalogo__botao-ferramenta${aberto || ativos > 0 ? " catalogo__botao-ferramenta--ativo" : ""}`}
+        aria-expanded={aberto}
+        aria-controls={idPainel}
+        onClick={() => setAberto((atual) => !atual)}
+      >
+        <Icone nome="sliders" tamanho={18} />
+        Filtros
+        {ativos > 0 && <span className="catalogo__filtros-contagem" aria-label={`${ativos} ${ativos === 1 ? "filtro ativo" : "filtros ativos"}`}>{ativos}</span>}
+        <span className={`catalogo__filtros-seta${aberto ? " catalogo__filtros-seta--aberta" : ""}`}><Icone nome="chevron" tamanho={16} /></span>
+      </button>
+
+      {aberto && (
+        <div className="catalogo__filtros-painel" id={idPainel} role="dialog" aria-label="Filtros do catálogo">
+          <div className="catalogo__filtros-topo">
+            <strong>Filtros</strong>
+            <button type="button" className="catalogo__filtros-limpar" disabled={ativos === 0} onClick={onLimpar}>Limpar filtros</button>
+          </div>
+
+          <div className="catalogo__filtros-grupo">
+            <p className="catalogo__rotulo">CATEGORIA</p>
+            <div className="catalogo__chips" role="group" aria-label="Filtrar por categoria">
+              <button type="button" className={`catalogo__chip${categoria === "" ? " catalogo__chip--ativo" : ""}`} aria-pressed={categoria === ""} onClick={() => onCategoria("")}>
+                Todas as categorias
+              </button>
+              {categorias.map((cat) => (
+                <button type="button" key={cat} className={`catalogo__chip${categoria === cat ? " catalogo__chip--ativo" : ""}`} aria-pressed={categoria === cat} onClick={() => onCategoria(cat)}>
+                  {cat}
+                </button>
+              ))}
+            </div>
+            {categorias.length === 0 && <p className="catalogo__filtros-vazio">Nenhuma categoria disponível.</p>}
+          </div>
+
+          {mostrarExibicao && (
+            <div className="catalogo__filtros-grupo">
+              <p className="catalogo__rotulo">EXIBIÇÃO</p>
+              <button type="button" className="catalogo__opcao" aria-pressed={verTodos} onClick={() => onVerTodos(!verTodos)}>
+                <span>Ver todos os cursos</span>
+                <span className={`catalogo__interruptor${verTodos ? " catalogo__interruptor--ativo" : ""}`} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Página
 // ---------------------------------------------------------------------------
@@ -487,6 +686,7 @@ export default function Catalogo() {
   const [busca, setBusca] = useState("");
   const [categoria, setCategoria] = useState("");
   const [somenteMatriculados, setSomenteMatriculados] = useState(false);
+  const [modo, setModo] = useState<ModoExibicao>("carrosseis");
   const [cursoAberto, setCursoAberto] = useState<CursoComMeta | null>(null);
   const [recarregarToken, setRecarregarToken] = useState(0);
 
@@ -558,6 +758,26 @@ export default function Catalogo() {
     [itens, termo, categoria, somenteMatriculados],
   );
 
+  // TODO (próxima etapa, com banco): os três grupos abaixo são provisórios e
+  // só definem a ordem visual. Recomendados, Em alta e Melhor avaliados passarão
+  // a vir de regras próprias no banco.
+  const recomendados = itensFiltrados;
+  const emAlta = useMemo(
+    () => [...itensFiltrados].sort((a, b) => b.avaliacoes - a.avaliacoes || b.aulas - a.aulas),
+    [itensFiltrados],
+  );
+  const melhorAvaliados = useMemo(
+    () => [...itensFiltrados].sort((a, b) => b.nota - a.nota || b.avaliacoes - a.avaliacoes),
+    [itensFiltrados],
+  );
+
+  // "Meus cursos" força a exibição em grade, sem carrosséis.
+  const modoEfetivo: ModoExibicao = somenteMatriculados ? "todos" : modo;
+  const limparFiltros = () => {
+    setCategoria("");
+    setModo("carrosseis");
+  };
+
   return (
     <PageLayout variant="bare">
       <div className="catalogo">
@@ -586,24 +806,35 @@ export default function Catalogo() {
                 onChange={(evento) => setBusca(evento.target.value)}
               />
             </label>
-            <label className="catalogo__filtro">
-              <Icone nome="filter" />
-              <span className="sr-only">Filtrar por categoria</span>
-              <select value={categoria} onChange={(evento) => setCategoria(evento.target.value)} disabled={categorias.length === 0}>
-                <option value="">Todas as categorias</option>
-                {categorias.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-            </label>
+
+            <PainelFiltros
+              categorias={categorias}
+              categoria={categoria}
+              verTodos={modo === "todos"}
+              mostrarExibicao={!somenteMatriculados}
+              onCategoria={setCategoria}
+              onVerTodos={(valor) => setModo(valor ? "todos" : "carrosseis")}
+              onLimpar={limparFiltros}
+            />
+
             <button
               type="button"
-              className={`catalogo__botao-filtro${somenteMatriculados ? " catalogo__botao-filtro--ativo" : ""}`}
+              className={`catalogo__botao-ferramenta${somenteMatriculados ? " catalogo__botao-ferramenta--ativo" : ""}`}
               aria-pressed={somenteMatriculados}
               onClick={() => setSomenteMatriculados((atual) => !atual)}
             >
-              <Icone nome="check" tamanho={16} />
+              <Icone nome="check" tamanho={18} />
               Meus cursos
             </button>
           </section>
+
+          {categoria && (
+            <div className="catalogo__ativos" aria-label="Filtros aplicados">
+              <button type="button" className="catalogo__chip-ativo" aria-label={`Remover filtro de categoria ${categoria}`} onClick={() => setCategoria("")}>
+                {categoria} <Icone nome="close" tamanho={13} />
+              </button>
+            </div>
+          )}
 
           <p className="catalogo__contador">
             Cursos disponíveis <span>{carregando ? "..." : itensFiltrados.length}</span>
@@ -621,45 +852,15 @@ export default function Catalogo() {
                 ? "Você ainda não está matriculado em nenhum curso."
                 : "Nenhum curso encontrado para a busca."}
             </p>
+          ) : modoEfetivo === "carrosseis" ? (
+            <div className="catalogo__secoes">
+              <Carrossel titulo="Recomendados para você" descricao="Uma seleção para continuar sua jornada de aprendizagem." itens={recomendados} onAbrir={setCursoAberto} />
+              <Carrossel titulo="Cursos em alta" descricao="Os cursos que mais estão chamando a atenção da comunidade." itens={emAlta} onAbrir={setCursoAberto} />
+              <Carrossel titulo="Melhor avaliados" descricao="Os cursos com as melhores notas dos estudantes." itens={melhorAvaliados} onAbrir={setCursoAberto} />
+            </div>
           ) : (
             <section className="catalogo__grade">
-              {itensFiltrados.map((item) => {
-                const { curso } = item;
-                return (
-                  <button
-                    key={curso.id}
-                    type="button"
-                    className={`catalogo__card catalogo__card--${item.tom}`}
-                    onClick={() => setCursoAberto(item)}
-                  >
-                    <div className={`catalogo__card-banner catalogo__card-banner--${item.tom}`}>
-                      {curso.cover_url && <img src={curso.cover_url} alt="" className="catalogo__card-img" />}
-                      {curso.category && <span className="catalogo__card-tag">{curso.category}</span>}
-                      <span className="catalogo__card-aulas" title="Aulas do curso">
-                        <Icone nome="play" tamanho={13} /> {item.aulas}
-                      </span>
-                    </div>
-                    <div className={`catalogo__card-icone catalogo__card-icone--${item.tom}`} aria-hidden="true">{DEFAULT_COURSE_ICON}</div>
-                    <div className="catalogo__card-corpo">
-                      <h2 className="catalogo__card-titulo">{curso.title}</h2>
-                      <p className="catalogo__card-educador">Educador: <strong>{item.educador}</strong></p>
-
-                      <div className="catalogo__card-dados">
-                        <p><strong>Conteúdo:</strong> {item.modulos} {item.modulos === 1 ? "módulo" : "módulos"} · {item.aulas} {item.aulas === 1 ? "aula" : "aulas"}</p>
-                        <p className="catalogo__card-selos">
-                          {item.matriculado && <span className="catalogo__selo catalogo__selo--ativo">Matriculado</span>}
-                          {item.avaliacoes > 0
-                            ? <span className="catalogo__selo"><strong>{item.nota.toFixed(1)}</strong> ★ ({item.avaliacoes})</span>
-                            : <span className="catalogo__selo">Sem avaliações</span>}
-                        </p>
-                      </div>
-
-                      {curso.description && <p className="catalogo__card-desc">{curso.description}</p>}
-                      <span className="catalogo__card-mais">Ver curso <Icone nome="arrow" tamanho={16} /></span>
-                    </div>
-                  </button>
-                );
-              })}
+              {itensFiltrados.map((item) => <CartaoCurso key={item.curso.id} item={item} onAbrir={setCursoAberto} />)}
             </section>
           )}
         </main>
