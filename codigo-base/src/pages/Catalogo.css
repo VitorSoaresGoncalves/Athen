@@ -62,11 +62,11 @@
 }
 .catalogo__botao-primario:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* ---------- Busca e filtro ---------- */
-.catalogo__ferramentas { @apply mb-[26px] flex gap-[12px]; }
+/* ---------- Busca, filtros e modo de exibição ---------- */
+.catalogo__ferramentas { @apply mb-[18px] flex flex-wrap items-stretch gap-[12px]; }
 
 .catalogo__busca {
-  @apply flex h-[52px] flex-1 items-center gap-[13px] bg-surface px-[18px] text-muted;
+  @apply flex h-[52px] min-w-[240px] flex-1 items-center gap-[13px] bg-surface px-[18px] text-muted;
   border: 1px solid var(--color-line);
   border-radius: 14px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
@@ -83,25 +83,92 @@
 }
 .catalogo__busca input::placeholder { @apply text-muted; }
 
-.catalogo__filtro {
-  @apply flex min-w-[112px] cursor-pointer items-center justify-center gap-[9px] bg-surface px-[12px] text-[13px] text-muted;
+.catalogo__botao-ferramenta {
+  @apply inline-flex h-[52px] cursor-pointer items-center justify-center gap-[9px] whitespace-nowrap bg-surface px-[18px] text-[13px] text-violet-pale;
+  font-weight: 600;
   border: 1px solid var(--color-line);
   border-radius: 14px;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
-.catalogo__filtro:hover {
-  border-color: color-mix(in srgb, var(--color-violet-mid) 40%, transparent);
+.catalogo__botao-ferramenta:hover {
+  @apply text-ink;
+  border-color: color-mix(in srgb, var(--color-violet-mid) 50%, transparent);
 }
-.catalogo__filtro select {
-  @apply min-w-0 cursor-pointer bg-transparent text-[12px] text-muted;
+.catalogo__botao-ferramenta:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.catalogo__botao-ferramenta--ativo {
+  @apply text-ink;
+  border-color: color-mix(in srgb, var(--color-gold) 45%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 7%, var(--color-surface));
+}
+
+/* Filtros (pop-over) */
+.catalogo__filtros { @apply relative flex; }
+.catalogo__filtros > .catalogo__botao-ferramenta { @apply w-full; }
+.catalogo__filtros-contagem {
+  @apply inline-grid size-[20px] place-items-center rounded-full bg-gold text-[11px] text-violet;
+  font-weight: 800;
+}
+.catalogo__filtros-seta { @apply inline-flex text-muted; transition: transform 0.2s ease; }
+.catalogo__filtros-seta--aberta { transform: rotate(180deg); }
+
+.catalogo__filtros-painel {
+  @apply absolute left-0 top-[calc(100%+10px)] z-30 flex w-[min(380px,calc(100vw-40px))] flex-col gap-[18px] bg-surface p-[18px];
+  border: 1px solid color-mix(in srgb, var(--color-violet-mid) 32%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 22px 54px rgba(6, 2, 18, 0.55);
+  animation: catalogo-revelar 0.16s ease;
+}
+.catalogo__filtros-topo { @apply flex items-center justify-between text-[14px] text-ink; }
+.catalogo__filtros-limpar {
+  @apply cursor-pointer bg-transparent text-[12px] text-gold underline;
   border: 0;
-  outline: 0;
 }
-.catalogo__filtro select:disabled { cursor: not-allowed; }
-.catalogo__filtro select option {
-  color: var(--color-ink);
-  background: var(--color-surface);
+.catalogo__filtros-limpar:disabled { @apply cursor-default text-muted no-underline; opacity: 0.5; }
+.catalogo__filtros-grupo { @apply flex flex-col gap-[10px]; }
+.catalogo__filtros-vazio { @apply text-[12px] text-muted; }
+
+.catalogo__chips { @apply flex flex-wrap gap-[8px]; }
+.catalogo__chip {
+  @apply cursor-pointer rounded-full bg-transparent px-[13px] py-[7px] text-[12px] text-violet-pale;
+  font-weight: 600;
+  border: 1px solid var(--color-line);
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
+.catalogo__chip:hover { border-color: color-mix(in srgb, var(--color-violet-mid) 55%, transparent); @apply text-ink; }
+.catalogo__chip--ativo,
+.catalogo__chip--ativo:hover {
+  @apply bg-gold text-violet;
+  border-color: transparent;
+}
+
+.catalogo__opcao {
+  @apply flex w-full cursor-pointer items-center justify-between rounded-[12px] bg-transparent px-[14px] py-[12px] text-[13px] text-ink;
+  border: 1px solid var(--color-line);
+  transition: border-color 0.2s ease;
+}
+.catalogo__opcao:hover { border-color: color-mix(in srgb, var(--color-violet-mid) 55%, transparent); }
+.catalogo__interruptor {
+  @apply relative h-[22px] w-[40px] rounded-full;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background-color 0.2s ease;
+}
+.catalogo__interruptor::after {
+  content: "";
+  @apply absolute left-[3px] top-[3px] size-[16px] rounded-full bg-ink;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.catalogo__interruptor--ativo { @apply bg-gold; }
+.catalogo__interruptor--ativo::after { transform: translateX(18px); background: var(--color-violet); }
+
+/* Filtros aplicados */
+.catalogo__ativos { @apply mb-[18px] flex flex-wrap items-center gap-[8px]; }
+.catalogo__chip-ativo {
+  @apply inline-flex cursor-pointer items-center gap-[7px] rounded-full px-[12px] py-[6px] text-[12px] text-gold;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-gold) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 38%, transparent);
+}
+.catalogo__chip-ativo:hover { background: color-mix(in srgb, var(--color-gold) 16%, transparent); }
 
 /* ---------- Contador ---------- */
 .catalogo__contador {
@@ -128,9 +195,11 @@
   .catalogo__main { @apply px-[20px] pt-[28px]; }
   .catalogo__cabecalho { @apply flex-col items-start gap-[14px]; }
   .catalogo__titulo { @apply text-[36px]; }
-  .catalogo__ferramentas { @apply flex-wrap; }
   .catalogo__busca { @apply basis-full; }
-  .catalogo__filtro { @apply min-h-[44px] flex-1; }
+  .catalogo__filtros { @apply flex-1; }
+  .catalogo__botao-ferramenta { @apply h-[48px] flex-1 px-[12px]; }
+  .catalogo__seta { @apply hidden; }
+  .catalogo__trilha-item { flex-basis: min(78vw, 280px); }
 }
 
 /* ---------- Estados (carregando / erro / vazio) ---------- */
@@ -444,16 +513,39 @@ button.catalogo__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255
   .catalogo__identidade { @apply min-h-[100px]; }
 }
 
-.catalogo__botao-filtro {
-  @apply inline-flex h-[48px] cursor-pointer items-center gap-[8px] px-[18px] text-[13px] text-[#f4eeff];
-  font-weight: 700;
-  background: rgba(47, 27, 79, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
+/* ---------- Carrosséis ---------- */
+.catalogo__secoes { @apply flex flex-col gap-[38px]; }
+.catalogo__secao-topo { @apply mb-[10px] flex flex-col gap-[4px]; }
+.catalogo__secao-titulo { @apply font-display text-[26px] leading-tight text-ink; }
+.catalogo__secao-desc { @apply text-[13px] text-muted; }
+
+.catalogo__carrossel { @apply relative; }
+.catalogo__trilha {
+  @apply flex gap-[18px] overflow-x-auto;
+  /* Folga para o hover (translateY + sombra) dos cards não ser cortado. */
+  margin: -8px -6px;
+  padding: 8px 6px 20px;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 6px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
 }
-.catalogo__botao-filtro:hover { border-color: rgba(255, 255, 255, 0.3); }
-.catalogo__botao-filtro--ativo {
-  @apply bg-gold text-[#211029];
-  border-color: transparent;
+.catalogo__trilha::-webkit-scrollbar { display: none; }
+.catalogo__trilha-item {
+  @apply flex;
+  flex: 0 0 clamp(250px, 22vw, 300px);
+  scroll-snap-align: start;
 }
+.catalogo__trilha-item > .catalogo__card { @apply w-full; }
+
+.catalogo__seta {
+  @apply absolute top-[calc(50%-10px)] z-20 grid size-[44px] cursor-pointer place-items-center rounded-full bg-ink text-violet;
+  transform: translateY(-50%);
+  border: 0;
+  box-shadow: 0 8px 24px rgba(6, 2, 18, 0.5);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+.catalogo__seta:hover { @apply bg-gold; transform: translateY(-50%) scale(1.06); }
+.catalogo__seta:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.catalogo__seta--prev { @apply -left-[18px]; }
+.catalogo__seta--next { @apply -right-[18px]; }
