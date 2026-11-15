@@ -656,13 +656,70 @@ button.salas__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255, 2
   border-radius: 14px;
 }
 
-/* Placeholder enquanto a RPC room_stats não existe. */
-.salas__em-breve {
-  @apply flex items-center gap-[8px] text-[12px] text-violet-pale;
-  opacity: 0.8;
+/* Aviso de que a aba é pré-visualização (dados fictícios, não do banco). */
+.salas__preview-aviso {
+  @apply mb-[16px] flex items-center gap-[8px] px-[12px] py-[9px] text-[11px] text-violet-pale;
+  background: rgba(255, 209, 102, 0.1);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 10px;
 }
-.salas__em-breve svg { opacity: 0.7; }
+.salas__preview-aviso svg { opacity: 0.8; }
+
+/* Cartões de métrica (Visão geral). */
+.salas__cartoes {
+  @apply mb-[18px] grid gap-[10px];
+  grid-template-columns: repeat(4, 1fr);
+}
+.salas__cartao {
+  @apply flex flex-col gap-[4px] p-[14px];
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+.salas__cartao-valor { @apply font-display text-[24px] leading-[1] text-[#f4eeff]; }
+.salas__cartao-rotulo { @apply text-[11px] text-violet-pale; }
+
+/* Lista "precisam de atenção" e "questões com mais erros". */
+.salas__atencao { @apply mt-[10px] flex list-none flex-col gap-[8px] p-0; }
+.salas__atencao-item {
+  @apply flex flex-col gap-[2px] p-[12px];
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.salas__atencao-item strong { @apply text-[12px] text-[#f4eeff]; }
+.salas__atencao-item span { @apply text-[11px] text-violet-pale; }
+
+/* Filtros fictícios da aba Alunos. */
+.salas__filtros-alunos { @apply mb-[12px] flex gap-[8px]; }
+.salas__chip {
+  @apply px-[12px] py-[6px] text-[11px] text-violet-pale;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+}
+.salas__chip--ativo {
+  @apply text-violet;
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+}
+
+/* Tabela de alunos. */
+.salas__tabela { @apply w-full text-[12px]; border-collapse: collapse; }
+.salas__tabela th,
+.salas__tabela td {
+  @apply px-[10px] py-[9px] text-left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.salas__tabela th { @apply text-[11px] uppercase text-violet-pale; font-weight: 600; }
+.salas__tabela td { @apply text-[#f4eeff]; }
+.salas__tabela tbody tr:last-child td { border-bottom: 0; }
+
+/* Conclusão por módulo (barra reaproveita .salas__barra-progresso). */
+.salas__conclusao { @apply mt-[10px] mb-[18px] flex list-none flex-col gap-[12px] p-0; }
+.salas__conclusao-linha { @apply mb-[6px] flex items-center justify-between text-[12px] text-[#f4eeff]; }
 
 @media (max-width: 760px) {
   .salas__abas { @apply flex-wrap; }
+  .salas__cartoes { grid-template-columns: repeat(2, 1fr); }
 }

@@ -15,11 +15,10 @@ import {
 // ---------------------------------------------------------------------------
 // Pop-up da sala para o educador.
 //
-// Layout em abas (ver doc da história "estatísticas da sala"): identidade e
-// código de acesso ficam fixos no topo; o resto é dividido em Visão geral,
-// Alunos, Conteúdo, Ranking e Mural.
+// Layout em abas: identidade e código de acesso ficam fixos no topo; 
+// o resto é dividido em Visão geral, Alunos, Conteúdo, Ranking e Mural.
 //
-// Este componente é a CASCA (commit de estrutura): monta as abas e realoca o
+// Este componente é a CASCA: monta as abas e realoca o
 // que já existe (código de acesso, ranking e mural). As métricas de Visão
 // geral/Alunos/Conteúdo entram em seguida, preenchidas pela RPC `room_stats`
 // (trabalho de backend, ainda não existe) — por isso aparecem como placeholder.
@@ -85,23 +84,32 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
     }
   }
 
-  // Placeholder enquanto a RPC `room_stats` não existe. Sempre marcado para não
-  // ser confundido com dado real.
-  const emBreve = (texto: string) => (
-    <p className="salas__em-breve">
-      <Icone nome="people" tamanho={16} />
-      {texto}
-    </p>
-  );
-
   const abas: Aba[] = [
     {
       id: "visao-geral",
       rotulo: "Visão geral",
       painel: (
         // PLACEHOLDER (depende de room_stats): cartões de métrica e alertas.
+        // Valores fictícios só para mostrar o layout; nada vem do banco.
+        // Coerentes com a tabela fictícia da aba Alunos (5 alunos): média de
+        // progresso 49%, acerto de primeira médio 64%, 2 em atenção (parado
+        // 7+ dias ou acerto < 50%).
         <div className="salas__painel-aba">
-          {emBreve("Cartões de métrica da turma em breve. Dependem do cálculo no servidor.")}
+          <p className="salas__preview-aviso" role="note">
+            <Icone nome="people" tamanho={15} />
+            Pré-visualização — dados de exemplo, ainda não vêm do banco.
+          </p>
+          <div className="salas__cartoes">
+            <div className="salas__cartao"><span className="salas__cartao-valor">5</span><span className="salas__cartao-rotulo">Membros ativos</span></div>
+            <div className="salas__cartao"><span className="salas__cartao-valor">49%</span><span className="salas__cartao-rotulo">Média de progresso</span></div>
+            <div className="salas__cartao"><span className="salas__cartao-valor">64%</span><span className="salas__cartao-rotulo">Acerto de primeira</span></div>
+            <div className="salas__cartao"><span className="salas__cartao-valor">2</span><span className="salas__cartao-rotulo">Precisam de atenção</span></div>
+          </div>
+          <p className="salas__rotulo">PRECISAM DE ATENÇÃO</p>
+          <ul className="salas__atencao">
+            <li className="salas__atencao-item"><strong>Bruno Lima</strong><span>Parado há 7 dias · progresso 15%</span></li>
+            <li className="salas__atencao-item"><strong>Aluno</strong><span>Parado há 12 dias · acerto 45%</span></li>
+          </ul>
         </div>
       ),
     },
@@ -110,8 +118,34 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
       rotulo: "Alunos",
       painel: (
         // PLACEHOLDER (depende de room_stats): tabela de alunos.
+        // Linhas fictícias só para mostrar o layout; nada vem do banco.
         <div className="salas__painel-aba">
-          {emBreve("Tabela de alunos (acerto, último acesso, parados) em breve.")}
+          <p className="salas__preview-aviso" role="note">
+            <Icone nome="people" tamanho={15} />
+            Pré-visualização — dados de exemplo, ainda não vêm do banco.
+          </p>
+          <div className="salas__filtros-alunos" aria-hidden="true">
+            <span className="salas__chip salas__chip--ativo">Todos</span>
+            <span className="salas__chip">Parados 7+ dias</span>
+          </div>
+          <table className="salas__tabela">
+            <thead>
+              <tr>
+                <th scope="col">Aluno</th>
+                <th scope="col">XP</th>
+                <th scope="col">Progresso</th>
+                <th scope="col">Acerto de primeira</th>
+                <th scope="col">Último acesso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Ana Souza</td><td>420</td><td>78%</td><td>71%</td><td>Hoje</td></tr>
+              <tr><td>Bruno Lima</td><td>310</td><td>15%</td><td>52%</td><td>Há 7 dias</td></tr>
+              <tr><td>Carla Dias</td><td>560</td><td>92%</td><td>88%</td><td>Ontem</td></tr>
+              <tr><td>Diego Reis</td><td>240</td><td>40%</td><td>63%</td><td>Há 2 dias</td></tr>
+              <tr><td>Aluno</td><td>180</td><td>22%</td><td>45%</td><td>Há 12 dias</td></tr>
+            </tbody>
+          </table>
         </div>
       ),
     },
@@ -120,8 +154,33 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
       rotulo: "Conteúdo",
       painel: (
         // PLACEHOLDER (depende de room_stats): conclusão por módulo/aula e questões difíceis.
+        // Valores fictícios só para mostrar o layout; nada vem do banco.
         <div className="salas__painel-aba">
-          {emBreve("Conclusão por módulo e aula, e questões com mais erros, em breve.")}
+          <p className="salas__preview-aviso" role="note">
+            <Icone nome="people" tamanho={15} />
+            Pré-visualização — dados de exemplo, ainda não vêm do banco.
+          </p>
+          <p className="salas__rotulo">CONCLUSÃO POR MÓDULO</p>
+          <ul className="salas__conclusao">
+            <li className="salas__conclusao-item">
+              <div className="salas__conclusao-linha"><span>Módulo 1 · Fundamentos</span><strong>72%</strong></div>
+              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "72%" }} /></div>
+            </li>
+            <li className="salas__conclusao-item">
+              <div className="salas__conclusao-linha"><span>Módulo 2 · Prática</span><strong>48%</strong></div>
+              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "48%" }} /></div>
+            </li>
+            <li className="salas__conclusao-item">
+              <div className="salas__conclusao-linha"><span>Módulo 3 · Avançado</span><strong>28%</strong></div>
+              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "28%" }} /></div>
+            </li>
+          </ul>
+          <p className="salas__rotulo">QUESTÕES COM MAIS ERROS</p>
+          <ul className="salas__atencao">
+            <li className="salas__atencao-item"><strong>Q7 — Laços de repetição</strong><span>Acerto de primeira: 31%</span></li>
+            <li className="salas__atencao-item"><strong>Q12 — Recursão</strong><span>Acerto de primeira: 38%</span></li>
+            <li className="salas__atencao-item"><strong>Q4 — Escopo de variáveis</strong><span>Acerto de primeira: 44%</span></li>
+          </ul>
         </div>
       ),
     },

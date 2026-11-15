@@ -3,7 +3,7 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
 // ---------------------------------------------------------------------------
 // Abas acessíveis (padrão WAI-ARIA tabs).
 //
-// Usado pelo pop-up do educador para separar Visão geral, Alunos, Conteúdo e
+// Usado pelo pop-up do educador para separar Visão geral, Alunos, Conteúdo, Ranking e
 // Mural. A navegação é por teclado: ←/→ movem entre as abas, Home/End vão para
 // a primeira/última. O painel ativo é o único renderizado, para o trap de Tab
 // do Modal compartilhado percorrer só o conteúdo visível.
