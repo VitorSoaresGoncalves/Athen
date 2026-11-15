@@ -624,3 +624,45 @@ button.salas__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255, 2
   .salas__painel-acoes { @apply grid-cols-1; }
   .salas__erro-inline--largo { @apply col-span-1; }
 }
+
+/* ---------- Abas do pop-up do educador ---------- */
+.salas__abas {
+  @apply mt-[18px] flex gap-[6px];
+  border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+}
+.salas__aba {
+  @apply cursor-pointer bg-transparent px-[16px] py-[10px] text-[12px] text-violet-pale;
+  font-weight: 600;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.salas__aba:hover { @apply text-[#f4eeff]; }
+.salas__aba:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.salas__aba--ativa {
+  @apply text-[#f4eeff];
+  border-bottom-color: var(--color-gold);
+}
+
+.salas__tabpanel { @apply pt-[18px]; }
+.salas__painel-aba {
+  @apply bg-[rgba(46,27,76,0.46)] p-[18px];
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 14px;
+}
+
+/* Placeholder enquanto a RPC room_stats não existe. */
+.salas__em-breve {
+  @apply flex items-center gap-[8px] text-[12px] text-violet-pale;
+  opacity: 0.8;
+}
+.salas__em-breve svg { opacity: 0.7; }
+
+@media (max-width: 760px) {
+  .salas__abas { @apply flex-wrap; }
+}

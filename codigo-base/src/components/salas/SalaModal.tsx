@@ -6,8 +6,8 @@ import type { AulaView, ModuloView, Sala } from "./tipos";
 // Pop-up da sala — seletor por papel.
 //
 // Mantém a assinatura de props que a página (pages/Salas.tsx) já usa e escolhe
-// entre o modal do aluno e o do educador por `sala.souEducador`, repassando as
-// mesmas props. Separação sem mudança de comportamento.
+// entre o modal do aluno e o do educador por `sala.souEducador`. O educador não
+// é membro: não faz aulas aqui, então `onAbrirAula` só chega ao modal do aluno.
 // ---------------------------------------------------------------------------
 
 export type SalaModalProps = {
@@ -27,7 +27,6 @@ export function SalaModal({ sala, usuarioId, aulaAberta, onFechar, onAbrirAula, 
         usuarioId={usuarioId}
         aulaAberta={aulaAberta}
         onFechar={onFechar}
-        onAbrirAula={onAbrirAula}
         onAtualizar={onAtualizar}
       />
     );
