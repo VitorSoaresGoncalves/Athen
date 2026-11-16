@@ -1,16 +1,29 @@
 # Banco de dados atual
 
-Referência do modelo usado pelo cliente, conferida em 2026-10-23 contra o SQL versionado e os tipos gerados. A configuração e o histórico de aplicação de um banco remoto não foram inspecionados.
+Referência do modelo usado pelo cliente, baseada no SQL versionado e nos tipos gerados. A revisão de curso acrescenta `0042–0044`; o histórico remoto abaixo não comprova aplicação dessas novas migrações no remoto.
 
 Verificação posterior no remoto vinculado `testeAthen`: migrações `0001–0040` aplicadas. A `0040` foi ensaiada com `ROLLBACK` sobre os dados remotos antes do `db push`; a reconciliação preservou as duas inscrições novas existentes e incorporou os outros cinco participantes legados. A conferência final confirmou ausência de migrações pendentes e `EXECUTE` negado para `anon` e `authenticated` em `record_xp_event`.
 
 Em 2026-11-04, a migração aditiva `0041` também foi aplicada ao remoto `testeAthen`. Os tipos de `codigo-base/src/types/database.ts` foram regenerados diretamente desse schema com `npx supabase gen types typescript --linked --schema public`, usando Supabase CLI `2.121.0`. A conferência anterior das 29 RPCs foi complementada pela nova `my_season_standings`; os contratos de parâmetros e retornos são validados pela compilação com o arquivo gerado. Os testes de audiência, identidade oculta e permissões da nova leitura são executados no banco local descartável, conforme o [plano da issue 42](../testes-issue-42.md).
 
-A consulta final no catálogo remoto confirmou `0041` como última migração e `EXECUTE` de `my_season_standings(uuid)` permitido para `authenticated` e negado para `anon`.
+A consulta final daquele catálogo remoto confirmou `0041` como última migração e `EXECUTE` de `my_season_standings(uuid)` permitido para `authenticated` e negado para `anon`.
+
+### Tipos locais da revisão de curso
+
+Nesta feature, `src/types/database.ts` foi regenerado do esquema **local `0001–0045`**, com Supabase CLI `2.121.0`, por `supabase gen types typescript --local --schema public`. A saída foi gravada em UTF-8 sem BOM, separada de stderr; uma limpeza automática removeu espaços finais sem alterar os tokens TypeScript. Não houve reconstrução manual das definições.
+
+Os tipos anteriores eram UTF-16LE e provinham do remoto vinculado. A geração local não contém os seguintes objetos daquele retrato:
+
+- Tabelas: `league_entries`, `league_groups`, `league_seasons`, `xp_credits`.
+- RPCs opcionais da home: `home_categories`, `home_course_students`, `home_featured_courses`, `home_featured_reviews`, `home_stats`, `home_top_learners`.
+- Funções legadas de ligas: `league_affinity`, `league_close_season`, `league_compute`, `league_form_groups`, `league_late_enroll`, `league_my_group`, `league_my_history`, `league_open_season`, `league_overview`, `league_register_activity`, `league_sync`, `league_tick`, `league_week_end`, `league_week_start`.
+- Funções legadas de aprendizagem/XP: `learning_attempt_breakdown`, `learning_first_correct_ordinal`, `learning_xp_preview`, `xp_credit_for`.
+
+Isso é divergência prévia entre o retrato remoto e a sequência numerada local, não exclusão desses objetos remotos pela feature. As seis funções `home_*` têm um [script opcional fora das migrações](../../codigo-base/supabase/home_public_data.sql) e [consumidores com fallback](../../codigo-base/src/pages/home-page/services.ts). A inspeção de `src` não encontrou consumidores das demais definições removidas dos tipos. Não restaure objetos à mão no arquivo gerado nem aplique scripts opcionais silenciosamente para igualar os dois ambientes.
 
 ## Fontes e ordem de leitura
 
-1. [Migrações numeradas](../../codigo-base/supabase/migrations/), de `0001` a `0041` neste checkout: modelo, políticas, funções e suas alterações sucessivas. Leia a redefinição mais recente da função ou política que estiver alterando.
+1. [Migrações numeradas](../../codigo-base/supabase/migrations/), de `0001` a `0044` neste checkout: modelo, políticas, funções e suas alterações sucessivas. Leia a redefinição mais recente da função ou política que estiver alterando.
 2. [Tipos gerados](../../codigo-base/src/types/database.ts): estrutura tipada consumida pelo frontend. São uma fotografia de geração, não prova de que o SQL foi aplicado no ambiente de destino.
 3. [Consultas do cliente](../../codigo-base/src/data/repositories.ts): tabelas, views e RPCs efetivamente utilizadas.
 
@@ -26,6 +39,7 @@ As definições de produto estão no [glossário](../../GLOSSARY.md). Esta tabel
 | Curso, módulo, aula e questão | `courses`, `modules`, `lessons`, `questions` |
 | Matrícula | `enrollments` |
 | Tentativa, resposta e conclusão | `attempts`, `answers`, `completions` |
+| Revisão de curso | `course_review_schedules`, `course_review_occurrences`, `course_review_sessions`, `course_review_items` |
 | Sala e participação | `rooms`, `room_members` |
 | Avisos, missões e progresso | `announcements`, `missions`, `mission_progress` |
 | Missões globais e diárias de curso | `mission_definitions` (catálogo), `mission_occurrences` (período), `mission_assignments` (progresso do usuário) |
@@ -69,12 +83,77 @@ As definições de produto estão no [glossário](../../GLOSSARY.md). Esta tabel
 | Edição de curso | Rascunho editável pelo criador; conteúdo anterior à publicação protegido, com regras para acréscimos posteriores e exceção de admin | [0019](../../codigo-base/supabase/migrations/0019_course_edit_gating.sql) |
 | Permissões | RLS e funções verificam identidade e acesso; revisar também as alterações posteriores das políticas | [0011](../../codigo-base/supabase/migrations/0011_rls_policies.sql), [0015](../../codigo-base/supabase/migrations/0015_rankings.sql), [0019](../../codigo-base/supabase/migrations/0019_course_edit_gating.sql), [0020](../../codigo-base/supabase/migrations/0020_fix_room_members_rls_recursion.sql) |
 | Metadados de conteúdo | Ícone de módulo, explicação de questão e duração calculada do curso | [0021](../../codigo-base/supabase/migrations/0021_module_icon_question_explanation_course_duration.sql) |
+| Revisão amostral e bônus global | Agenda global, ocorrência semanal, amostras/resultados persistidos, prêmio único e entrega independente | [0042](../../codigo-base/supabase/migrations/0042_course_review_enums.sql), [0043](../../codigo-base/supabase/migrations/0043_course_reviews.sql) |
+| Ordem de locks da conclusão e revisão | Lock do usuário antes dos efeitos de missões/perfil disparados por conclusão individual | [0044](../../codigo-base/supabase/migrations/0044_course_review_lock_order.sql) |
 
 `grade_answer` fornece feedback sem persistir os efeitos oficiais da tentativa. O cliente não deve substituir a finalização do servidor por cálculos de XP na tela.
 
 No modal, aulas de curso sem questões oferecem **Marcar como concluída**, que chama `complete_empty_lesson` por `dominioRepository.concluirAulaSemQuestoes`. A ação só é habilitada depois de carregar as questões com sucesso; falha de consulta não é interpretada como aula vazia. A conclusão só aparece após sucesso da RPC, sem tentativa ou XP fictícios. Esse fluxo exige a migração `0022` aplicada e não conclui aulas no contexto de sala, que a RPC atual não atende.
 
 O TopDown usa `friends_course_pac` com o curso ativo, `missions` publicadas e sem prazo vencido (até três, ordenadas pelo prazo), e `mission_progress` filtrado pelo usuário autenticado. As missões abrangem as salas permitidas pelas políticas RLS, independentemente do curso ativo. Falhas de autenticação ou de progresso são apresentadas como erro; não se tornam progresso zero. Sem curso, o painel encerra o carregamento sem consultar esses dados.
+
+## Revisão de curso
+
+### Elegibilidade, amostra e efeitos
+
+As regras estão em [0043](../../codigo-base/supabase/migrations/0043_course_reviews.sql), com os enums `notification_type.revisao_curso` e `xp_event_origin.review_bonus` adicionados separadamente em [0042](../../codigo-base/supabase/migrations/0042_course_review_enums.sql). Conta ativa, matrícula não `dropped`, curso publicado legível e ao menos uma aula são exigidos. **Todas as aulas atuais** devem ter conclusão própria em `context='course'`; status/progresso da matrícula e conclusões de sala não substituem esses fatos. Início, resposta e primeira finalização revalidam elegibilidade; conteúdo novo sem conclusão bloqueia a execução aberta sem apagar seu histórico.
+
+Em cada módulo, SQL sorteia `ceil(0,20 * quantidade_de_questões)`, sem reposição e sem teto global; módulo vazio contribui zero. Contagem, seleção e snapshots compartilham uma instrução transacional. IDs, ordem, conteúdo e configuração ficam persistidos por sessão, sem FK que os apague ao excluir a questão original. Curso sem questões não gera sessão nem entra no sorteio de curso.
+
+A revisão não escreve em tentativas/conclusões de aula. Prática normal tem zero XP; a bonificada exige a amostra inteira e a comparação exata `correct_count * 100 >= total_count * 70`. Reprovar congela resultado com zero prêmio e admite quantas novas sessões forem necessárias dentro da janela, cada qual com nova intenção/amostra. Retry HTTP ou retomada não são nova execução.
+
+O primeiro aprovado recebe **10 XP globais inteiros**, com nível recalculado, chave `xp:course-review:<occurrence_id>` e um evento `review_bonus/course`. Outra sessão aprovada já aberta recebe `already_awarded`, zero XP e nenhum evento próprio. Não há XP base, de sala ou de temporada, nem alteração de PAC/cobertura, aulas/matrícula, missões, streak, medalhas, atividade recente ou inscrição em temporada. A única mudança de gamificação é o bônus/nível global quando devido.
+
+O resumo da última revisão usa leitura das sessões finalizadas do próprio usuário e curso, ordenadas por `finished_at`/ID descendentes, com limite um. O repository valida o resultado antes de exibi-lo; RLS e filtros explícitos preservam isolamento. Essa leitura não altera progresso ou XP. Progresso e conclusões apenas de sala não autorizam revisão normal ou bonificada, mesmo com matrícula marcada como completa.
+
+### Agenda, janela e entrega
+
+Existe uma agenda **por usuário**, não por curso. Com âncora `a`, o período `k >= 1` começa em `a + k * 168 horas` e termina exclusivamente em `a + (k+1) * 168 horas`, intervalos exatos de sete dias em UTC. Só a janela corrente é materializada; não há atrasados, acumulação ou transporte de bônus. Outros cursos concluídos, rematrícula, repetição ou prêmio não deslocam a âncora.
+
+Em cada ocorrência, SQL escolhe uniformemente um dos cursos distintos elegíveis com questões e persiste a escolha uma única vez. `no_candidates` pode ser reavaliado dentro da mesma janela, sem estender prazo. Após atribuir, perda de acesso/conclusão torna o curso indisponível; não sorteia substituto. Início anterior não reserva prêmio: no prazo de expiração ou depois não se inicia, responde ou finaliza pela primeira vez uma sessão bonificada. Resultado já finalizado permanece reproduzível.
+
+O observador de conclusões oficiais confirma o primeiro marco novo, inclusive aula sem questões, sem depender da atualização prévia da matrícula. Na implantação, cursos já completos comprováveis recebem âncora operacional única de rollout, **sem afirmar data histórica de primeira conclusão**. Reconciliação posterior sem marco confiável usa `legacy_observed`, também com data real nula. Não se infere a primeira conclusão de `enrollments.updated_at` ou de min/max de `completions.completed_at`, sobrescrito ao refazer aula.
+
+Entrega é independente da autorização: preferência ausente/true permite aviso; false marca `suppressed` e não bloqueia atividade/prêmio. Ligar novamente não reenvia ocorrência suprimida. Ler/apagar o aviso não consome/reabre a ocorrência. Falha técnica de notificação é isolada em subtransação, preserva curso/ocorrência, registra `failed` e permite retry de entrega na janela.
+
+`tick_course_reviews()` retorna contagens `{occurrences_created, courses_assigned, notifications_created}` e não concede XP. O job próprio `tick_course_reviews_every_5m` usa `*/5 * * * *`, sem alterar `tick_seasons`. Sem `pg_cron`, a migração avisa e mantém a função privilegiada; periodicidade exige executor alternativo comprovado. Visitar a página não substitui o agendador.
+
+A leitura de ocorrência corrente usa o período derivado da âncora da agenda, além dos limites de vencimento/expiração ([0045](../../codigo-base/supabase/migrations/0045_current_course_review_period.sql)). A unicidade usuário/período garante no máximo uma linha, mesmo após simulações que deixem intervalos históricos sobrepostos. A correção preserva os registros e a consulta por ID.
+
+Notificações de revisão seguem a política `notifications_delete` de destinatário. Apagar o aviso não apaga a ocorrência, sessão ou recibo de XP, nem muda `delivery_state` para reenviar. A interface expõe remoção individual e de lidas; o repository retorna os IDs realmente apagados para atualizar a lista sem confundir o destaque local de novas notificações com o estado já marcado no servidor.
+
+### Estruturas e RPCs
+
+| Estrutura | Identidade e fatos |
+| --- | --- |
+| `course_review_schedules` | PK `user_id`; âncora preservada e origem `first_completion`, `rollout` ou `legacy_observed`; `first_course_completed_at` só para marco confirmado |
+| `course_review_occurrences` | UNIQUE `(user_id, period_index)`; curso/título, política e prazo fixados, entrega e prêmio separados; referências históricas não apagam o fato ao excluir conteúdo/aviso |
+| `course_review_sessions` | UNIQUE `(user_id, request_id)`, **sem UNIQUE de ocorrência**; modo normal/bonus irrevogável, resultado congelado e evento somente na sessão premiada |
+| `course_review_items` | PK `(session_id, question_id)` e ordinal único por sessão; snapshot, primeira resposta/correção e data |
+
+RPCs de usuário derivam identidade de `auth.uid()`; nenhuma aceita usuário, IDs sorteados, nota, XP, política, âncora ou prazo do navegador:
+
+| RPC | Parâmetros | Leitura/resultado |
+| --- | --- | --- |
+| `course_review_status` | `p_course_id` | Uma disponibilidade com quantidades totais e `module_counts`; curso ilegível dá erro, não metadados |
+| `my_current_course_review` | nenhum | Zero ou uma ocorrência da janela materializada; não cria agenda/ocorrência |
+| `my_course_review_occurrence` | `p_occurrence_id` | Uma ocorrência própria, inclusive histórica |
+| `start_course_review` | `p_course_id`, `p_request_id`, `p_occurrence_id` opcional | Sessão/amostra; mesmo request e argumentos reproduzem a sessão, argumentos diferentes conflitam |
+| `my_course_review` | `p_session_id` | Sessão própria, itens/respostas e resultado histórico |
+| `submit_course_review_answer` | `p_session_id`, `p_question_id`, `p_submitted` | Feedback/quantidades; valida quatro formatos, corrige por snapshot com XP zero; JSONB igual repete feedback, alteração conflita |
+| `finalize_course_review` | `p_session_id` | Resultado congelado: acertos/total/aprovação, `bonus_earned`, `bonus_outcome`, evento e data |
+
+Os itens completos e contagens por módulo usam JSONB para não truncar amostras pelo limite de linhas de REST. O [adapter](../../codigo-base/src/data/repositories.ts) valida DTOs; não transforma falha/ausência inesperada em vazio ou zero. Ocorrência expõe estado `available/no_candidates/unavailable/expired/claimed`, entrega separada e IDs para retomar/consultar resultado/prêmio. Finalização retorna `not_applicable/below_target/awarded/already_awarded`; repetir resultado não recalcula nem promove reprovação antiga a prêmio.
+
+### Autorização, concorrência e ordem de locks
+
+As quatro tabelas têm RLS de leitura própria para `authenticated`, sem escrita direta, inclusive do dono; não há exceção de admin nas RPCs para agir por outro usuário. RPCs `SECURITY DEFINER` usam caminho fixo e nomes qualificados, revogam EXECUTE herdado de PUBLIC/anon e concedem explicitamente a authenticated. Helpers `course_review_*` internos (exceto a RPC pública de status), trigger helpers e tick não são executáveis por PUBLIC/anon/authenticated; o executor privilegiado tem concessão explícita.
+
+`0043` revoga UPDATE amplo e grants de colunas anteriores de perfil/notificações. O cliente só pode alterar `username`, `display_name`, `bio`, `avatar_url`, `banner_url`, `notification_preferences` do perfil e `is_read` da notificação, sob RLS existente. Saldo, nível, papel/status e demais atributos de gamificação/identidade da conta ficam fora da escrita direta. `create_notification` também perde EXECUTE de PUBLIC/anon/authenticated; aviso ou `reference_id` não autoriza prêmio. `record_xp_event` permanece helper interno.
+
+Mutações de revisão seguem lock transacional global por usuário → agenda → ocorrência → sessão → perfil. Tick adquire usuários em ordem determinística de UUID; índices únicos sustentam deduplicação. O relógio é obtido após espera dos locks; espera por perfil de outra fonte de XP não estende prazo. Evento, atualização aditiva do saldo/nível, resultado e consumo do prêmio pertencem à mesma transação, com rollback integral em falha.
+
+A correção incremental [0044](../../codigo-base/supabase/migrations/0044_course_review_lock_order.sql) adquire o advisory lock **BEFORE INSERT/UPDATE de conclusão individual**, antes dos efeitos de missão/perfil dos triggers AFTER. O observador da âncora continua AFTER para enxergar a conclusão. Isso elimina a inversão perfil → usuário da missão de aula vazia contra usuário → perfil da revisão, sem redefinir os efeitos de `finalize_attempt`/`complete_empty_lesson`. Ensaios de ACL efetiva, corrida e rollback continuam necessários; leitura dessas declarações não é prova de execução.
 
 ## Antes de alterar ou preparar um banco
 
@@ -85,9 +164,9 @@ Na interface, a marca de queda para zero XP aparece nas últimas 24 horas. Esse 
 - Identifique o ambiente e o esquema já aplicado, incluindo as migrações posteriores que redefinem funções e políticas.
 - Se o histórico remoto contém a antiga `0023_ligas.sql`, a migração `0024` cria os pré-requisitos do ledger omitidos pelo versionamento de `0023`. A `0040` copia créditos e temporadas legados sem substituir saldos correntes, e revoga o acesso à sincronização antiga. Confira contagens e categorias em um clone do banco antes de aplicar no destino; conflitos entre entradas antigas e novas interrompem a `0040` para reconciliação explícita.
 - Confira se a mudança exige migração incremental e atualização das chamadas e dos tipos gerados.
-- O projeto inclui `supabase/config.toml` com portas na faixa `553xx`. Para um banco local descartável, `supabase start` e `supabase db reset` aplicam as migrações `0001–0041` e o `seed.sql`. O reset apaga os dados locais do projeto; use somente em ensaio. Confirme as portas efetivas e ajuste `.env.local` ao ambiente.
+- O projeto inclui `supabase/config.toml` com portas na faixa `553xx`. Uma instalação limpa aplica `0001–0045` e o `seed.sql`; uma pilha restaurada de backup pode conter outro esquema/dados. Confirme `project_id`, volumes, portas e histórico antes de aplicar migrações. `supabase db reset` apaga os dados do alvo: não o use para resolver divergência em banco/volume preexistente de outra atividade.
 - Os seeds em [0013](../../codigo-base/supabase/migrations/0013_seed.sql) e [seed.sql](../../codigo-base/supabase/seed.sql) precisam ser lidos no contexto do ambiente de teste antes da execução; esta referência não instrui a aplicá-los sobre dados existentes.
-- Regenere `src/types/database.ts` a partir do esquema-alvo correspondente após mudanças de esquema; não edite o arquivo à mão. A issue 42 substituiu o arquivo gerado e ajustou `CrudConsole` à nullabilidade gerada de `questions.config`. A migração `0040` redefine funções sem alterar assinaturas ou tabelas tipadas, portanto não exige nova geração.
+- Regenere `src/types/database.ts` a partir do esquema-alvo correspondente após mudanças de esquema; não edite o arquivo à mão. Para esta feature, use `npx supabase gen types typescript --local --schema public` após `0001–0045`. A `0045` preserva a assinatura da RPC; a geração local foi comparada e corresponde aos tipos existentes. Capture stdout separado de stderr, confira o exit code e só então grave UTF-8; evite redirecionamento que introduza UTF-16 ou diagnósticos no código. Limpeza automática de espaços finais deve preservar a semântica, sem completar definições manualmente.
 - Confira no ambiente os recursos de Storage usados pelo [perfil](../../codigo-base/src/pages/profile/Profile.tsx); tabelas e RPCs não descrevem por si só as políticas do bucket.
 
 ## Verificação

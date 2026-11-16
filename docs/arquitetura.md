@@ -25,11 +25,13 @@ Caminhos abaixo são relativos a `codigo-base/`.
 | Catálogo e matrícula | `src/pages/Catalogo.tsx` | Listagem, detalhe, avaliações e entrada em curso |
 | Trilha de estudo | `src/pages/Dashboard.tsx` | Seleção de curso, composição de módulos/aulas, conclusões e geometria |
 | Execução da aula | `src/components/lesson/LessonModal.tsx` | Questões, entrada de resposta, tentativa, feedback e conclusão |
+| Revisão de curso | `src/pages/Dashboard.tsx`, `src/components/lesson/LessonModal.tsx`, `src/data/repositories.ts` | Entrada individual normal/bonificada, recibos na URL, amostra e resultado oficiais; renderização de questões compartilhada com a aula |
 | Salas | `src/pages/Salas.tsx` | Participação, criação, detalhe, avisos e missões |
 | Perfil e configuração | `src/pages/profile/Profile.tsx`, `src/pages/ConfigPage.tsx` | Edição de perfil, preferências e operações de conta |
 | Perfil compartilhado | `src/components/sidebar/SidebarLeft.tsx` | Cache próprio, assinantes e evento de atualização de perfil |
 | Caderno | `src/pages/Notebook.tsx`, `src/components/notebook/CursoNotebook.tsx` | Anotações e caderno associado ao curso |
-| Social | `src/pages/Amigos.tsx`, `src/pages/Notificacoes.tsx`, `src/pages/Ranking.tsx` | Amizades, notificações e apresentação de classificação |
+| Social | `src/pages/Amigos.tsx`, `src/pages/Notificacoes.tsx` | Amizades e notificações |
+| Temporadas e classificação | `src/pages/Ligas.tsx` | Grupo, classificação, projeções e histórico de temporada |
 | Layout e tema | `src/components/layout/PageLayout.tsx`, `src/index.css` | Estrutura comum e tokens; regras no [guia de estilos](estilo-padrao.md) |
 | Regras persistidas | `supabase/migrations/` | RLS, tentativas, XP, conclusões, rankings e demais regras SQL |
 
@@ -37,9 +39,27 @@ A implementação atual concentra muita composição de dados nas telas. Não h�
 
 ## Aula, conclusão e XP
 
-`LessonModal` carrega questões e inicia uma tentativa ao começar a atividade. Salva cada resposta, solicita feedback opcional e finaliza pela RPC `finalize_attempt`. O resultado oficial vem do banco. Para aula sem questões em curso, usa `complete_empty_lesson`, com zero XP.
+No modo de aula, `LessonModal` carrega questões e inicia uma tentativa ao começar a atividade. Salva cada resposta, solicita feedback opcional e finaliza pela RPC `finalize_attempt`. O resultado oficial vem do banco. Para aula sem questões em curso, usa `complete_empty_lesson`, com zero XP.
 
 Curso e Sala são contextos diferentes de execução e pontuação. Consulte as fontes e os detalhes de idempotência, autorização e progresso em [Banco de dados](banco-de-dados/documentacao-bd.md); uma implementação de teste em memória não comprova essas regras SQL.
+
+## Revisão de curso: fluxo separado
+
+O [Dashboard](../codigo-base/src/pages/Dashboard.tsx) monta o [CourseReviewCard](../codigo-base/src/components/course-review/CourseReviewCard.tsx) somente no curso individual selecionado, sem ação de revisão no cabeçalho ou em salas. O cartão fica no canto inferior direito e consulta a elegibilidade oficial, a ocorrência corrente e a última sessão finalizada. O único botão **Revisar curso** abre o mesmo modal: usa `/dashboard?curso=<id>&revisao=<ocorrência>` quando há bônus disponível para esse curso; nos demais casos, `revisao=normal`. Aviso e prazo do bônus aparecem separados do botão; uma sessão normal já iniciada mantém seu modo.
+
+`obterUltimaFinalizada` consulta sessões concluídas, filtradas explicitamente por usuário autenticado e curso, ordenadas por finalização/ID, com limite um e RLS de proprietário. O cartão mostra acertos, nota, aprovação, XP oficial e data, distinguindo histórico vazio de falha. Recarrega ao finalizar, por foco/visibilidade e periodicamente; cancela respostas obsoletas ao trocar curso/autenticação.
+
+[Notificacoes](../codigo-base/src/pages/Notificacoes.tsx) resolve a ocorrência própria por RPC antes de navegar para o curso oficial. Ler/apagar o aviso não consome prêmio. A caixa oferece **Remover** em cada aviso e **Limpar lidas** no cabeçalho; a lista só remove IDs confirmados pelo servidor e preserva avisos em caso de falha. A exclusão usa a RLS de destinatário já existente, sem chamar RPC de revisão. A preferência em [ConfigPage](../codigo-base/src/pages/ConfigPage.tsx) controla somente a entrega; a atividade e o bônus continuam descobertos pelo Dashboard mesmo sem aviso.
+
+A RPC `my_current_course_review` seleciona o período calculado pela agenda global (âncora e intervalos de 168 horas), conforme [0045](../codigo-base/supabase/migrations/0045_current_course_review_period.sql). Retorna zero ou uma ocorrência mesmo se uma simulação local alterar a âncora e deixar janelas antigas sobrepostas. Histórico e resolução por ID continuam preservados.
+
+`LessonModal` distingue props de aula e revisão, reutilizando os campos dos quatro tipos de questão e o mesmo diálogo. A revisão não aceita aula/sala/callback de conclusão, não fabrica uma aula e não chama `attempts`, `answers`, `finalize_attempt` ou `complete_empty_lesson`. A intro só consulta dados. **Começar revisão** e **Tentar novamente** geram uma intenção explícita: `pedido=<UUID>` é gravado na URL antes da RPC; o sucesso troca esse recibo por `sessao=<id>`. Retry/reload repete o recibo ou retoma a sessão persistida, sem novo sorteio. Na ocorrência sem recibo, o servidor informa a sessão inacabada mais recente ou o último resultado.
+
+Fechar remove `revisao`, `pedido` e `sessao`, preservando `curso`. Trocar curso/sala descarta esses recibos; `sala=<id>` explicita o contexto do seletor e impede montar o cartão ou abrir a revisão. Curso, modo e ocorrência da sessão são conferidos contra a entrada. Cancelamento e versão de requisição impedem que resposta atrasada abra/substitua uma revisão em outro contexto.
+
+Amostra, respostas fixadas, correção e resultado vêm das RPCs próprias no [repository](../codigo-base/src/data/repositories.ts), que valida os DTOs e preserva código SQL com mensagem pt-BR. A reprovação permite nova sessão/amostra dentro do prazo; não altera o resultado anterior. Só o bônus efetivamente retornado pelo servidor é exibido. Quando premiada, a revisão emite `athen:profile-updated` para reler o perfil, sem somar saldo local nem avançar a trilha.
+
+A agenda global, sorteio semanal de um curso, quotas por módulo, meta, prêmio único, rollout e isolamento dos demais efeitos estão definidos na [referência do banco](banco-de-dados/documentacao-bd.md#revisão-de-curso). Os estados visuais e critérios de acessibilidade estão no [guia de estilos](estilo-padrao.md#revisão-no-dashboard-e-no-modal). A implementação não equivale à aprovação dos ensaios SQL, jornada real ou auditoria visual; consulte [Testes](testes.md#revisão-de-curso-issue-47).
 
 ## Hospedagem e integrações
 
