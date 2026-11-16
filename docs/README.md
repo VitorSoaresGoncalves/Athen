@@ -18,6 +18,7 @@ Use este índice para escolher a referência da tarefa. As referências técnica
 | Modelo de dados e regras persistidas | [Banco de dados](banco-de-dados/documentacao-bd.md) | SQL numerado e tipos gerados |
 | Comandos e alcance das verificações | [Testes](testes.md) | Scripts, configurações e testes existentes |
 | Casos por página, jornadas, banco e CI | [Mapa dos testes](mapa-dos-testes.md) | Testes executáveis, diagramas, decisões sobre utilidade e limites de cobertura |
+| Verificação da revisão esporádica de curso | [Testes da issue 47](testes-issue-47.md) | Critérios, suítes SQL/UI/live e resultados locais datados |
 | Vocabulário do produto | [Glossário](../GLOSSARY.md) | Definições; mapeamento técnico na referência de banco |
 | Tipos de questão atuais e ideias de expansão | [Tipos de questão](tipos-de-questao.md) | Quatro tipos implementados, regras de correção e propostas futuras separadas |
 | Apresentar a sprint04 com duas contas novas | [Roteiro de demo](roteiro-demo-sprint04.md) | Percursos de educador/estudante, dados e gabaritos; limites conferidos nas fontes da sprint04 |
