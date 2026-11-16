@@ -23,6 +23,13 @@ Registre comandos sem segredos e apenas depois de executá-los. Use uma linha po
 | --- | --- | --- | --- | --- |
 | <CA ou check> | <revisões> | <comando ou inspeção concreta> | <código de saída e PASSOU/FALHOU/NÃO EXECUTADO/NÃO APLICÁVEL> | <caminho e data ou justificativa> |
 
+## Ambiente da tarefa
+
+- Ferramentas/dependências preparadas: <ações necessárias e resultados>
+- Serviços/processos: <identificador, criado pela tarefa ou preexistente, prontidão e destino ao concluir>
+- Banco de ensaio: <alvo local confirmado, sem credenciais>
+- Limpeza/retomada: <processos temporários encerrados e serviços mantidos>
+
 ## Revisão independente e pendências
 
 | Achado ou impedimento | Impacto | Caminho/cenário | Responsável | Resolução e nova evidência |

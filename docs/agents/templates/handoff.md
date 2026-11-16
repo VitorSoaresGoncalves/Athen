@@ -17,4 +17,5 @@ Template: copie para `.scratch/<feature-slug>/handoff.md`; atualize no encerrame
 - Pendências/bloqueios: <condição necessária para continuar, ou nenhum>
 - Trabalho preexistente: <caminhos que precisam continuar preservados>
 - Evidências invalidadas após mudanças: <checks a repetir, ou nenhuma>
+- Ambiente: <serviços/processos ativos, posse, banco local e ações de limpeza; detalhes em tasks.md>
 - Registro didático e entrega remota: <links e estados reais>

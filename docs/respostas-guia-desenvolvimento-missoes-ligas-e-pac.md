@@ -1,5 +1,7 @@
 # Respostas — guia de missões, ligas e PAC
 
+> **Fluxo Git superado desde a sprint05:** as referências à base e ao destino de PR por sprint em Q089 e no resumo Q089–Q090 abaixo preservam a decisão histórica, não orientam novos trabalhos. Siga [Convenções](convencoes.md#branches-e-revisão): issue branches de `develop` atualizada, PRs para `develop` e integração de `develop` em `main` no encerramento da sprint. O YouTrack é manual e independente; acesso, atribuição e estado não bloqueiam agentes. As demais decisões deste questionário mantêm seu status registrado.
+
 **Estado do questionário:** dez rodadas respondidas e cenários coerentes com o registro atual; **nenhuma nova rodada necessária nesta revisão**. Q099 delega os roteiros de teste, definidos abaixo. Próxima etapa documental: consolidar o guia quando solicitado e apresentar a versão final para confirmação antes de implementar. Responsáveis/contatos, atendimento e SLAs humanos continuam tarefas pré-implantação/liberação, conforme o adiamento registrado, sem aprovação fictícia.
 
 ### Rodada 7 — decisões recebidas e impactos
