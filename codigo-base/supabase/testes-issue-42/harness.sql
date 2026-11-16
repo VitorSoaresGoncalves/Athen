@@ -50,7 +50,11 @@ begin
   delete from public.season_entries;
   delete from public.season_groups;
   delete from public.seasons;
-  delete from public.xp_events;
+  -- Revisões premiadas podem ter sido feitas manualmente neste banco de ensaio.
+  -- Seus recibos referenciam o ledger: preserve-os e seus eventos. Eles não
+  -- pontuam temporadas nem integram as tentativas exercitadas por este harness.
+  -- O cast mantém este ensaio compatível com o enum anterior à migração 0042.
+  delete from public.xp_events where origin::text <> 'review_bonus';
   delete from public.mission_assignments;
   delete from public.mission_occurrences;
   delete from public.answers a using public.attempts t

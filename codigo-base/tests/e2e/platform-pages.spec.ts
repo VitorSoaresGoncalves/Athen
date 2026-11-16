@@ -71,7 +71,14 @@ test('configurações salva preferências e nome sem solicitar troca de senha', 
   await expect(page.getByRole('status')).toContainText('Alterações salvas com sucesso.')
   expect(platform.calls.filter(call => call.path === 'profiles' && call.method === 'PATCH').map(call => call.body)).toEqual([
     { display_name: 'Carla Configurada', username: 'carla' },
-    { notification_preferences: { atualizacao_curso: false, pedido_amizade: true, lembrete_estudo: true } },
+    {
+      notification_preferences: {
+        atualizacao_curso: false,
+        pedido_amizade: true,
+        lembrete_estudo: true,
+        revisao_curso: true,
+      },
+    },
   ])
   expect(platform.calls.some(call => call.path === 'user' && call.method === 'PUT')).toBe(false)
   await page.reload()
@@ -112,7 +119,7 @@ test('amigos aceita um pedido recebido e move o contato para meus amigos', async
 test('notificações marca a caixa como lida e abre o destino da atualização', async ({ page, platform }) => {
   platform.tables.notifications.push({ id: 'notice-1', user_id: ids.user, type: 'atualizacao_curso', title: 'Nova aula de lógica', message: 'Continue seus estudos', is_read: false, reference_id: ids.course, created_at: '2026-11-01T12:00:00Z' })
   await page.goto('/notificacoes')
-  await page.getByRole('button', { name: /Nova aula de lógica/ }).click()
+  await page.getByRole('button', { name: 'Abrir notificação: Nova aula de lógica', exact: true }).click()
   await expect(page).toHaveURL('/catalogo')
   expect(platform.calls.some(call => call.path === 'notifications' && call.method === 'PATCH' && call.body.is_read === true)).toBe(true)
   await page.goto('/notificacoes')
