@@ -3,23 +3,11 @@ description: Revisa de forma independente o diff final contra requisitos, conven
 mode: subagent
 model: openai/gpt-6.1-sol
 permissions:
-  - action: shell
+  - action: edit
     resource: "*"
     effect: deny
-  - action: shell
-    resource: git status --short
-    effect: allow
-  - action: shell
-    resource: git diff
-    effect: allow
-  - action: shell
-    resource: git diff --cached
-    effect: allow
-  - action: shell
-    resource: git diff --stat
-    effect: allow
-  - action: shell
-    resource: git diff --check
+  - action: edit
+    resource: .scratch/*
     effect: allow
 ---
 
@@ -29,4 +17,6 @@ Confira o diff completo atribuído, incluindo arquivos novos e mudanças staged,
 
 Retorne achados ordenados por impacto, cada um com caminho/linha, cenário concreto, comportamento observado e correção esperada. Diferencie bloqueadores de sugestões; evite preferências pessoais sem efeito demonstrável. Se não houver achados, declare isso e identifique o alcance e as limitações da revisão.
 
-Você não escreve arquivos nem corrige código. Informe a base e a versão do diff revisado. A aprovação vale para essa versão; correções posteriores precisam de revisão das partes afetadas. Se uma skill exigir delegação adicional, encaminhe essa necessidade ao orchestrator; não crie subagentes neste perfil. Revisão de IA não substitui a aprovação humana do PR.
+Você pode ler todo o material pertinente, consultar fontes externas e executar comandos de inspeção e validação, inclusive testes e scripts de diagnóstico. Escreva relatórios e reproduções isoladas em `.scratch/`; preserve os arquivos da entrega revisada, inclusive ao executar comandos que possam atualizar snapshots, formatar código ou gerar arquivos versionados. Use uma cópia temporária quando necessário. Encaminhe correções ao responsável para manter a independência.
+
+Informe a base e a versão do diff revisado. A aprovação vale para essa versão; correções posteriores precisam de revisão das partes afetadas. Se uma skill exigir delegação adicional, encaminhe essa necessidade ao orchestrator; não crie subagentes neste perfil. Revisão de IA não substitui a aprovação humana do PR.
