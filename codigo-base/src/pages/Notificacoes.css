@@ -96,3 +96,17 @@
   .notificacoes__cabecalho { @apply flex-col items-start gap-[14px]; }
   .notificacoes__titulo { @apply text-[36px]; }
 }
+
+/* Remoção é uma ação separada da navegação, sem botões aninhados. */
+.notificacoes__acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.notificacoes__lista > li { display: flex; align-items: flex-start; gap: 8px; }
+.notificacoes__lista .notificacoes__item { min-width: 0; flex: 1; }
+.notificacoes__remover {
+  min-height: 44px; padding: 10px; flex-shrink: 0; cursor: pointer;
+  border: 1px solid var(--color-line); border-radius: 12px;
+  color: #fecaca; background: var(--color-surface); font-size: 13px;
+}
+.notificacoes__remover:hover:not(:disabled) { border-color: #fecaca; }
+.notificacoes button:disabled { cursor: wait; opacity: .55; transform: none; }
+.notificacoes button:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 3px; }
+.notificacoes__feedback { margin-top: 16px; color: var(--color-violet-pale); }
