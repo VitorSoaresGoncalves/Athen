@@ -31,7 +31,7 @@ Ao usar os perfis de `.opencode/agents/` ou o comando `/deliver`, siga o [protoc
 
 Os agentes resolvem autonomamente escolhas técnicas reversíveis e a preparação local necessária. O orchestrator pode iniciar Docker Desktop e serviços de teste, instalar dependências declaradas e operar ferramentas de apoio, verificando prontidão e preservando processos/dados preexistentes. Atribuições de arquivos podem ser ampliadas dentro do mesmo objetivo com coordenação entre os responsáveis; os limites e os casos que exigem intervenção humana estão no protocolo.
 
-`/deliver` prepara uma entrega validada localmente e mantém suas pendências explícitas. O comando não realiza push, publicação ou deploy, nem autoriza commit, merge ou abertura de PR. Essas operações permanecem sujeitas à solicitação do usuário e às convenções do projeto; revisão de IA não substitui aprovação humana.
+`/deliver` prepara uma entrega validada localmente e mantém suas pendências explícitas. O orchestrator centraliza operações Git, incluindo commits e push da branch de trabalho, e usa os comandos e acessos disponíveis no escopo da solicitação, conforme o [protocolo do time](agents/time-opencode.md#worktree-principal-e-operações-git). Todos trabalham no checkout principal, preservando o fluxo de branches e os registros por feature em `.scratch/`. Publicação e deploy dependem do objetivo solicitado; revisão de IA não substitui aprovação humana do PR.
 
 ## Validação e entrega
 

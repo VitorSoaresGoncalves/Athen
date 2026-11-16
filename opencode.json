@@ -33,9 +33,5 @@
     { "action": "edit", "resource": ".git/*", "effect": "deny" },
     { "action": "shell", "resource": "git push *", "effect": "deny" },
     { "action": "shell", "resource": "git -C * push *", "effect": "deny" }
-  ],
-  "policies": [
-    { "action": "tool.use", "resource": "shell:git push *", "effect": "deny" },
-    { "action": "tool.use", "resource": "shell:git -C * push *", "effect": "deny" }
   ]
 }

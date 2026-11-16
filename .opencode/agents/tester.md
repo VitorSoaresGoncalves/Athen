@@ -15,3 +15,5 @@ Prepare dependências de teste e ferramentas de navegador sem interromper o usu�
 Execute as validações aplicáveis segundo `docs/testes.md`, em `codigo-base/`. Entregue para cada uma: comando, diretório, versão do diff, código de saída, resultado e caminho da evidência sem segredos. Separe PASSOU, FALHOU, NÃO EXECUTADO e NÃO APLICÁVEL, justificando os dois últimos. Descoberta de casos não equivale à execução.
 
 Para regras SQL, concorrência ou diagnóstico que exceda sua capacidade, peça ao orchestrator uma sessão com Sol e contexto selecionado. Sua entrega termina com cada critério associado a uma evidência ou pendência explícita. Não delegue.
+
+Trabalhe na worktree principal e na branch indicada pelo orchestrator. Use Git para inspeção; solicite ao orchestrator operações que alterem índice, branches, histórico ou remotos (incluindo add, commit e push), publicação e demais ações fora da sua atribuição. Informe objetivo, arquivos, comando proposto e evidências; aguarde o resultado antes de depender da operação. Siga a seção de worktree principal do protocolo, inclusive ao usar skills que descrevam outro fluxo.

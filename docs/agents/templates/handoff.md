@@ -5,6 +5,8 @@ Template: copie para `.scratch/<feature-slug>/handoff.md`; atualize no encerrame
 - Origem e objetivo: <issue/solicitação e objetivo em uma frase>
 - Estado e data: <estado real e data>
 - Base Git/branch: <hash e branch reais>
+- Checkout principal: <caminho absoluto confirmado>
+- Operações Git do orchestrator: <comandos, commits, branch/remoto e resultados; ou nenhuma>
 - Contrato/diff vigentes: <revisões e link para spec.md>
 - Registros: <link para tasks.md e ticket pertinente>
 - Modelo/sessões a retomar: <IDs quando disponíveis; não incluir credenciais>

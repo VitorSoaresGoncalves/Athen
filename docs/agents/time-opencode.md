@@ -30,6 +30,16 @@ Para experimentar os gratuitos discutidos, os IDs encontrados no catálogo local
 
 O reviewer é um sexto perfil pequeno para viabilizar a revisão independente do `/deliver`. Ele trabalha em sessão nova e preserva os arquivos revisados; pode registrar achados e reproduções isoladas em `.scratch/` e executar validações. Uma alteração localizada de texto pode dispensar architect e testes novos; continua exigindo conferência, revisão e registro didático breve. Mudanças em permissões, XP, RPCs ou migrações exigem análise do SQL e verificação em banco local descartável.
 
+## Worktree principal e operações Git
+
+Todos os agentes trabalham no checkout principal do repositório, na mesma branch da tarefa. Confirme o caminho com `git rev-parse --show-toplevel`. A worktree contém os arquivos do projeto; `.git/` contém metadados administrados pelos comandos Git e permanece protegido contra edição direta.
+
+O orchestrator aplica as [convenções de branches](../convencoes.md#branches-e-revisão): parte de `develop` atualizada, cria ou retoma a branch de issue no checkout principal e prepara o PR contra `develop`. Exceções explícitas do usuário valem somente para a tarefa indicada. Antes de trocar de branch, integrar alterações ou preparar um commit, pause os escritores afetados, confira o estado Git e preserve o trabalho preexistente. Todos compartilham branch, índice e arquivos: mantenha um escritor por arquivo e selecione apenas os caminhos da entrega ao preparar o commit.
+
+A criação de worktrees adicionais e branches por especialista fica fora deste fluxo. Ao aplicar skills, adapte etapas de worktrees paralelas e agentes de merge para unidades de trabalho na branch compartilhada, coordenadas pelo orchestrator. Preserve dependências entre tickets, testes e revisão independente. Uma sessão nova de revisão usa o mesmo checkout; registre a versão revisada e coordene qualquer escrita concorrente.
+
+Especialistas podem inspecionar Git, mas requisitam ao orchestrator operações que alterem índice, branches, histórico ou remotos, incluindo staging, commits, push e integração. Também encaminham publicação e ações que excedam sua atribuição. Cada pedido informa objetivo, arquivos envolvidos, comando proposto e evidências disponíveis. O orchestrator verifica o escopo, executa com seus acessos e devolve resultado e nova referência Git; o especialista aguarda antes de usar esse resultado.
+
 ## Contexto por feature
 
 O [tracker local](issue-tracker.md) define o diretório e a spec. O time acrescenta dois registros à mesma feature, sem criar um backlog global concorrente com o YouTrack:
@@ -45,7 +55,7 @@ Inicialize os registros pelos templates de [spec](templates/spec.md), [tasks](te
 
 Registre a issue real e as informações fornecidas quando disponíveis. Para solicitação direta sem número, use um slug descritivo e marque “solicitação direta, sem issue informada”. O YouTrack é mantido manualmente pela equipe e independe da execução dos agentes: acesso, atribuição e estado no board não bloqueiam a solicitação. Siga as [convenções de branches e revisão](../convencoes.md#branches-e-revisão), sem inventar números, atribuições ou estados.
 
-Mantenha decisões atuais no contrato e evidências em `tasks.md`; o handoff aponta para elas. Resumos didáticos são históricos e não substituem esses registros nem as referências técnicas atuais. Preserve o conteúdo de outras tarefas ao retomar uma feature compartilhada.
+A pasta `.scratch/` é local e ignorada pelo Git: trocar de branch não troca esses registros, e clones novos não os recebem. Separe features por slug, confira base/branch e revisão ao retomar e registre o caminho do checkout principal. Mantenha decisões atuais no contrato e evidências em `tasks.md`; o handoff aponta para elas. Resumos didáticos são históricos e não substituem esses registros nem as referências técnicas atuais. Preserve o conteúdo de outras tarefas ao retomar uma feature compartilhada.
 
 ## Delegação e consumo de contexto
 
@@ -71,9 +81,9 @@ Resolva autonomamente escolhas técnicas reversíveis, localização de arquivos
 
 O acesso por ferramenta a arquivos `.env` reais permanece protegido, e sua edição pede aprovação; `.env.example` pode ser mantido normalmente. Use a configuração existente no processo das ferramentas quando necessário, sem imprimir valores nem carregar segredos em prompts, logs ou evidências. Escrita direta em `.git/` permanece bloqueada: use os comandos Git adequados. Acesso amplo ao shell não autoriza descartar trabalho existente, remover volumes de outros projetos ou executar ensaios no banco remoto.
 
-As regras de shell e as policies bloqueiam as formas usuais de `git push`. `/deliver` proíbe push, deploy e publicação, e não autoriza commit, merge nem PR. Uma solicitação posterior explícita deve ser executada em fluxo próprio, com as permissões adequadas e as [convenções](../convencoes.md). A exceção de branch de uma tarefa não se estende às seguintes.
+O orchestrator tem shell liberado pelo perfil, inclusive para commits, push e demais comandos disponíveis a um agente comum. As negativas globais das formas usuais de push permanecem para os especialistas; o perfil principal sobrescreve essas regras de shell. A centralização das demais operações Git é uma regra operacional dos perfis, não um bloqueio exaustivo do shell. Operações continuam sujeitas ao escopo da solicitação, às autenticações e às [convenções](../convencoes.md). Uma entrega solicitada permite ao orchestrator realizar os commits e o push da branch de trabalho necessários ao fluxo, sem exigir nova autorização por comando. Abertura de PR e integração seguem o fluxo do projeto, com aprovação humana antes do merge. Publicação e deploy exigem que façam parte do objetivo solicitado. Registre comandos, commits, branch/remoto e resultados em `tasks.md` e atualize `handoff.md`. A exceção de branch de uma tarefa não se estende às seguintes.
 
-Esses perfis organizam o trabalho; não são um sandbox do sistema operacional. Comandos, scripts e integrações podem ter efeitos além das ferramentas de edição. As permissões do sistema, políticas gerenciadas e autenticações continuam valendo; a configuração não elimina UAC nem concede privilégios administrativos. Se houver um bloqueio técnico, tente primeiro uma alternativa dentro do escopo e só então peça a intervenção específica. Não altere políticas pessoais/globais ou as restrições de publicação para contornar um bloqueio.
+Esses perfis organizam o trabalho; não são um sandbox do sistema operacional. Comandos, scripts e integrações podem ter efeitos além das ferramentas de edição. As permissões do sistema, políticas gerenciadas e autenticações continuam valendo; a configuração não elimina UAC nem concede privilégios administrativos. Se houver um bloqueio técnico, tente primeiro uma alternativa dentro do escopo e só então peça a intervenção específica. Preserve políticas pessoais/globais e os limites do escopo ao resolver bloqueios.
 
 ## Preparação autônoma do ambiente
 

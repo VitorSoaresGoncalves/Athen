@@ -7,6 +7,8 @@ Template: copie para `.scratch/<feature-slug>/tasks.md`; preserve registros ante
 - Revisão do contrato: <número>
 - Revisão do diff: 1
 - Base Git e branch: <hash e branch reais>
+- Checkout principal: <caminho absoluto confirmado>
+- Operações Git do orchestrator: <comandos, commits, branch/remoto e resultados; ou nenhuma>
 - Alterações locais preexistentes: <caminhos e tratamento, sem incorporá-las à entrega>
 
 ## Atribuições
