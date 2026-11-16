@@ -12,6 +12,14 @@ and write to is local markdown under `.scratch/`.
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
+## OpenCode delivery records
+
+The OpenCode team reuses this feature directory and spec. Its orchestrator maintains
+`tasks.md` (assignments and evidence) and `handoff.md` (resumption context) alongside
+the spec, following the [team protocol](time-opencode.md). These records do not
+replace individual issue files or YouTrack states. Initialize them only for a
+concrete task; templates live under [templates/](templates/).
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new file under `.scratch/<feature-slug>/` (creating the directory if needed).

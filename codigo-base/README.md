@@ -1,5 +1,11 @@
 # React + TypeScript + Vite
 
+## Agentes de IA no projeto
+
+O ponto de entrada comum é [AGENTS.md](../AGENTS.md). Para usar o time de agentes no OpenCode, inicie a ferramenta na raiz do repositório e siga o [protocolo do time](../docs/agents/time-opencode.md), incluindo configuração dos modelos, `/deliver` e retomada por feature. A configuração versionada está em [opencode.json](../opencode.json); as skills canônicas continuam em `.agents/skills/`, descobertas diretamente pelo OpenCode V2.
+
+## Template original
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

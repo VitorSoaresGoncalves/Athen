@@ -9,6 +9,8 @@ Use este índice para escolher a referência da tarefa. As referências técnica
 | Instruções comuns a qualquer agente | [AGENTS.md](../AGENTS.md) | Entrada canônica; os arquivos por ferramenta apenas apontam para ela |
 | Instalação e execução | [README da aplicação](../codigo-base/README.md) | `package.json`, cliente Supabase e workflow de CI |
 | Processo de colaboração com IA | [Fluxo de trabalho](fluxo-de-trabalho-ia.md) | Regras de trabalho da equipe |
+| Time de agentes e entrega pelo OpenCode | [Protocolo do time](agents/time-opencode.md) | `opencode.json`, perfis e comando em `.opencode/` |
+| Aprender com uma issue implementada | [Registros didáticos](aprendizado/issues/README.md) | Diff e evidências da issue, identificados por data e revisão |
 | Commits, branches e nomes | [Convenções](convencoes.md) | Regras da equipe e `eslint.config.js` |
 | Responsabilidades e navegação no código | [Arquitetura](arquitetura.md) | Entradas, rotas, consultas e migrações referenciadas |
 | Tecnologias e configuração | [Tecnologias](tecnologias-utilizadas.md) | Manifesto, lockfile e configurações da aplicação |

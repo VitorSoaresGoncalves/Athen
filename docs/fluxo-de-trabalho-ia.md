@@ -25,6 +25,12 @@ Escolha a ferramenta por seus acessos e recursos disponíveis nesta sessão: lei
 - Consulte as regras de nomes em [Convenções](convencoes.md), a configuração efetiva em [ESLint](../codigo-base/eslint.config.js) e as regras visuais em [Estilo](estilo-padrao.md).
 - `codigo-base/src/types/database.ts` é gerado: regenere a partir do esquema correspondente, em vez de editar manualmente. Veja [Banco de dados](banco-de-dados/documentacao-bd.md).
 
+## Entrega com o time do OpenCode
+
+Ao usar os perfis de `.opencode/agents/` ou o comando `/deliver`, siga o [protocolo do time](agents/time-opencode.md): delegação por risco, contrato e arquivos atribuídos, testes, revisão independente e registro didático. O protocolo também define os registros de contexto por feature, sem substituir o YouTrack ou o tracker local das skills.
+
+`/deliver` prepara uma entrega validada localmente e mantém suas pendências explícitas. O comando não realiza push, publicação ou deploy, nem autoriza commit, merge ou abertura de PR. Essas operações permanecem sujeitas à solicitação do usuário e às convenções do projeto; revisão de IA não substitui aprovação humana.
+
 ## Validação e entrega
 
 Para mudanças de código, execute o pipeline local descrito em [Testes](testes.md) antes de encaminhar para PR. Acrescente as verificações específicas de UI ou banco quando aplicáveis. Relate falhas e limitações sem apresentar execução parcial como aprovação completa.
