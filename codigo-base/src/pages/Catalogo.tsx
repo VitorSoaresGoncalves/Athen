@@ -249,7 +249,7 @@ export function CursoModal({ curso, educador, nota, avaliacoes, statusMatriculaI
         await matriculaRepository.atualizarStatus(curso.id, usuarioId, "active");
       }
       onAtualizar();
-      navigate(`/dashboard?curso=${curso.id}`);
+      navigate("/dashboard", { state: { courseId: curso.id } });
     } catch (error) {
       setErro(`Não foi possível entrar no curso: ${mensagemDoErro(error)}`);
       setEntrando(false);

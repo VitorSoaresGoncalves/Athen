@@ -182,7 +182,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const parametros = new URLSearchParams(location.search);
-  const cursoUrl = parametros.get("curso") ?? courseId;
+  const cursoFromState = (location.state as { courseId?: string } | null)?.courseId;
+  const cursoUrl = cursoFromState ?? parametros.get("curso") ?? courseId;
   const salaUrl = parametros.get("sala") ?? undefined;
   const revisaoUrl = parametros.get("revisao");
   const pedidoUrl = parametros.get("pedido") ?? undefined;
@@ -534,10 +535,10 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setSelectedCourseId(nextCourseId);
     setCoursePickerOpen(false);
     const next = new URLSearchParams(location.search);
-    next.set("curso", nextCourseId);
+    next.delete("curso");
     next.delete("sala");
     for (const key of ["revisao", "pedido", "sessao"]) next.delete(key);
-    navigate({ pathname: location.pathname, search: next.toString() });
+    navigate({ pathname: location.pathname, search: next.toString() }, { state: { courseId: nextCourseId } });
   }
 
   // Escolher uma sala abre o curso dela e passa a registrar as aulas como atividade da sala
@@ -550,10 +551,10 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setCoursePickerOpen(false);
     // Make the context explicit so back/reload cannot reopen a course review in a room.
     const next = new URLSearchParams(location.search);
-    next.set("curso", sala.course_id);
+    next.delete("curso");
     next.set("sala", sala.id);
     for (const key of ["revisao", "pedido", "sessao"]) next.delete(key);
-    navigate({ pathname: location.pathname, search: next.toString() });
+    navigate({ pathname: location.pathname, search: next.toString() }, { state: { courseId: sala.course_id, salaId: sala.id } });
   }
 
   // 1º clique seleciona a aula; 2º clique (na aula já selecionada) abre o pop-up
@@ -595,12 +596,12 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setActiveSalaId(undefined);
     setSelectedCourseId(idCurso);
     const next = new URLSearchParams(location.search);
-    next.set("curso", idCurso);
+    next.delete("curso");
     next.delete("sala");
     next.set("revisao", occurrenceId ?? "normal");
     next.delete("pedido");
     next.delete("sessao");
-    navigate({ pathname: location.pathname, search: next.toString() });
+    navigate({ pathname: location.pathname, search: next.toString() }, { state: { courseId: idCurso } });
   }
 
   function fecharRevisao() {
