@@ -1,6 +1,11 @@
 # Issue tracker: Local Markdown
 
 Real, team-facing work for this project is tracked externally in **YouTrack**.
+The team maintains YouTrack manually, independently of agent execution. Board access,
+assignment and issue status are not gates for agents to execute a request. Record
+identifiers and information supplied by the user without inventing them; when no
+issue is supplied, use a descriptive slug and mark the work as a direct request.
+See [branch and review conventions](../convencoes.md#branches-e-revisão).
 Within this repo, the agent issue/spec surface that the engineering skills read from
 and write to is local markdown under `.scratch/`.
 
