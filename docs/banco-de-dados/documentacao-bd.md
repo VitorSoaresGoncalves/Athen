@@ -13,6 +13,7 @@ A consulta final no catálogo remoto confirmou `0041` como última migração e 
 1. [Migrações numeradas](../../codigo-base/supabase/migrations/), de `0001` a `0041` neste checkout: modelo, políticas, funções e suas alterações sucessivas. Leia a redefinição mais recente da função ou política que estiver alterando.
 2. [Tipos gerados](../../codigo-base/src/types/database.ts): estrutura tipada consumida pelo frontend. São uma fotografia de geração, não prova de que o SQL foi aplicado no ambiente de destino.
 3. [Consultas do cliente](../../codigo-base/src/data/repositories.ts): tabelas, views e RPCs efetivamente utilizadas.
+4. [Estatísticas de sala — issue 56](estatisticas-sala.md): contratos e correções da migration `0046_room_stats.sql`, preparada para coexistir com `0042–0045` da issue 47.
 
 Os arquivos `v1_schema.sql` e `v2_schema.sql`, embora estejam na pasta de migrações, representam esquemas antigos com nomes como `Usuario` e `Curso`. As [notas legadas](../historico/banco-de-dados-legado.md), os scripts de CRUD em `supabase/testes/` e os artefatos de modelagem antigos também usam esse modelo. Não os combine com o SQL numerado como se fossem uma única sequência de instalação.
 

@@ -1,4 +1,5 @@
--- 0042_room_stats.sql
+-- 0046_room_stats.sql
+-- Reservada após 0042-0045 da issue 47; não replica suas alterações.
 -- Estatísticas da sala para o pop-up do educador: abas Visão geral, Alunos e Conteúdo.
 --
 -- As funções públicas chamam assert_room_educator antes de ler qualquer dado e
@@ -6,7 +7,8 @@
 -- answers continuam acessíveis só ao dono da tentativa e ao admin.
 --
 -- Acerto de primeira considera, para cada aluno e cada questão, somente a primeira
--- resposta em tentativa finalizada na sala. O último acesso é a tentativa iniciada
+-- resposta por created_at (desempate por tentativa), entre tentativas finalizadas
+-- na sala. O último acesso é a tentativa iniciada
 -- mais recente na sala, ou joined_at quando não há nenhuma. Um aluno precisa de
 -- atenção quando está parado há 6 dias ou mais, ou quando o acerto de primeira é
 -- menor que 50%.
@@ -43,7 +45,7 @@ as $$
       on rm.room_id = a.room_id and rm.user_id = a.user_id and rm.status = 'active'
    where a.room_id = p_room_id
      and a.finished_at is not null
-   order by a.user_id, ans.question_id, a.finished_at, a.id;
+   order by a.user_id, ans.question_id, ans.created_at, a.started_at, a.id;
 $$;
 
 comment on function public.room_first_answers(uuid) is
@@ -72,7 +74,7 @@ as $$
   ),
   first_try as (
     select fa.user_id,
-           round(100.0 * count(*) filter (where fa.is_correct) / count(*)) as rate
+           100.0 * count(*) filter (where fa.is_correct) / count(*) as rate
       from public.room_first_answers(p_room_id) fa
      group by fa.user_id
   ),
@@ -94,7 +96,7 @@ as $$
       left join first_try ft on ft.user_id = m.user_id
       left join access ac on ac.user_id = m.user_id
   )
-  select b.user_id, b.display_name, b.xp, b.progress, b.first_try_rate, b.last_access,
+  select b.user_id, b.display_name, b.xp, b.progress, round(b.first_try_rate), b.last_access,
          floor(extract(epoch from (now() - b.last_access)) / 86400)::integer as days_idle,
          (floor(extract(epoch from (now() - b.last_access)) / 86400) >= 6
           or coalesce(b.first_try_rate, 100) < 50) as needs_attention
@@ -200,6 +202,15 @@ begin
          where a.room_id = p_room_id
            and a.lesson_id = l.id
            and a.finished_at is not null
+           and exists (select 1 from public.questions q where q.lesson_id = l.id)
+           and a.total_count >= (select count(*) from public.questions q where q.lesson_id = l.id)
+           and not exists (
+             select 1 from public.questions q
+              where q.lesson_id = l.id and not exists (
+                select 1 from public.answers ans
+                 where ans.attempt_id = a.id and ans.question_id = q.id
+              )
+           )
       ) done on true
      where r.id = p_room_id
      group by mo.id, mo.title, mo.position, n.members
@@ -208,7 +219,7 @@ end;
 $$;
 
 comment on function public.room_stats_modules(uuid) is
-  'Percentual de conclusão por módulo do curso da sala, contando alunos ativos que finalizaram tentativa em cada aula publicada. Sala sem curso devolve nenhuma linha. Só o educador da sala.';
+  'Percentual de conclusão por módulo do curso da sala: membros ativos com tentativa finalizada e todas as questões atuais da aula publicada respondidas na mesma execução e sala. Aula sem questões não conta como concluída por tentativa. Sala sem curso devolve nenhuma linha. Só o educador da sala.';
 
 -- Conteúdo: as 3 questões com menor acerto de primeira, com pelo menos 3 respostas.
 create or replace function public.room_stats_hard_questions(p_room_id uuid)
@@ -235,7 +246,8 @@ begin
       join public.lessons l on l.id = q.lesson_id
      group by q.id, q.prompt, l.title
     having count(*) >= 3
-     order by 4 asc, 5 desc
+     order by (100.0 * count(*) filter (where fa.is_correct) / count(*)) asc,
+              count(*) desc, q.id
      limit 3;
 end;
 $$;
