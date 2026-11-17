@@ -18,6 +18,7 @@ type CreateUsuarioInput = TablesInsert<'profiles'>;
 type BuscaUsuario = FunctionReturn<'search_profiles'>[number];
 
 type Curso = Tables<'courses'>;
+type CatalogoCursoMetricas = FunctionReturn<'catalog_course_feed'>[number];
 type CreateCursoInput = TablesInsert<'courses'>;
 
 type Sala = Tables<'rooms'>;
@@ -204,6 +205,15 @@ export const cursoRepository = {
       .eq('visibility', 'public')
       .order('created_at', { ascending: false });
     if (error) throw new Error(`Erro ao listar cursos publicados: ${error.message}`);
+    return data || [];
+  },
+
+  // Métricas por curso publicado para os carrosséis do catálogo (nota ponderada,
+  // matrículas dos últimos 7 dias e recomendação do usuário logado). Regras em
+  // supabase/migrations/0042_catalog_course_feed.sql.
+  async listarMetricasCatalogo(): Promise<CatalogoCursoMetricas[]> {
+    const { data, error } = await supabase.rpc('catalog_course_feed');
+    if (error) throw new Error(`Erro ao carregar métricas do catálogo: ${error.message}`);
     return data || [];
   },
 

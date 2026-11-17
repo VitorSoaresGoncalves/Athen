@@ -478,7 +478,14 @@ type CursoComMeta = {
   nota: number;
   avaliacoes: number;
   matriculado: boolean;
+  // Métricas calculadas no servidor para os carrosséis (catalog_course_feed, migração 0042).
+  notaPonderada: number;
+  matriculas7d: number;
+  pontuacaoRecomendacao: number | null;
 };
+
+// Quantos cursos cada carrossel exibe.
+const LIMITE_CARROSSEL = 12;
 
 type ModoExibicao = "carrosseis" | "todos";
 
@@ -699,17 +706,21 @@ export default function Catalogo() {
       try {
         const { data: userData } = await supabase.auth.getUser();
         const meuId = userData.user?.id ?? null;
-        const lista = await cursoRepository.listarPublicados();
+        const [lista, metricas] = await Promise.all([
+          cursoRepository.listarPublicados(),
+          cursoRepository.listarMetricasCatalogo(),
+        ]);
+        const metricasPorCurso = new Map(metricas.map((m) => [m.course_id, m]));
 
         // Para cada curso, calcula os metadados reais exibidos no card.
         const comMeta = await Promise.all(
           lista.map(async (curso, indice): Promise<CursoComMeta> => {
-            const [modulos, educador, media, matricula] = await Promise.all([
+            const [modulos, educador, matricula] = await Promise.all([
               moduloRepository.listarPorCurso(curso.id),
               usuarioRepository.obterPorId(curso.creator_id),
-              avaliacaoRepository.obterMediaPorCurso(curso.id),
               meuId ? matriculaRepository.obter(curso.id, meuId) : Promise.resolve(null),
             ]);
+            const metrica = metricasPorCurso.get(curso.id);
             const aulasPorModulo = await Promise.all(modulos.map((m) => aulaRepository.listarPorModulo(m.id)));
             const aulas = aulasPorModulo.reduce((soma, lista) => soma + lista.length, 0);
 
@@ -719,9 +730,12 @@ export default function Catalogo() {
               modulos: modulos.length,
               aulas,
               educador: educador?.display_name || "Educador",
-              nota: media.media,
-              avaliacoes: media.total,
+              nota: Number(metrica?.rating_avg ?? 0),
+              avaliacoes: metrica?.rating_count ?? 0,
               matriculado: matricula?.status === "active" || matricula?.status === "completed",
+              notaPonderada: Number(metrica?.top_rated_score ?? 0),
+              matriculas7d: metrica?.enrollments_7d ?? 0,
+              pontuacaoRecomendacao: metrica?.recommended_score == null ? null : Number(metrica.recommended_score),
             };
           }),
         );
@@ -758,18 +772,30 @@ export default function Catalogo() {
     [itens, termo, categoria, somenteMatriculados],
   );
 
-  // TODO (próxima etapa, com banco): os três grupos abaixo são provisórios e
-  // só definem a ordem visual. Recomendados, Em alta e Melhor avaliados passarão
-  // a vir de regras próprias no banco.
-  const recomendados = itensFiltrados;
+  // Regras dos carrosséis calculadas no servidor (migração 0042); aqui só ordenamos
+  // e aplicamos a busca/categoria já feitas em itensFiltrados.
+  const recomendados = useMemo(
+    () => itensFiltrados
+      .filter((item) => item.pontuacaoRecomendacao !== null)
+      .sort((a, b) => (b.pontuacaoRecomendacao ?? 0) - (a.pontuacaoRecomendacao ?? 0))
+      .slice(0, LIMITE_CARROSSEL),
+    [itensFiltrados],
+  );
   const emAlta = useMemo(
-    () => [...itensFiltrados].sort((a, b) => b.avaliacoes - a.avaliacoes || b.aulas - a.aulas),
+    () => itensFiltrados
+      .filter((item) => item.matriculas7d > 0)
+      .sort((a, b) => b.matriculas7d - a.matriculas7d)
+      .slice(0, LIMITE_CARROSSEL),
     [itensFiltrados],
   );
   const melhorAvaliados = useMemo(
-    () => [...itensFiltrados].sort((a, b) => b.nota - a.nota || b.avaliacoes - a.avaliacoes),
+    () => itensFiltrados
+      .filter((item) => item.avaliacoes > 0)
+      .sort((a, b) => b.notaPonderada - a.notaPonderada || b.avaliacoes - a.avaliacoes)
+      .slice(0, LIMITE_CARROSSEL),
     [itensFiltrados],
   );
+  const semDestaques = recomendados.length === 0 && emAlta.length === 0 && melhorAvaliados.length === 0;
 
   // "Meus cursos" força a exibição em grade, sem carrosséis.
   const modoEfetivo: ModoExibicao = somenteMatriculados ? "todos" : modo;
@@ -853,11 +879,21 @@ export default function Catalogo() {
                 : "Nenhum curso encontrado para a busca."}
             </p>
           ) : modoEfetivo === "carrosseis" ? (
-            <div className="catalogo__secoes">
-              <Carrossel titulo="Recomendados para você" descricao="Uma seleção para continuar sua jornada de aprendizagem." itens={recomendados} onAbrir={setCursoAberto} />
-              <Carrossel titulo="Cursos em alta" descricao="Os cursos que mais estão chamando a atenção da comunidade." itens={emAlta} onAbrir={setCursoAberto} />
-              <Carrossel titulo="Melhor avaliados" descricao="Os cursos com as melhores notas dos estudantes." itens={melhorAvaliados} onAbrir={setCursoAberto} />
-            </div>
+            semDestaques ? (
+              <p className="catalogo__estado">Ainda não há destaques para exibir. Use "Ver todos os cursos" nos filtros para ver o catálogo completo.</p>
+            ) : (
+              <div className="catalogo__secoes">
+                {recomendados.length > 0 && (
+                  <Carrossel titulo="Recomendados para você" descricao="Com base nas categorias e assuntos dos cursos em que você já se matriculou." itens={recomendados} onAbrir={setCursoAberto} />
+                )}
+                {emAlta.length > 0 && (
+                  <Carrossel titulo="Cursos em alta" descricao="Os que mais receberam matrículas nos últimos 7 dias." itens={emAlta} onAbrir={setCursoAberto} />
+                )}
+                {melhorAvaliados.length > 0 && (
+                  <Carrossel titulo="Melhor avaliados" descricao="As melhores notas dos estudantes, considerando também a quantidade de avaliações." itens={melhorAvaliados} onAbrir={setCursoAberto} />
+                )}
+              </div>
+            )
           ) : (
             <section className="catalogo__grade">
               {itensFiltrados.map((item) => <CartaoCurso key={item.curso.id} item={item} onAbrir={setCursoAberto} />)}
