@@ -110,15 +110,16 @@ type CursoModalProps = {
   educador: string;
   nota: number;
   avaliacoes: number;
+  statusMatriculaInicial?: StatusMatricula | null;
   onFechar: () => void;
   onAtualizar: () => void;
 };
 
-function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }: CursoModalProps) {
+export function CursoModal({ curso, educador, nota, avaliacoes, statusMatriculaInicial = null, onFechar, onAtualizar }: CursoModalProps) {
   const navigate = useNavigate();
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [modulos, setModulos] = useState<ModuloComAulas[]>([]);
-  const [statusMatricula, setStatusMatricula] = useState<StatusMatricula | null>(null);
+  const [statusMatricula, setStatusMatricula] = useState<StatusMatricula | null>(statusMatriculaInicial);
   const [moduloAberto, setModuloAberto] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -476,11 +477,13 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
           </p>
           <div className="modal__acoes">
             <button className="catalogo__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
-            <button className="catalogo__botao-secundario" type="button" title={dicaRevisao}
-              disabled={!podeRevisar}
-              onClick={() => setRevisao({ ocorrenciaId: bonusRevisao ? ocorrenciaRevisao?.occurrence_id : undefined })}>
-              Revisar curso{bonusRevisao ? " · +10 XP" : ""}
-            </button>
+            {matriculado && (
+              <button className="catalogo__botao-terciario" type="button" title={dicaRevisao}
+                disabled={!podeRevisar}
+                onClick={() => setRevisao({ ocorrenciaId: bonusRevisao ? ocorrenciaRevisao?.occurrence_id : undefined })}>
+                Revisar curso{bonusRevisao ? " · +10 XP" : ""}
+              </button>
+            )}
             <button className="catalogo__botao-primario catalogo__botao-entrar" type="button" onClick={() => void entrar()} disabled={entrando}>
               {entrando ? "Abrindo..." : matriculado ? "Continuar curso" : "Matricular-se"} <Icone nome="arrow" tamanho={18} />
             </button>
@@ -542,6 +545,7 @@ type CursoComMeta = {
   nota: number;
   avaliacoes: number;
   matriculado: boolean;
+  statusMatricula: StatusMatricula | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -590,6 +594,7 @@ export default function Catalogo() {
               nota: media.media,
               avaliacoes: media.total,
               matriculado: matricula?.status === "active" || matricula?.status === "completed",
+              statusMatricula: matricula?.status ?? null,
             };
           }),
         );
@@ -739,6 +744,7 @@ export default function Catalogo() {
           educador={cursoAberto.educador}
           nota={cursoAberto.nota}
           avaliacoes={cursoAberto.avaliacoes}
+          statusMatriculaInicial={cursoAberto.statusMatricula}
           onFechar={() => setCursoAberto(null)}
           onAtualizar={() => setRecarregarToken((t) => t + 1)}
         />
