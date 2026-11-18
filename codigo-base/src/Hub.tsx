@@ -16,32 +16,46 @@ import CriarCurso from './pages/criar-curso/CriarCurso';
 import Notificacoes from './pages/Notificacoes';
 import Missoes from './pages/Missoes';
 import MissaoDetalhe from './pages/MissaoDetalhe';
+import NaoEncontrada from './error-pages/NotFound';
+import AcessoNegado from './error-pages/AcessDeny';
+import ErroInterno from './error-pages/InternError';
+import Manutencao from './error-pages/Maintenance';
+import { MODO_MANUTENCAO } from './error-pages/Manutencao-config';
 
 export default function Hub() {
+  // Com VITE_MAINTENANCE_MODE=true, toda a aplicação exibe a página de manutenção.
+  if (MODO_MANUTENCAO) return <Manutencao />
+
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Rotas públicas */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login-page" element={<LoginPage />} />
-        <Route path="/register-page" element={<RegisterPage />} />
+        <Routes>
+          {/* Rotas públicas */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login-page" element={<LoginPage />} />
+          <Route path="/register-page" element={<RegisterPage />} />
 
-        {/* Rotas internas: exigem sessão (redirecionam para "/" sem login) */}
-        <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/salas" element={<ProtectedRoute><Salas /></ProtectedRoute>} />
-        {/* <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} /> */}
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/configuracoes" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
-        <Route path="/amigos" element={<ProtectedRoute><Amigos /></ProtectedRoute>} />
-        <Route path="/caderno" element={<ProtectedRoute><NotebookPage /></ProtectedRoute>} />
-        <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
-        <Route path="/catalogo" element={<ProtectedRoute><Catalogo/></ProtectedRoute>}/> 
-        <Route path="/criar-curso" element={<ProtectedRoute><CriarCurso /></ProtectedRoute>} /> 
-        <Route path="/ligas" element={<ProtectedRoute><Ligas /></ProtectedRoute>} />
-        <Route path="/missoes" element={<ProtectedRoute><Missoes /></ProtectedRoute>} />
-        <Route path="/missoes/:id" element={<ProtectedRoute><MissaoDetalhe /></ProtectedRoute>} />
-      </Routes>
+          {/* Rotas internas: exigem sessão (redirecionam para "/" sem login) */}
+          <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/salas" element={<ProtectedRoute><Salas /></ProtectedRoute>} />
+          {/* <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} /> */}
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/configuracoes" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
+          <Route path="/amigos" element={<ProtectedRoute><Amigos /></ProtectedRoute>} />
+          <Route path="/caderno" element={<ProtectedRoute><NotebookPage /></ProtectedRoute>} />
+          <Route path="/notificacoes" element={<ProtectedRoute><Notificacoes /></ProtectedRoute>} />
+          <Route path="/catalogo" element={<ProtectedRoute><Catalogo/></ProtectedRoute>}/> 
+          <Route path="/criar-curso" element={<ProtectedRoute><CriarCurso /></ProtectedRoute>} /> 
+          <Route path="/ligas" element={<ProtectedRoute><Ligas /></ProtectedRoute>} />
+          <Route path="/missoes" element={<ProtectedRoute><Missoes /></ProtectedRoute>} />
+          <Route path="/missoes/:id" element={<ProtectedRoute><MissaoDetalhe /></ProtectedRoute>} />
+
+          {/* Páginas de erro e manutenção; "*" captura qualquer rota inexistente (404) */}
+          <Route path="/acesso-negado" element={<AcessoNegado />} />
+          <Route path="/erro" element={<ErroInterno />} />
+          <Route path="/manutencao" element={<Manutencao />} />
+          <Route path="*" element={<NaoEncontrada />} />
+        </Routes>
     </BrowserRouter>
   )
 }
