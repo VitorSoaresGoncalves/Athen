@@ -1,6 +1,4 @@
 import { logoColor } from "../data";
-import { useGuardedNavigate } from "../navigation";
-import { useNavigate } from "react-router-dom";
 
 const FOOTER_LINKS = [
   { label: "Sobre", to: "/sobre" },
