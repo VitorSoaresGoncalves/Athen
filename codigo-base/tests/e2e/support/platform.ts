@@ -10,6 +10,8 @@ export const ids = {
   lesson: '44444444-4444-4444-8444-444444444444',
   question: '55555555-5555-4555-8555-555555555555',
   attempt: '66666666-6666-4666-8666-666666666666',
+  reviewOccurrence: '77777777-7777-4777-8777-777777777777',
+  reviewSession: '88888888-8888-4888-8888-888888888888',
 }
 type Row = Record<string, unknown>
 type Reply = { data?: unknown; status?: number }
@@ -29,7 +31,7 @@ export function platformData(): Record<string, Row[]> {
     lessons: [{ id: ids.lesson, module_id: ids.module, title: 'Primeira aula', content: 'Aprenda a reconhecer uma expressão.', position: 0, status: 'published', created_at: date }],
     questions: [{ id: ids.question, lesson_id: ids.lesson, type: 'multiple_choice', prompt: 'Quanto é 1 + 1?', position: 0, xp_value: 4, config: { options: [{ id: 'a', text: 'Dois', correct: true }, { id: 'b', text: 'Três', correct: false }] } }],
     enrollments: [], completions: [], attempts: [], answers: [], rooms: [], room_members: [],
-    reviews: [], friendships: [], notifications: [], notebooks: [], notebook_pages: [],
+    reviews: [], course_review_sessions: [], friendships: [], notifications: [], notebooks: [], notebook_pages: [],
     medals: [], user_medals: [], missions: [], mission_progress: [], announcements: [],
   }
 }
@@ -64,6 +66,7 @@ export async function installPlatform(page: Page, authenticated = true) {
       if (value.startsWith('eq.')) return String(row[key]) === value.slice(3)
       if (value.startsWith('in.(')) return value.slice(4, -1).split(',').includes(String(row[key]))
       if (value === 'is.null') return row[key] == null
+      if (value === 'not.is.null') return row[key] != null
       return true
     }))
   }
@@ -85,14 +88,36 @@ export async function installPlatform(page: Page, authenticated = true) {
       if (path === 'logout') return reply(route, { status: 204 })
     }
     if (url.pathname.includes('/rpc/')) {
+      if (path === 'catalog_course_feed') return reply(route, { data: tables.courses.map(course => ({
+        course_id: course.id, rating_avg: 0, rating_count: 0, enrollments_total: 0,
+        enrollments_7d: 0, top_rated_score: 0, recommended_score: 1, is_enrolled: false,
+      })) })
       const emptyLists = ['friends_course_pac', 'friends_course_pac_v2', 'my_missions', 'my_mission_detail', 'current_season', 'my_season_summary', 'my_season_standings', 'my_season_group', 'my_season_history', 'global_ranking', 'room_ranking', 'room_pac', 'search_profiles', 'home_categories', 'home_course_students', 'home_featured_courses', 'home_top_learners', 'home_featured_reviews']
       if (emptyLists.includes(path)) return reply(route, { data: [] })
+      if (path === 'my_current_course_review') return reply(route, { data: [] })
+      if (path === 'course_review_status') {
+        const courseId = String(call.body.p_course_id ?? '')
+        const course = tables.courses.find(row => row.id === courseId)
+        return reply(route, { data: [{
+          course_id: courseId,
+          course_title: String(course?.title ?? 'Curso de teste'),
+          can_review: false,
+          reason: 'REVIEW_NOT_ELIGIBLE',
+          question_count: 0,
+          sample_count: 0,
+          module_counts: [],
+        }] })
+      }
       if (path === 'is_admin') return reply(route, { data: false })
       if (path === 'home_stats') return reply(route, { data: { students: 3, courses: 1, categories: 1, avg_rating: null } })
       if (path === 'xp_from_question') return reply(route, { data: 4 })
       if (['notify_course_update', 'notify_friend_request', 'notify_room_invite', 'notify_mission'].includes(path)) return reply(route, { status: 204 })
     } else if (tables[path]) {
-      const rows = selected(tables[path], url.searchParams)
+      let rows = selected(tables[path], url.searchParams)
+      if (path === 'course_review_sessions') {
+        rows = [...rows].sort((a, b) => String(b.finished_at).localeCompare(String(a.finished_at)) || String(b.id).localeCompare(String(a.id)))
+        rows = rows.slice(0, Number(url.searchParams.get('limit') ?? rows.length))
+      }
       if (call.method === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `0-${Math.max(0, rows.length - 1)}/${rows.length}` } })
       let result = rows
       if (call.method === 'POST') {

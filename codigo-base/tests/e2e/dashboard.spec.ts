@@ -26,6 +26,10 @@ async function prepareDashboard(page: Page, options: { questionsFail?: boolean; 
     if (path === 'user') data = user
     if (path === 'profiles') data = { id: userId, display_name: 'Aluno', username: 'aluno', streak_count: 0 }
     if (path === 'courses') data = request.headers()['accept']?.includes('object') ? course : [course]
+    if (path === 'course_review_status') data = [{
+      course_id: courseId, course_title: course.title, can_review: false,
+      reason: 'REVIEW_NOT_ELIGIBLE', question_count: 0, sample_count: 0, module_counts: [],
+    }]
     if (path === 'enrollments' && !options.noEnrollment) data = [{ id: 'enrollment', course_id: courseId, user_id: userId, status: 'active', created_at: '2026-10-01T12:00:00Z' }]
     if (path === 'rooms' && options.roomOnly) data = [{ id: 'room-demo', course_id: courseId, name: 'Sala de referência', educator_id: 'educator-demo', created_at: '2026-10-01T12:00:00Z' }]
     if (path === 'room_members' && options.roomOnly) data = [{ room_id: 'room-demo', user_id: userId, status: 'active', joined_at: '2026-10-01T12:00:00Z' }]

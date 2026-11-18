@@ -1,0 +1,20 @@
+# Git centralizado no orchestrator e checkout compartilhado
+
+- Origem: solicitação direta, sem issue informada.
+- Data: 2026-11-16.
+- Estado: final para a alteração documental e de configuração validada localmente; execução com modelos não ensaiada.
+- Referência: base `ff961ab`, branch `develop`, diff local sem commit, revisão documental 1. A alteração direta em `develop` foi uma exceção explícita do usuário nesta tarefa.
+
+O time precisava executar operações Git pelo coordenador e manter os especialistas no mesmo diretório de trabalho. As instruções anteriores impediam push pelo time, e a skill de implementação ainda descrevia branches e worktrees separadas por implementador.
+
+O [protocolo do time](../../agents/time-opencode.md) agora centraliza no orchestrator as operações que alteram índice, branches, histórico e remotos, incluindo staging, commit e push. Os especialistas inspecionam Git e encaminham pedidos com objetivo, arquivos, comando proposto e evidências. O coordenador verifica o escopo, executa e informa o resultado. A configuração remove as policies globais que impediam push; o perfil do orchestrator acrescenta permissão de shell ampla. Os especialistas preservam as negativas globais das formas usuais de push. A centralização das demais operações é uma regra de colaboração, sem bloqueio técnico completo do shell.
+
+Uma **worktree** é o diretório de trabalho com os arquivos do projeto. O diretório `.git/` guarda os metadados que os comandos Git administram. Todos passam a trabalhar no checkout principal e na branch indicada pelo coordenador; os agentes continuam editando os arquivos do projeto e preservam a proteção contra edição direta dos metadados. Como compartilham arquivos, branch e índice, mantêm um escritor por arquivo e coordenam pausas antes de operações Git que possam afetar o trabalho em curso. O fluxo normal de branches de issue a partir de `develop` e de PRs contra `develop` permanece nas [convenções](../../convencoes.md).
+
+O caminho das instruções é [fluxo de trabalho](../../fluxo-de-trabalho-ia.md) → [protocolo](../../agents/time-opencode.md) → [perfis](../../../.opencode/agents/) e [comando `/deliver`](../../../.opencode/commands/deliver.md). A [skill de implementação](../../../.agents/skills/implement-spec/SKILL.md) também foi adaptada para o checkout compartilhado, preservando dependências entre tickets, testes e revisão independente.
+
+A memória operacional permanece em `.scratch/<feature-slug>/`: `spec.md` define o contrato, `tasks.md` registra atribuições e evidências e `handoff.md` orienta a retomada. Os templates agora incluem o caminho do checkout e os resultados das operações Git do orchestrator. Essa pasta é ignorada pelo Git, portanto trocar de branch não troca seus registros e um clone novo não os recebe. O registro didático presente explica a mudança; as referências técnicas continuam sendo a fonte das regras atuais.
+
+Na validação, `git diff --check` passou, com apenas avisos de conversão LF→CRLF. O coordenador conferiu a sintaxe JSON, os links locais dos guias e os delimitadores dos seis perfis. `git worktree list` mostrou somente o checkout principal em `develop`. O coordenador informou que `opencode debug agents --standalone` carregou os perfis e mostrou a permissão de shell do orchestrator após as negativas globais. `opencode debug config --standalone` terminou com código zero e listou fontes por tipo, caminho e informações, sem apresentar uma configuração efetiva única. Esses diagnósticos verificam configuração e descoberta; não comprovam comportamento em uma execução com modelos. Os testes da aplicação não foram executados por se tratar de documentação e configuração do time. Nenhum commit ou push desta alteração é afirmado aqui.
+
+Para explorar o fluxo, compare a permissão de shell no [perfil do orchestrator](../../../.opencode/agents/orchestrator.md) com as regras globais de [opencode.json](../../../opencode.json) e identifique onde um especialista deve registrar um pedido de operação Git.

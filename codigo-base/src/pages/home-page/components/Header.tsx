@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { NAV_LINKS, ROUTES, logoColor, type Learner } from "../data";
 import { useGuardedNavigate } from "../navigation";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   me: Learner | null;
@@ -27,7 +27,7 @@ export default function Header({ me, loggedIn, sessionReady, onSignOut }: Header
           borderBottom: "1px solid rgba(164,134,213,0.15)",
         }}
       >
-        <a href="#" className="flex items-center gap-2 select-none">
+        <a href="/" className="flex items-center gap-2 select-none">
           <img src={logoColor} alt="Athen logo" className="w-9 h-9 rounded-xl object-cover" />
           <span
             className="text-2xl font-bold tracking-tight"
