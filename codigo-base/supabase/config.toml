@@ -2,7 +2,10 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "codigo-base"
+# Pilha local descartável dedicada à revisão de curso; preserva os volumes do
+# projeto codigo-base preexistente. Ambos compartilham portas 553xx e não devem
+# ser iniciados simultaneamente nelas. Veja docs/testes.md na raiz do repositório.
+project_id = "athen-issue47"
 
 [api]
 enabled = true

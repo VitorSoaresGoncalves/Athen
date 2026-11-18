@@ -4,6 +4,8 @@ Registros didáticos do que foi implementado no Athen. O [educator](../../../.op
 
 ## Organização
 
+Registro disponível: [issue 47 — revisão esporádica de curso](issue-47-revisao-esporadica.md), com explicação de prática/bônus, autoridade do servidor, idempotência e validação.
+
 - Uma issue por arquivo: `issue-<numero>-<slug>.md`, com o identificador real.
 - Para solicitação sem issue informada, use `solicitacao-<slug>.md` e declare a origem; não invente um número.
 - Atualize o mesmo arquivo ao corrigir a entrega da issue. Identifique data, base Git e revisão do diff quando ainda não houver commit.

@@ -355,3 +355,23 @@
   .lesson-modal__par { grid-template-columns: 1fr; }
   .lesson-modal__topo, .lesson-modal__corpo, .lesson-modal__rodape { padding-right: 18px; padding-left: 18px; }
 }
+
+/* Review uses the same modal, fields and feedback as a lesson. */
+.lesson-modal__politica { margin: 0; padding: 12px; color: #f4eeff; background: #332047; border-radius: 10px; font-size: 14px; }
+.lesson-modal__politica span { display: block; margin-top: 6px; color: #e6dcf7; }
+.lesson-modal__modulos { margin: 0; padding-left: 22px; color: #e6dcf7; font-size: 14px; line-height: 1.7; }
+.lesson-modal__titulo, .lesson-modal__enunciado, .lesson-modal__conteudo, .lesson-modal__feedback { overflow-wrap: anywhere; }
+.lesson-modal button:focus-visible { outline: 3px solid #f4eeff; outline-offset: 3px; }
+.lesson-modal__dica, .lesson-modal__aviso { color: #d8c9f2; }
+.lesson-modal__rodape { flex-wrap: wrap; }
+.lesson-modal__botao-primario, .lesson-modal__botao-secundario { min-height: 44px; height: auto; padding-top: 10px; padding-bottom: 10px; }
+@media (max-width: 560px) {
+  .lesson-modal__camada { padding: 12px; }
+  .lesson-modal { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
+  .lesson-modal__rodape > button { flex: 1 1 130px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-modal__camada *, .lesson-modal__camada *::before, .lesson-modal__camada *::after {
+    animation: none !important; transition: none !important;
+  }
+}
