@@ -108,6 +108,10 @@ function configureReview(platform: PlatformFixture, options: {
 test('prática normal mostra a introdução sem criar sessão até o clique e usa só as RPCs de revisão', async ({ page, platform }) => {
   prepareCourse(platform)
   configureReview(platform)
+  platform.on('my_course_review', ({ body }) => {
+    expect(body.p_session_id).toBe(sessionId)
+    return { data: [session('normal')] }
+  })
   await page.setViewportSize({ width: 1440, height: 900 })
   platform.on('start_course_review', ({ body }) => {
     expect(body.p_course_id).toBe(ids.course)
@@ -136,6 +140,13 @@ test('prática normal mostra a introdução sem criar sessão até o clique e us
   await page.getByRole('button', { name: 'Começar revisão' }).click()
   await expect(page.getByRole('heading', { name: 'Quanto é 1 + 1?' })).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`sessao=${sessionId}`))
+  expect(new URL(page.url()).searchParams.has('curso')).toBe(false)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Quanto é 1 + 1?' })).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`sessao=${sessionId}`))
+  await page.getByRole('button', { name: 'Fechar revisão' }).click()
+  await expect(page).toHaveURL('/dashboard')
+  await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
   expect(platform.calls.filter(call => call.path === 'start_course_review')).toHaveLength(1)
   expect(platform.calls.some(call => ['attempts', 'answers', 'finalize_attempt'].includes(call.path))).toBe(false)
 })
@@ -175,7 +186,7 @@ test('notificação resolvida por ocorrência abre o mesmo curso, mesmo já lida
 
   await page.goto('/notificacoes')
   await page.getByRole('button', { name: 'Abrir notificação: Revisão semanal', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`curso=${ids.course}.*revisao=${occurrenceId}`))
+  await expect(page).toHaveURL(`/dashboard?revisao=${occurrenceId}`)
   await expect(page.getByText('Revisão com bônus · +10 XP')).toBeVisible()
   expect(platform.calls.some(call => call.path === 'my_course_review_occurrence')).toBe(true)
   expect(platform.calls.filter(call => call.path === 'notifications' && call.method === 'PATCH')).toHaveLength(0)

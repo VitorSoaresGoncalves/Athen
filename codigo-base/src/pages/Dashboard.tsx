@@ -608,7 +608,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setOpenLesson(null);
     const next = new URLSearchParams(location.search);
     for (const key of ["revisao", "pedido", "sessao"]) next.delete(key);
-    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true });
+    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true, state: location.state });
     // Deep links may have no original trigger; the course review CTA is a fallback.
     const trigger = reviewReturnRef.current;
     window.requestAnimationFrame(() => {
@@ -622,14 +622,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
     next.set("pedido", requestId);
     next.delete("sessao");
     // Persist the intention before LessonModal's effect starts the RPC.
-    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true });
+    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true, state: location.state });
   }
 
   function registrarSessao(sessionId: string) {
     const next = new URLSearchParams(location.search);
     next.set("sessao", sessionId);
     next.delete("pedido");
-    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true });
+    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true, state: location.state });
   }
 
   const showReviewCard = !loading && !errorMessage && course?.id === selectedCourseId && !activeSalaId && !salaUrl;
