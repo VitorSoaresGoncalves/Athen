@@ -4,6 +4,10 @@ import { CrudConsole } from './pages/CrudConsole'
 import {LoginPage} from './pages/LoginPage'
 import {RegisterPage} from './pages/RegisterPage';
 import HomePage  from './pages/home-page/HomePage';
+import SobrePage  from './pages/home-page/SobrePage';
+import AjudaPage  from './pages/home-page/AjudaPage';
+import TermosPage  from './pages/home-page/TermosPage';
+import PrivacidadePage  from './pages/home-page/PrivacidadePage';
 import Dashboard from './pages/Dashboard';
 import Salas from './pages/Salas'
 import Ligas from './pages/Ligas'
@@ -33,6 +37,11 @@ export default function Hub() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login-page" element={<LoginPage />} />
           <Route path="/register-page" element={<RegisterPage />} />
+          <Route path="/sobre" element={<SobrePage />} />
+          <Route path="/ajuda" element={<AjudaPage />} />
+          <Route path="/privacidade" element={<PrivacidadePage />} />
+          <Route path="/termos" element={<TermosPage />} />
+
 
           {/* Rotas internas: exigem sessão (redirecionam para "/" sem login) */}
           <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
