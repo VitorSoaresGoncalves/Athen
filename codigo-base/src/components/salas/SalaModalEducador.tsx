@@ -61,7 +61,7 @@ function textoUltimoAcesso(diasParado: number) {
 
 export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtualizar }: SalaModalEducadorProps) {
   const { avisos, jogadores, recarregarAvisos } = useSalaModal(sala, usuarioId);
-  const { geral, alunos, erroEstatisticas } = useEstatisticasSala(sala.id);
+  const { geral, alunos, questoes, modulos, erroEstatisticas } = useEstatisticasSala(sala.id);
   const emAtencao = alunos?.filter((aluno) => aluno.needs_attention) ?? [];
   const [copiado, setCopiado] = useState(false);
   const [ocupado, setOcupado] = useState(false);
@@ -70,7 +70,7 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
   const [tituloAviso, setTituloAviso] = useState("");
   const [textoAviso, setTextoAviso] = useState("");
   const alunosVisiveis = soParados
-          ? (alunos ?? []).filter((aluno) => aluno.days_idle >= 7)
+          ? (alunos ?? []).filter((aluno) => aluno.days_idle >= 6)
           : (alunos ?? []);
 
   async function copiarCodigo() {
@@ -174,6 +174,7 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
     {
       id: "alunos",
       rotulo: "Alunos",
+
       painel: (
         <div className="salas__painel-aba">
           {alunos === null && <p className="salas__vazio-painel">Carregando Alunos...</p>}
@@ -215,7 +216,7 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
                     <th scope="col">Último acesso</th>
                   </tr>
                 </thead>
-                
+
                 <tbody>
                   {alunosVisiveis.map((aluno) => (
                     <tr key={aluno.user_id}>
@@ -238,35 +239,59 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
     {
       id: "conteudo",
       rotulo: "Conteúdo",
+
       painel: (
-        // PLACEHOLDER (depende de room_stats): conclusão por módulo/aula e questões difíceis.
-        // Valores fictícios só para mostrar o layout; nada vem do banco.
         <div className="salas__painel-aba">
-          <p className="salas__preview-aviso" role="note">
-            <Icone nome="people" tamanho={15} />
-            Pré-visualização — dados de exemplo, ainda não vêm do banco.
-          </p>
-          <p className="salas__rotulo">CONCLUSÃO POR MÓDULO</p>
-          <ul className="salas__conclusao">
-            <li className="salas__conclusao-item">
-              <div className="salas__conclusao-linha"><span>Módulo 1 · Fundamentos</span><strong>72%</strong></div>
-              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "72%" }} /></div>
-            </li>
-            <li className="salas__conclusao-item">
-              <div className="salas__conclusao-linha"><span>Módulo 2 · Prática</span><strong>48%</strong></div>
-              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "48%" }} /></div>
-            </li>
-            <li className="salas__conclusao-item">
-              <div className="salas__conclusao-linha"><span>Módulo 3 · Avançado</span><strong>28%</strong></div>
-              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "28%" }} /></div>
-            </li>
-          </ul>
-          <p className="salas__rotulo">QUESTÕES COM MAIS ERROS</p>
-          <ul className="salas__atencao">
-            <li className="salas__atencao-item"><strong>Q7 — Laços de repetição</strong><span>Acerto de primeira: 31%</span></li>
-            <li className="salas__atencao-item"><strong>Q12 — Recursão</strong><span>Acerto de primeira: 38%</span></li>
-            <li className="salas__atencao-item"><strong>Q4 — Escopo de variáveis</strong><span>Acerto de primeira: 44%</span></li>
-          </ul>
+          {modulos === null || questoes === null ? (
+            <p className="salas__vazio-painel">Carregando Conteúdo...</p>
+          ): (
+            <>
+              <p className="salas__rotulo">CONCLUSÃO POR MÓDULO</p>
+
+              {modulos.length === 0 ? (
+                <p className="salas__vazio-painel">
+                {sala.cursoTitulo ? "O curso desta sala ainda não tem módulos." : "Esta sala não tem um curso vinculado."}
+                </p>
+              ) : (
+                <ul className="salas__conclusao"> 
+                  {modulos.map((modulo) => {
+                    const pct = Math.min(100, Math.max(0, Math.round(Number(modulo.completion_pct))));
+
+                    return (
+                      <li className="salas__conclusao-item" key={modulo.module_id}>
+                        <div className="salas__conclusao-linha">
+                          <span>{modulo.title}</span>
+                          <strong>{pct}%</strong>
+                        </div>
+
+                        <div className="salas__barra-progresso" role="presentation"><span style={{ width: `${pct}%` }} /></div>
+                      </li>
+                    );
+                })}
+                </ul>
+              )}
+  
+
+              <p className="salas__rotulo">QUESTÕES COM MAIS ERROS</p>
+
+              {questoes.length === 0 ? (
+                <p className="salas__vazio-painel">Ainda não há respostas suficientes para mostrar as questões mais difíceis.</p>
+              ) : (
+                <ul className="salas__atencao">
+                  {questoes.map((questao) => (
+                    <li className="salas__atencao-item" key={questao.question_id}>
+                      <strong>{questao.prompt}</strong>
+                      <span>
+                        {questao.lesson_title} · acerto de primeira: {Math.round(Number(questao.first_try_rate))}% ({questao.answers_count} respostas)
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+            </>
+          )}
+
         </div>
       ),
     },
