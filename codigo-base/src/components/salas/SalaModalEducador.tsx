@@ -1,16 +1,17 @@
 import { useState, type FormEvent } from "react";
+import { avisoRepository, salaRepository } from "../../data/repositories";
 import { Modal, ModalFechar } from "../modal/Modal";
 import { RankingPodium } from "../ranking/RankingPodium";
-import { avisoRepository, salaRepository } from "../../data/repositories";
 import { Abas, type Aba } from "./Abas";
 import { Icone } from "./Icone";
-import { useSalaModal } from "./useSalaModal";
 import {
   OPCOES_PAC,
   formatarData,
   traduzirErro,
   type Sala,
 } from "./tipos";
+import { useEstatisticasSala } from "./useEstatisticasSala";
+import { useSalaModal } from "./useSalaModal";
 
 // ---------------------------------------------------------------------------
 // Pop-up da sala para o educador.
@@ -34,13 +35,43 @@ export type SalaModalEducadorProps = {
   onAtualizar: () => Promise<void>;
 };
 
+function descreverAtencao(aluno: { days_idle: number; progress: number; first_try_rate: number | null }) {
+  const partes: string[] = [];
+
+  if (aluno.days_idle >= 6) {
+    partes.push(`Parado há ${aluno.days_idle} dias · progresso ${Math.round(Number(aluno.progress))}%`);
+  }
+
+  if (aluno.first_try_rate !== null && Number(aluno.first_try_rate) < 50) {
+    partes.push(`acerto ${Math.round(Number(aluno.first_try_rate))}%`);
+  }
+
+  return partes.join(" · ");
+}
+
+function textoUltimoAcesso(diasParado: number) {
+  if (diasParado <= 0)
+    return "Hoje";
+
+  if (diasParado === 1) 
+    return "Ontem";
+
+  return `Há ${diasParado} dias`;
+}
+
 export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtualizar }: SalaModalEducadorProps) {
   const { avisos, jogadores, recarregarAvisos } = useSalaModal(sala, usuarioId);
+  const { geral, alunos, questoes, modulos, erroEstatisticas } = useEstatisticasSala(sala.id);
+  const emAtencao = alunos?.filter((aluno) => aluno.needs_attention) ?? [];
   const [copiado, setCopiado] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  const [ soParados, setSoParados ] = useState(false);
   const [erro, setErro] = useState("");
   const [tituloAviso, setTituloAviso] = useState("");
   const [textoAviso, setTextoAviso] = useState("");
+  const alunosVisiveis = soParados
+          ? (alunos ?? []).filter((aluno) => aluno.days_idle >= 6)
+          : (alunos ?? []);
 
   async function copiarCodigo() {
     try {
@@ -88,99 +119,179 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
     {
       id: "visao-geral",
       rotulo: "Visão geral",
+
+      // Todo o painel de Visao Geral:
+      // Mostra membros ativos, média de progresso, % de acertos de primeira
+      // número e quais alunos precisam de atenção
       painel: (
-        // PLACEHOLDER (depende de room_stats): cartões de métrica e alertas.
-        // Valores fictícios só para mostrar o layout; nada vem do banco.
-        // Coerentes com a tabela fictícia da aba Alunos (5 alunos): média de
-        // progresso 49%, acerto de primeira médio 64%, 2 em atenção (parado
-        // 7+ dias ou acerto < 50%).
         <div className="salas__painel-aba">
-          <p className="salas__preview-aviso" role="note">
-            <Icone nome="people" tamanho={15} />
-            Pré-visualização — dados de exemplo, ainda não vêm do banco.
-          </p>
-          <div className="salas__cartoes">
-            <div className="salas__cartao"><span className="salas__cartao-valor">5</span><span className="salas__cartao-rotulo">Membros ativos</span></div>
-            <div className="salas__cartao"><span className="salas__cartao-valor">49%</span><span className="salas__cartao-rotulo">Média de progresso</span></div>
-            <div className="salas__cartao"><span className="salas__cartao-valor">64%</span><span className="salas__cartao-rotulo">Acerto de primeira</span></div>
-            <div className="salas__cartao"><span className="salas__cartao-valor">2</span><span className="salas__cartao-rotulo">Precisam de atenção</span></div>
-          </div>
-          <p className="salas__rotulo">PRECISAM DE ATENÇÃO</p>
-          <ul className="salas__atencao">
-            <li className="salas__atencao-item"><strong>Bruno Lima</strong><span>Parado há 7 dias · progresso 15%</span></li>
-            <li className="salas__atencao-item"><strong>Aluno</strong><span>Parado há 12 dias · acerto 45%</span></li>
-          </ul>
+          {erroEstatisticas && <p className="salas__erro-inline" role="alert">{erroEstatisticas}</p>}
+  
+          {alunos === null && <p className="salas__vazio-painel">Carregando estatísticas...</p>}
+
+          {alunos !== null && (
+            <>
+               <div className="salas__cartoes">
+                <div className="salas__cartao">
+                  <span className="salas__cartao-valor">{geral?.active_members ?? 0}</span>
+                  <span className="salas__cartao-rotulo">Membros ativos</span>
+                </div>
+
+                <div className="salas__cartao">
+                  <span className="salas__cartao-valor">{Math.round(Number(geral?.avg_progress ?? 0))}%</span>
+                  <span className="salas__cartao-rotulo">Média de progresso</span>
+                </div>
+
+                <div className="salas__cartao">
+                  <span className="salas__cartao-valor">{Math.round(Number(geral?.avg_first_try ?? 0))}%</span>
+                  <span className="salas__cartao-rotulo">Acerto de primeira</span>
+                </div>
+
+                <div className="salas__cartao">
+                  <span className="salas__cartao-valor">{geral?.attention_count ?? 0}</span>
+                  <span className="salas__cartao-rotulo">Precisam de atenção</span>
+                </div>
+              </div>
+
+              <p className="salas__rotulo">PRECISAM DE ATENÇÃO</p>
+              {emAtencao.length === 0 ? (
+                <p className="salas__vazio-painel">Nenhum aluno precisa de atenção agora.</p>
+              ) : (
+                <ul className="salas__atencao">
+                  {emAtencao.map((aluno) => (
+                    <li className="salas__atencao-item" key={aluno.user_id}>
+                      <strong>{aluno.display_name}</strong>
+                      <span>{descreverAtencao(aluno)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
         </div>
       ),
     },
     {
       id: "alunos",
       rotulo: "Alunos",
+
       painel: (
-        // PLACEHOLDER (depende de room_stats): tabela de alunos.
-        // Linhas fictícias só para mostrar o layout; nada vem do banco.
         <div className="salas__painel-aba">
-          <p className="salas__preview-aviso" role="note">
-            <Icone nome="people" tamanho={15} />
-            Pré-visualização — dados de exemplo, ainda não vêm do banco.
-          </p>
-          <div className="salas__filtros-alunos" aria-hidden="true">
-            <span className="salas__chip salas__chip--ativo">Todos</span>
-            <span className="salas__chip">Parados 7+ dias</span>
-          </div>
-          <table className="salas__tabela">
-            <thead>
-              <tr>
-                <th scope="col">Aluno</th>
-                <th scope="col">XP</th>
-                <th scope="col">Progresso</th>
-                <th scope="col">Acerto de primeira</th>
-                <th scope="col">Último acesso</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Ana Souza</td><td>420</td><td>78%</td><td>71%</td><td>Hoje</td></tr>
-              <tr><td>Bruno Lima</td><td>310</td><td>15%</td><td>52%</td><td>Há 7 dias</td></tr>
-              <tr><td>Carla Dias</td><td>560</td><td>92%</td><td>88%</td><td>Ontem</td></tr>
-              <tr><td>Diego Reis</td><td>240</td><td>40%</td><td>63%</td><td>Há 2 dias</td></tr>
-              <tr><td>Aluno</td><td>180</td><td>22%</td><td>45%</td><td>Há 12 dias</td></tr>
-            </tbody>
-          </table>
+          {alunos === null && <p className="salas__vazio-painel">Carregando Alunos...</p>}
+
+          {alunos !== null && alunos.length === 0 && (
+            <p className="salas__vazio-painel">Ainda não há alunos nesta sala.</p>
+          )}
+
+          {alunos !== null && (
+            <>
+              <div className="salas__filtros-alunos">
+                <button
+                type="button"
+                className={`salas__chip${!soParados ? " salas__chip--ativo" : ""}`}
+                aria-pressed={!soParados}
+                onClick={() => setSoParados(false)}
+                >
+                  Todos
+                </button>
+
+                <button
+                type="button"
+                className={`salas__chip${soParados ? " salas__chip--ativo" : ""}`}
+                aria-pressed={soParados}
+                onClick={() => setSoParados(true)}
+                >
+                  Parados 6+ dias
+                </button>
+              </div>
+
+
+              <table className="salas__tabela">
+                <thead>
+                  <tr>
+                    <th scope="col">Aluno</th>
+                    <th scope="col">XP</th>
+                    <th scope="col">Progresso</th>
+                    <th scope="col">Acerto de primeira</th>
+                    <th scope="col">Último acesso</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {alunosVisiveis.map((aluno) => (
+                    <tr key={aluno.user_id}>
+                      <td>{aluno.display_name}</td>
+                      <td>{aluno.xp}</td>
+                      <td>{Math.round(Number(aluno.progress))}%</td>
+                      <td>{aluno.first_try_rate === null ? "—" : `${Math.round(Number(aluno.first_try_rate))}%`}</td>
+                      <td>{textoUltimoAcesso(aluno.days_idle)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          
+            </>
+          )}
+
         </div>
       ),
     },
     {
       id: "conteudo",
       rotulo: "Conteúdo",
+
       painel: (
-        // PLACEHOLDER (depende de room_stats): conclusão por módulo/aula e questões difíceis.
-        // Valores fictícios só para mostrar o layout; nada vem do banco.
         <div className="salas__painel-aba">
-          <p className="salas__preview-aviso" role="note">
-            <Icone nome="people" tamanho={15} />
-            Pré-visualização — dados de exemplo, ainda não vêm do banco.
-          </p>
-          <p className="salas__rotulo">CONCLUSÃO POR MÓDULO</p>
-          <ul className="salas__conclusao">
-            <li className="salas__conclusao-item">
-              <div className="salas__conclusao-linha"><span>Módulo 1 · Fundamentos</span><strong>72%</strong></div>
-              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "72%" }} /></div>
-            </li>
-            <li className="salas__conclusao-item">
-              <div className="salas__conclusao-linha"><span>Módulo 2 · Prática</span><strong>48%</strong></div>
-              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "48%" }} /></div>
-            </li>
-            <li className="salas__conclusao-item">
-              <div className="salas__conclusao-linha"><span>Módulo 3 · Avançado</span><strong>28%</strong></div>
-              <div className="salas__barra-progresso" role="presentation"><span style={{ width: "28%" }} /></div>
-            </li>
-          </ul>
-          <p className="salas__rotulo">QUESTÕES COM MAIS ERROS</p>
-          <ul className="salas__atencao">
-            <li className="salas__atencao-item"><strong>Q7 — Laços de repetição</strong><span>Acerto de primeira: 31%</span></li>
-            <li className="salas__atencao-item"><strong>Q12 — Recursão</strong><span>Acerto de primeira: 38%</span></li>
-            <li className="salas__atencao-item"><strong>Q4 — Escopo de variáveis</strong><span>Acerto de primeira: 44%</span></li>
-          </ul>
+          {modulos === null || questoes === null ? (
+            <p className="salas__vazio-painel">Carregando Conteúdo...</p>
+          ): (
+            <>
+              <p className="salas__rotulo">CONCLUSÃO POR MÓDULO</p>
+
+              {modulos.length === 0 ? (
+                <p className="salas__vazio-painel">
+                {sala.cursoTitulo ? "O curso desta sala ainda não tem módulos." : "Esta sala não tem um curso vinculado."}
+                </p>
+              ) : (
+                <ul className="salas__conclusao"> 
+                  {modulos.map((modulo) => {
+                    const pct = Math.min(100, Math.max(0, Math.round(Number(modulo.completion_pct))));
+
+                    return (
+                      <li className="salas__conclusao-item" key={modulo.module_id}>
+                        <div className="salas__conclusao-linha">
+                          <span>{modulo.title}</span>
+                          <strong>{pct}%</strong>
+                        </div>
+
+                        <div className="salas__barra-progresso" role="presentation"><span style={{ width: `${pct}%` }} /></div>
+                      </li>
+                    );
+                })}
+                </ul>
+              )}
+  
+
+              <p className="salas__rotulo">QUESTÕES COM MAIS ERROS</p>
+
+              {questoes.length === 0 ? (
+                <p className="salas__vazio-painel">Ainda não há respostas suficientes para mostrar as questões mais difíceis.</p>
+              ) : (
+                <ul className="salas__atencao">
+                  {questoes.map((questao) => (
+                    <li className="salas__atencao-item" key={questao.question_id}>
+                      <strong>{questao.prompt}</strong>
+                      <span>
+                        {questao.lesson_title} · acerto de primeira: {Math.round(Number(questao.first_try_rate))}% ({questao.answers_count} respostas)
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+            </>
+          )}
+
         </div>
       ),
     },
