@@ -9,6 +9,8 @@ Use este índice para escolher a referência da tarefa. As referências técnica
 | Instruções comuns a qualquer agente | [AGENTS.md](../AGENTS.md) | Entrada canônica; os arquivos por ferramenta apenas apontam para ela |
 | Instalação e execução | [README da aplicação](../codigo-base/README.md) | `package.json`, cliente Supabase e workflow de CI |
 | Processo de colaboração com IA | [Fluxo de trabalho](fluxo-de-trabalho-ia.md) | Regras de trabalho da equipe |
+| Time de agentes e entrega pelo OpenCode | [Protocolo do time](agents/time-opencode.md) | `opencode.json`, perfis e comando em `.opencode/` |
+| Aprender com uma issue implementada | [Registros didáticos](aprendizado/issues/README.md) | Diff e evidências da issue, identificados por data e revisão |
 | Commits, branches e nomes | [Convenções](convencoes.md) | Regras da equipe e `eslint.config.js` |
 | Responsabilidades e navegação no código | [Arquitetura](arquitetura.md) | Entradas, rotas, consultas e migrações referenciadas |
 | Tecnologias e configuração | [Tecnologias](tecnologias-utilizadas.md) | Manifesto, lockfile e configurações da aplicação |
@@ -16,6 +18,7 @@ Use este índice para escolher a referência da tarefa. As referências técnica
 | Modelo de dados e regras persistidas | [Banco de dados](banco-de-dados/documentacao-bd.md) | SQL numerado e tipos gerados |
 | Comandos e alcance das verificações | [Testes](testes.md) | Scripts, configurações e testes existentes |
 | Casos por página, jornadas, banco e CI | [Mapa dos testes](mapa-dos-testes.md) | Testes executáveis, diagramas, decisões sobre utilidade e limites de cobertura |
+| Verificação da revisão esporádica de curso | [Testes da issue 47](testes-issue-47.md) | Critérios, suítes SQL/UI/live e resultados locais datados |
 | Vocabulário do produto | [Glossário](../GLOSSARY.md) | Definições; mapeamento técnico na referência de banco |
 | Tipos de questão atuais e ideias de expansão | [Tipos de questão](tipos-de-questao.md) | Quatro tipos implementados, regras de correção e propostas futuras separadas |
 | Apresentar a sprint04 com duas contas novas | [Roteiro de demo](roteiro-demo-sprint04.md) | Percursos de educador/estudante, dados e gabaritos; limites conferidos nas fontes da sprint04 |

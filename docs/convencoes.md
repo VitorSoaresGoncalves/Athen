@@ -24,24 +24,26 @@ Exemplos: `feat: adiciona filtro de cursos`, `fix: corrige progresso da trilha`,
 
 ## Branches e revisão
 
-- `main`: entrega final/produção; recebe `develop` após validação no Preview e entrega final.
-- `develop`: consolidação das sprints.
-- `sprint#`: base do trabalho da sprint, criada a partir de `develop`.
+- `main`: entrega final/produção; recebe `develop` no encerramento da sprint, após revisão humana e validação no Preview.
+- `develop`: base das branches de issue e destino dos PRs desde a sprint05; consolida o trabalho da sprint.
+- `sprint#`: branches históricas; não são base de novos trabalhos nem destino de novos PRs.
 - `issue/123-descricao-curta`: trabalho de um escopo; o número identifica a história no YouTrack.
 
-Antes de alterar código, identifique a issue no board, sua atribuição e o estado Em andamento. Crie a branch de trabalho a partir da sprint atualizada. Confira qual é a sprint pertinente à tarefa; exemplos e relatórios de sprints passadas não a determinam.
+Desde a sprint05, crie a branch de trabalho a partir de `develop` atualizada. Exemplos e relatórios de sprints passadas não determinam a base de novos trabalhos.
 
-Sequência para uma árvore de trabalho adequada à troca de branch, substituindo `sprintNN` e a issue pelos valores reais:
+O YouTrack é mantido manualmente pela equipe, de forma independente da execução dos agentes. Registre a identificação e as informações fornecidas, sem inventar números, atribuições ou estados. Acesso ao board, atribuição e estado da issue não são pré-requisitos para o agente executar a solicitação. Sem número informado, use `issue/<slug-descritivo>` para a branch.
+
+Sequência para uma árvore de trabalho adequada à troca de branch, substituindo a issue pelos valores reais:
 
 ```bash
-git switch sprintNN
+git switch develop
 git pull --ff-only
 git switch -c issue/123-descricao-curta
 ```
 
-Confirme o estado local antes dessa sequência e preserve o trabalho existente. A base de uma branch de issue é a sprint, não `develop`. Faça commits pequenos e mantenha um escopo por branch. Commits diretos em `main`, `develop` e `sprint#` ficam fora do fluxo de desenvolvimento.
+Confirme o estado local antes dessa sequência e preserve o trabalho existente. Faça commits pequenos e mantenha um escopo por branch. Commits diretos em `main`, `develop` e `sprint#` ficam fora do fluxo de desenvolvimento.
 
-Antes de enviar código, execute as [validações locais](testes.md). Para mudanças visuais, registre evidência da interface. Abra o PR contra a sprint correspondente; ele exige pelo menos uma aprovação de outra pessoa. O autor não aprova o próprio PR. Após revisão e validação, siga o processo de integração da equipe.
+Antes de enviar código, execute as [validações locais](testes.md). Para mudanças visuais, registre evidência da interface. Abra o PR contra `develop`; ele exige pelo menos uma aprovação de outra pessoa. O autor não aprova o próprio PR. No encerramento da sprint, integre `develop` em `main` por PR, também sujeito à revisão humana e às validações, incluindo o Preview.
 
 ## Nomes e regras de código
 

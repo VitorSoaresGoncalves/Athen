@@ -1,6 +1,11 @@
 # Issue tracker: Local Markdown
 
 Real, team-facing work for this project is tracked externally in **YouTrack**.
+The team maintains YouTrack manually, independently of agent execution. Board access,
+assignment and issue status are not gates for agents to execute a request. Record
+identifiers and information supplied by the user without inventing them; when no
+issue is supplied, use a descriptive slug and mark the work as a direct request.
+See [branch and review conventions](../convencoes.md#branches-e-revisão).
 Within this repo, the agent issue/spec surface that the engineering skills read from
 and write to is local markdown under `.scratch/`.
 
@@ -11,6 +16,14 @@ and write to is local markdown under `.scratch/`.
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
+
+## OpenCode delivery records
+
+The OpenCode team reuses this feature directory and spec. Its orchestrator maintains
+`tasks.md` (assignments and evidence) and `handoff.md` (resumption context) alongside
+the spec, following the [team protocol](time-opencode.md). These records do not
+replace individual issue files or YouTrack states. Initialize them only for a
+concrete task; templates live under [templates/](templates/).
 
 ## When a skill says "publish to the issue tracker"
 

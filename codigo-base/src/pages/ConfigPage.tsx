@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
 import { usuarioRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
+import type { Json } from "../types/database";
 import "./ConfigPage.css";
 
 // Cada toggle da UI corresponde a uma chave do notification_preferences (JSON em
 // profiles). Convenção do repositório: chave AUSENTE ou true = ativada.
-type NotificationKey = "atualizacao_curso" | "pedido_amizade" | "lembrete_estudo";
+type NotificationKey = "atualizacao_curso" | "pedido_amizade" | "lembrete_estudo" | "revisao_curso";
 
 type AccountForm = {
   username: string;
@@ -45,10 +46,15 @@ const notificationItems: Array<{ key: NotificationKey; title: string; descriptio
     title: "Lembrete de estudo",
     description: "Receba um lembrete para manter sua sequência diária de estudos.",
   },
+  {
+    key: "revisao_curso",
+    title: "Revisão de curso",
+    description: "Receba avisos de revisão com bônus. Desativar os avisos não desativa a atividade nem o bônus.",
+  },
 ];
 
 // chave ausente => ativada (convenção do backend).
-function prefAtiva(prefs: Record<string, boolean>, key: NotificationKey): boolean {
+function prefAtiva(prefs: Record<string, unknown>, key: NotificationKey): boolean {
   return prefs[key] !== false;
 }
 
@@ -56,10 +62,12 @@ export default function ConfiguracoesPage() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountForm>(emptyAccount);
+  const [preferenciasOriginais, setPreferenciasOriginais] = useState<Record<string, Json | undefined>>({});
   const [notifications, setNotifications] = useState<NotificationSettings>({
     atualizacao_curso: true,
     pedido_amizade: true,
     lembrete_estudo: true,
+    revisao_curso: true,
   });
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -78,7 +86,6 @@ export default function ConfiguracoesPage() {
         const perfil = await usuarioRepository.obterAtual();
         if (cancelado) return;
 
-        setUserId(perfil?.id ?? null);
         setAccount({
           ...emptyAccount,
           username: perfil?.username ?? "",
@@ -86,11 +93,17 @@ export default function ConfiguracoesPage() {
           email: userData.user?.email ?? "",
         });
 
-        const prefs = (perfil?.notification_preferences ?? {}) as Record<string, boolean>;
+        const prefs = perfil?.notification_preferences ?? {};
+        if (typeof prefs !== "object" || Array.isArray(prefs)) {
+          throw new Error("Não foi possível ler suas preferências de notificação. Recarregue e tente novamente.");
+        }
+        setPreferenciasOriginais(prefs);
+        setUserId(perfil?.id ?? null);
         setNotifications({
           atualizacao_curso: prefAtiva(prefs, "atualizacao_curso"),
           pedido_amizade: prefAtiva(prefs, "pedido_amizade"),
           lembrete_estudo: prefAtiva(prefs, "lembrete_estudo"),
+          revisao_curso: prefAtiva(prefs, "revisao_curso"),
         });
       } catch (error) {
         if (!cancelado) {
@@ -148,9 +161,11 @@ export default function ConfiguracoesPage() {
 
       // 2. Preferências de notificação.
       await usuarioRepository.atualizarPreferenciasNotificacao(userId, {
+        ...preferenciasOriginais,
         atualizacao_curso: notifications.atualizacao_curso,
         pedido_amizade: notifications.pedido_amizade,
         lembrete_estudo: notifications.lembrete_estudo,
+        revisao_curso: notifications.revisao_curso,
       });
 
       // 3. Senha (opcional) — via Supabase Auth.
@@ -370,7 +385,7 @@ export default function ConfiguracoesPage() {
           )}
 
           <div className="configuracoes-actions">
-            <button className="configuracoes-button configuracoes-button--primary" type="submit" disabled={carregando || salvando}>
+            <button className="configuracoes-button configuracoes-button--primary" type="submit" disabled={carregando || salvando || !userId}>
               {salvando ? "Salvando..." : "Salvar alterações"}
             </button>
             {feedback && (

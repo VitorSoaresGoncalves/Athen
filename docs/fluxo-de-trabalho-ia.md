@@ -5,7 +5,7 @@ Regra de colaboração para qualquer agente que participe do desenvolvimento do 
 ## Contexto antes da execução
 
 1. Leia [AGENTS.md](../AGENTS.md) e a referência correspondente à tarefa no [índice](README.md).
-2. Identifique o escopo e os critérios de conclusão da solicitação. O trabalho da equipe é rastreado no YouTrack; specs e tickets das skills usam o [tracker local](agents/issue-tracker.md).
+2. Identifique o escopo e os critérios de conclusão da solicitação. O YouTrack é mantido manualmente pela equipe, independente da execução dos agentes, conforme [Convenções](convencoes.md#branches-e-revisão); specs e tickets das skills usam o [tracker local](agents/issue-tracker.md).
 3. Confira código e configurações relevantes antes de confiar em descrições, diagramas ou capturas antigas. Distinga regra pretendida, comportamento observado e proposta de mudança.
 
 ## Capacidade da ferramenta
@@ -25,13 +25,21 @@ Escolha a ferramenta por seus acessos e recursos disponíveis nesta sessão: lei
 - Consulte as regras de nomes em [Convenções](convencoes.md), a configuração efetiva em [ESLint](../codigo-base/eslint.config.js) e as regras visuais em [Estilo](estilo-padrao.md).
 - `codigo-base/src/types/database.ts` é gerado: regenere a partir do esquema correspondente, em vez de editar manualmente. Veja [Banco de dados](banco-de-dados/documentacao-bd.md).
 
+## Entrega com o time do OpenCode
+
+Ao usar os perfis de `.opencode/agents/` ou o comando `/deliver`, siga o [protocolo do time](agents/time-opencode.md): delegação por risco, contrato e arquivos atribuídos, testes, revisão independente e registro didático. O protocolo também define os registros de contexto por feature, sem substituir o YouTrack ou o tracker local das skills.
+
+Os agentes resolvem autonomamente escolhas técnicas reversíveis e a preparação local necessária. O orchestrator pode iniciar Docker Desktop e serviços de teste, instalar dependências declaradas e operar ferramentas de apoio, verificando prontidão e preservando processos/dados preexistentes. Atribuições de arquivos podem ser ampliadas dentro do mesmo objetivo com coordenação entre os responsáveis; os limites e os casos que exigem intervenção humana estão no protocolo.
+
+`/deliver` prepara uma entrega validada localmente e mantém suas pendências explícitas. O orchestrator centraliza operações Git, incluindo commits e push da branch de trabalho, e usa os comandos e acessos disponíveis no escopo da solicitação, conforme o [protocolo do time](agents/time-opencode.md#worktree-principal-e-operações-git). Todos trabalham no checkout principal, preservando o fluxo de branches e os registros por feature em `.scratch/`. Publicação e deploy dependem do objetivo solicitado; revisão de IA não substitui aprovação humana do PR.
+
 ## Validação e entrega
 
 Para mudanças de código, execute o pipeline local descrito em [Testes](testes.md) antes de encaminhar para PR. Acrescente as verificações específicas de UI ou banco quando aplicáveis. Relate falhas e limitações sem apresentar execução parcial como aprovação completa.
 
 Para mudanças exclusivamente documentais, confira os links, os caminhos e as afirmações alteradas contra suas fontes; registre as verificações realizadas. Esse tipo de revisão não comprova a execução da aplicação.
 
-PRs seguem a base de sprint e a revisão humana definidas em [Convenções](convencoes.md). Registre o uso de IA na descrição:
+PRs seguem o fluxo desde a sprint05 e a revisão humana definidos em [Convenções](convencoes.md#branches-e-revisão): branches de issue partem de `develop` atualizada, PRs têm `develop` como destino e a integração em `main` ocorre no encerramento da sprint. Registre o uso de IA na descrição:
 
 ```markdown
 ### Uso de IA

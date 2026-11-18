@@ -109,3 +109,39 @@
 /* Aviso rápido (ex.: aula bloqueada): só a animação; o resto do estilo está em Tailwind. */
 .dashboard-toast { animation: dashboard-toast-in 0.2s ease both; }
 @keyframes dashboard-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.dashboard-main { padding-left: var(--sidebar-left-width, 230px); background: #140a2b; color: #f4eeff; }
+.dashboard-review-error { padding: 18px; color: #fecaca; background: #32172d; }
+.dashboard-review-error button { margin: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-gold-pale); border-radius: 12px; background: var(--color-gold); color: var(--color-violet); cursor: pointer; }
+.dashboard-review-error button:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; }
+@media (max-width: 760px) {
+  .tela > .sidebarL { position: relative; width: 100%; height: auto; }
+  .tela > .sidebarL > nav { flex-direction: row; overflow-x: auto; white-space: nowrap; }
+  .tela > .sidebarL > nav > a { width: auto; flex-shrink: 0; }
+  .tela > .sidebarL::after { display: none; }
+  .dashboard-main { padding-left: 0; }
+  .dashboard-course-trigger { position: absolute; left: 12px; top: 12px; }
+  .dashboard-header__title { padding: 0 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tela .trail-node, .tela .trail__path path, .tela .module-carousel *, .tela .dashboard-toast {
+    animation: none !important; transition: none !important;
+  }
+}
+
+/* Desktop keeps the original full-height trail. Small screens reserve a panel. */
+@media (max-width: 760px) {
+  .tela:has(.course-review-card) {
+    display: grid; grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh; min-height: 0; padding-bottom: 312px; overflow: hidden;
+  }
+  .tela:has(.course-review-card) > .sidebarL { min-width: 0; }
+  .dashboard-main--review-card { min-width: 0; min-height: 0; padding-bottom: 0; overflow-x: hidden; overflow-y: auto; }
+  .dashboard-main--review-card .dashboard { min-height: 100%; }
+  .dashboard-main--review-card .dashboard-footer { min-width: 0; padding-right: 12px; padding-left: 12px; }
+  .dashboard-main--review-card .module-carousel__viewport { min-width: 0; width: auto; flex: 1 1 0; }
+  .dashboard-main--review-card .dashboard-header > button[aria-label="Criar notebook"],
+  .dashboard-main--review-card .dashboard-header > button[aria-label="Abrir notebook"] {
+    position: static; align-self: flex-start; width: 52px; height: 52px; margin-top: 12px;
+  }
+}

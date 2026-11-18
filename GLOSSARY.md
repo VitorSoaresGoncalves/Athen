@@ -22,11 +22,31 @@ Execução de uma aula por um estudante em um contexto de curso ou de sala, reun
 _Evitar_: Resposta como sinônimo de Tentativa.
 
 **Resposta**:
-Entrada fornecida pelo estudante para uma questão dentro de uma tentativa.
+Entrada fornecida pelo estudante para uma questão em uma tentativa de aula ou sessão de revisão.
 
 **Conclusão**:
 Registro de que uma aula foi concluída em determinado contexto de aprendizagem.
 _Evitar_: Acerto como sinônimo de Conclusão.
+
+**Revisão de curso**:
+Prática amostral de um curso concluído no contexto individual, distinta da execução integral de uma aula.
+_Evitar_: Refazer aula como sinônimo de Revisão de curso.
+
+**Sessão de revisão**:
+Execução de uma revisão de curso com uma amostra fixa, suas respostas e um resultado próprio. Retomar a sessão não constitui uma nova execução.
+_Evitar_: Tentativa de aula como sinônimo de Sessão de revisão.
+
+**Agenda de revisão**:
+Calendário único do estudante para oportunidades periódicas de revisão com bônus, compartilhado pelos seus cursos concluídos.
+_Evitar_: Calendário por curso.
+
+**Ocorrência de revisão com bônus**:
+Oportunidade de um período da agenda, com prazo próprio e até um curso atribuído, que admite várias sessões de revisão. Existe independentemente de um aviso ao estudante.
+_Evitar_: Notificação como sinônimo de Ocorrência de revisão com bônus.
+
+**Bônus de revisão**:
+Recompensa de XP global pela aprovação em uma sessão vinculada a uma ocorrência, concedida uma única vez por ocorrência.
+_Evitar_: XP base de aula como sinônimo de Bônus de revisão.
 
 **Matrícula**:
 Vínculo de um estudante com um curso, com situação e progresso próprios.

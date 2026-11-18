@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Database } from '../types/database';
+import type { Database, Json as ValorJson } from '../types/database';
 
 // Contratos derivados dos tipos gerados do schema public.
 // Origem e comando de geração: docs/banco-de-dados/documentacao-bd.md.
@@ -15,6 +15,8 @@ type Json = Database['public']['Tables']['questions']['Row']['config'];
 
 type Usuario = Tables<'profiles'>;
 type CreateUsuarioInput = TablesInsert<'profiles'>;
+type UpdateUsuarioInput = Partial<Pick<Usuario,
+  'username' | 'display_name' | 'bio' | 'avatar_url' | 'banner_url' | 'notification_preferences'>>;
 type BuscaUsuario = FunctionReturn<'search_profiles'>[number];
 
 type Curso = Tables<'courses'>;
@@ -166,14 +168,14 @@ export const usuarioRepository = {
     return data;
   },
 
-  async atualizar(id: string, dados: Partial<CreateUsuarioInput>): Promise<Usuario> {
+  async atualizar(id: string, dados: UpdateUsuarioInput): Promise<Usuario> {
     const { data, error } = await supabase.from('profiles').update(dados).eq('id', id).select().single();
     if (error) throw new Error(`Erro ao atualizar usuário: ${error.message}`);
     return data;
   },
 
   // Preferências no formato { pedido_amizade: true, missao: false, ... } (chave ausente = ativada).
-  async atualizarPreferenciasNotificacao(id: string, preferencias: Record<string, boolean>): Promise<Usuario> {
+  async atualizarPreferenciasNotificacao(id: string, preferencias: Record<string, ValorJson | undefined>): Promise<Usuario> {
     const { data, error } = await supabase
       .from('profiles')
       .update({ notification_preferences: preferencias })
@@ -1166,6 +1168,401 @@ export const amizadeRepository = {
   }
 };
 
+// Revisão de curso: DTOs oficiais da revisão 2. Não reutiliza tentativas/aulas.
+export type RespostaRevisao =
+  | { selected: string[] }
+  | { text: string }
+  | { sum: number }
+  | { pairs: { left: string; right: string }[] };
+
+export type ResultadoRevisao = {
+  session_id: string;
+  correct_count: number;
+  total_count: number;
+  approved: boolean;
+  bonus_earned: number;
+  bonus_outcome: 'not_applicable' | 'below_target' | 'awarded' | 'already_awarded';
+  xp_event_id: string | null;
+  finished_at: string;
+};
+
+export type UltimaRevisaoCurso = {
+  course_id: string;
+  mode: 'normal' | 'bonus';
+  result: ResultadoRevisao;
+};
+
+export type ItemRevisao = {
+  question_id: string;
+  ordinal: number;
+  module_id: string;
+  module_title: string;
+  lesson_id: string;
+  type: TipoQuestao;
+  prompt: string;
+  config: Json;
+  explanation: string | null;
+  submitted: RespostaRevisao | null;
+  is_correct: boolean | null;
+};
+
+export type SessaoRevisao = {
+  session_id: string;
+  course_id: string;
+  course_title: string;
+  mode: 'normal' | 'bonus';
+  occurrence_id: string | null;
+  expires_at: string | null;
+  bonus_xp: number;
+  finished_at: string | null;
+  result: ResultadoRevisao | null;
+  items: ItemRevisao[];
+};
+
+export type OcorrenciaRevisao = {
+  occurrence_id: string;
+  period_index: number;
+  course_id: string | null;
+  course_title: string | null;
+  state: 'available' | 'no_candidates' | 'unavailable' | 'expired' | 'claimed';
+  due_at: string;
+  expires_at: string;
+  bonus_xp: number;
+  delivery_state: 'not_applicable' | 'pending' | 'delivered' | 'suppressed' | 'failed';
+  resume_session_id: string | null;
+  last_finished_session_id: string | null;
+  reward_session_id: string | null;
+  rewarded_at: string | null;
+};
+
+export type DisponibilidadeRevisao = {
+  course_id: string;
+  course_title: string;
+  can_review: boolean;
+  reason: string | null;
+  question_count: number;
+  sample_count: number;
+  module_counts: { module_id: string; question_count: number; sample_count: number }[];
+};
+
+export type FeedbackRespostaRevisao = {
+  question_id: string;
+  is_correct: boolean;
+  answered_count: number;
+  total_count: number;
+};
+
+const MENSAGENS_REVISAO: Record<string, string> = {
+  REVIEW_FORBIDDEN: 'Você não tem acesso a esta revisão.',
+  REVIEW_INVALID_INPUT: 'Os dados enviados para a revisão são inválidos.',
+  REVIEW_NOT_ELIGIBLE: 'Conclua todas as aulas atuais no contexto individual para revisar este curso.',
+  REVIEW_EMPTY: 'Este curso não tem questões para revisão.',
+  REVIEW_OCCURRENCE_EXPIRED: 'O prazo desta revisão com bônus terminou.',
+  REVIEW_OCCURRENCE_UNAVAILABLE: 'Esta revisão com bônus não está disponível.',
+  REVIEW_BONUS_ALREADY_AWARDED: 'O bônus deste período já foi recebido.',
+  REVIEW_INCOMPLETE: 'Responda todas as questões antes de finalizar a revisão.',
+  REVIEW_ANSWER_LOCKED: 'A resposta desta questão já foi registrada e não pode ser alterada.',
+  REVIEW_FINISHED: 'Esta revisão já foi finalizada.',
+  REVIEW_REQUEST_CONFLICT: 'Este pedido já foi usado para iniciar outra revisão.',
+};
+
+export class ErroRevisao extends Error {
+  readonly code: string;
+  readonly reason: string;
+  constructor(code: string, reason: string, message: string) {
+    super(message);
+    this.name = 'ErroRevisao';
+    this.code = code;
+    this.reason = reason;
+  }
+}
+
+function respostaRevisaoInvalida(): never {
+  throw new ErroRevisao('REVIEW_INVALID_RESPONSE', 'REVIEW_INVALID_RESPONSE',
+    'O servidor retornou dados de revisão inválidos. Tente novamente.');
+}
+
+function ehObjetoRevisao(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function objetoRevisao(value: unknown): Record<string, unknown> {
+  if (!ehObjetoRevisao(value)) return respostaRevisaoInvalida();
+  return value;
+}
+
+function textoRevisao(value: unknown): string {
+  if (typeof value !== 'string') return respostaRevisaoInvalida();
+  return value;
+}
+
+function idRevisao(value: unknown): string {
+  const text = textoRevisao(value);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(text)) return respostaRevisaoInvalida();
+  return text;
+}
+
+function dataRevisao(value: unknown): string {
+  const text = textoRevisao(value);
+  if (!Number.isFinite(Date.parse(text))) return respostaRevisaoInvalida();
+  return text;
+}
+
+function numeroRevisao(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return respostaRevisaoInvalida();
+  return value;
+}
+
+function booleanoRevisao(value: unknown): boolean {
+  if (typeof value !== 'boolean') return respostaRevisaoInvalida();
+  return value;
+}
+
+function nuloRevisao<T>(value: unknown, parse: (input: unknown) => T): T | null {
+  return value === null ? null : parse(value);
+}
+
+function listaRevisao<T>(value: unknown, parse: (input: unknown) => T): T[] {
+  if (!Array.isArray(value)) return respostaRevisaoInvalida();
+  return value.map((item: unknown) => parse(item));
+}
+
+function opcaoRevisao<const T extends string>(value: unknown, choices: readonly T[]): T {
+  const found = choices.find(choice => choice === value);
+  return found ?? respostaRevisaoInvalida();
+}
+
+function objetoJsonRevisao(value: unknown): Record<string, ValorJson> {
+  return Object.fromEntries(Object.entries(objetoRevisao(value)).map(([key, item]) => [key, jsonRevisao(item)]));
+}
+
+function jsonRevisao(value: unknown): ValorJson {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return value.map((item: unknown) => jsonRevisao(item));
+  return objetoJsonRevisao(value);
+}
+
+function lerRespostaRevisao(value: unknown, type: TipoQuestao): RespostaRevisao {
+  const row = objetoRevisao(value);
+  switch (type) {
+    case 'multiple_choice': return { selected: listaRevisao(row.selected, textoRevisao) };
+    case 'fill_blank': return { text: textoRevisao(row.text) };
+    case 'sum_alternatives':
+      if (typeof row.sum !== 'number' || !Number.isFinite(row.sum)) return respostaRevisaoInvalida();
+      return { sum: row.sum };
+    case 'match': return { pairs: listaRevisao(row.pairs, pair => {
+      const item = objetoRevisao(pair);
+      return { left: textoRevisao(item.left), right: textoRevisao(item.right) };
+    }) };
+  }
+}
+
+function lerResultadoRevisao(value: unknown): ResultadoRevisao {
+  const row = objetoRevisao(value);
+  const result: ResultadoRevisao = {
+    session_id: idRevisao(row.session_id),
+    correct_count: numeroRevisao(row.correct_count),
+    total_count: numeroRevisao(row.total_count),
+    approved: booleanoRevisao(row.approved),
+    bonus_earned: numeroRevisao(row.bonus_earned),
+    bonus_outcome: opcaoRevisao(row.bonus_outcome, ['not_applicable', 'below_target', 'awarded', 'already_awarded']),
+    xp_event_id: nuloRevisao(row.xp_event_id, idRevisao),
+    finished_at: dataRevisao(row.finished_at),
+  };
+  if (result.total_count === 0 || result.correct_count > result.total_count
+    || (result.bonus_outcome === 'awarded'
+      ? result.bonus_earned !== 10 || result.xp_event_id === null || !result.approved
+      : result.bonus_earned !== 0 || result.xp_event_id !== null)) return respostaRevisaoInvalida();
+  return result;
+}
+
+function lerItemRevisao(value: unknown): ItemRevisao {
+  const row = objetoRevisao(value);
+  const type = opcaoRevisao(row.type, ['multiple_choice', 'fill_blank', 'sum_alternatives', 'match']);
+  const item: ItemRevisao = {
+    question_id: idRevisao(row.question_id),
+    ordinal: numeroRevisao(row.ordinal),
+    module_id: idRevisao(row.module_id),
+    module_title: textoRevisao(row.module_title),
+    lesson_id: idRevisao(row.lesson_id),
+    type,
+    prompt: textoRevisao(row.prompt),
+    config: objetoJsonRevisao(row.config),
+    explanation: nuloRevisao(row.explanation, textoRevisao),
+    submitted: nuloRevisao(row.submitted, submitted => lerRespostaRevisao(submitted, type)),
+    is_correct: nuloRevisao(row.is_correct, booleanoRevisao),
+  };
+  if ((item.submitted === null) !== (item.is_correct === null)) return respostaRevisaoInvalida();
+  return item;
+}
+
+function lerSessaoRevisao(value: unknown): SessaoRevisao {
+  const row = objetoRevisao(value);
+  const session: SessaoRevisao = {
+    session_id: idRevisao(row.session_id),
+    course_id: idRevisao(row.course_id),
+    course_title: textoRevisao(row.course_title),
+    mode: opcaoRevisao(row.mode, ['normal', 'bonus']),
+    occurrence_id: nuloRevisao(row.occurrence_id, idRevisao),
+    expires_at: nuloRevisao(row.expires_at, dataRevisao),
+    bonus_xp: numeroRevisao(row.bonus_xp),
+    finished_at: nuloRevisao(row.finished_at, dataRevisao),
+    result: nuloRevisao(row.result, lerResultadoRevisao),
+    items: listaRevisao(row.items, lerItemRevisao),
+  };
+  if (session.items.length === 0 || new Set(session.items.map(item => item.question_id)).size !== session.items.length
+    || session.items.some((item, index) => item.ordinal !== index + 1)
+    || (session.mode === 'normal'
+      ? session.occurrence_id !== null || session.expires_at !== null || session.bonus_xp !== 0
+      : session.occurrence_id === null || session.expires_at === null || session.bonus_xp !== 10)
+    || (session.finished_at === null) !== (session.result === null)
+    || (session.result !== null && (session.result.session_id !== session.session_id
+      || session.result.total_count !== session.items.length
+      || Date.parse(session.result.finished_at) !== Date.parse(session.finished_at ?? '')
+      || session.items.some(item => item.submitted === null)
+      || (session.mode === 'normal') !== (session.result.bonus_outcome === 'not_applicable')))) {
+    return respostaRevisaoInvalida();
+  }
+  return session;
+}
+
+function lerOcorrenciaRevisao(value: unknown): OcorrenciaRevisao {
+  const row = objetoRevisao(value);
+  const occurrence: OcorrenciaRevisao = {
+    occurrence_id: idRevisao(row.occurrence_id),
+    period_index: numeroRevisao(row.period_index),
+    course_id: nuloRevisao(row.course_id, idRevisao),
+    course_title: nuloRevisao(row.course_title, textoRevisao),
+    state: opcaoRevisao(row.state, ['available', 'no_candidates', 'unavailable', 'expired', 'claimed']),
+    due_at: dataRevisao(row.due_at),
+    expires_at: dataRevisao(row.expires_at),
+    bonus_xp: numeroRevisao(row.bonus_xp),
+    delivery_state: opcaoRevisao(row.delivery_state, ['not_applicable', 'pending', 'delivered', 'suppressed', 'failed']),
+    resume_session_id: nuloRevisao(row.resume_session_id, idRevisao),
+    last_finished_session_id: nuloRevisao(row.last_finished_session_id, idRevisao),
+    reward_session_id: nuloRevisao(row.reward_session_id, idRevisao),
+    rewarded_at: nuloRevisao(row.rewarded_at, dataRevisao),
+  };
+  if (occurrence.period_index < 1 || Date.parse(occurrence.expires_at) <= Date.parse(occurrence.due_at)
+    || (occurrence.course_id === null ? occurrence.bonus_xp !== 0 || occurrence.course_title !== null
+      : occurrence.bonus_xp !== 10 || occurrence.course_title === null)
+    || (occurrence.reward_session_id === null) !== (occurrence.rewarded_at === null)
+    || (occurrence.state === 'claimed') !== (occurrence.reward_session_id !== null)) return respostaRevisaoInvalida();
+  return occurrence;
+}
+
+function lerDisponibilidadeRevisao(value: unknown): DisponibilidadeRevisao {
+  const row = objetoRevisao(value);
+  return {
+    course_id: idRevisao(row.course_id),
+    course_title: textoRevisao(row.course_title),
+    can_review: booleanoRevisao(row.can_review),
+    reason: nuloRevisao(row.reason, textoRevisao),
+    question_count: numeroRevisao(row.question_count),
+    sample_count: numeroRevisao(row.sample_count),
+    module_counts: listaRevisao(row.module_counts, module => {
+      const item = objetoRevisao(module);
+      return { module_id: idRevisao(item.module_id), question_count: numeroRevisao(item.question_count),
+        sample_count: numeroRevisao(item.sample_count) };
+    }),
+  };
+}
+
+function traduzirErroRevisao(error: unknown): ErroRevisao {
+  if (error instanceof ErroRevisao) return error;
+  const row = typeof error === 'object' && error !== null ? error : {};
+  const code = 'code' in row && typeof row.code === 'string' ? row.code : 'REVIEW_REQUEST_FAILED';
+  const reason = 'message' in row && typeof row.message === 'string' ? row.message : '';
+  return new ErroRevisao(code, reason, MENSAGENS_REVISAO[reason]
+    ?? 'Não foi possível carregar ou salvar a revisão. Tente novamente.');
+}
+
+async function linhaRpcRevisao<T>(request: PromiseLike<{
+  data: T[] | null; error: { code: string; message: string } | null;
+}>, optional = false): Promise<T | null> {
+  let response;
+  try {
+    response = await request;
+  } catch (error) {
+    throw traduzirErroRevisao(error);
+  }
+  if (response.error) throw traduzirErroRevisao(response.error);
+  // Só a consulta da ocorrência atual admite zero linhas, nunca null/ausência.
+  if (!Array.isArray(response.data) || response.data.length > 1
+    || (!optional && response.data.length !== 1)) return respostaRevisaoInvalida();
+  if (response.data.length === 0) return null;
+  const row = response.data[0];
+  if (row === null || row === undefined) return respostaRevisaoInvalida();
+  return row;
+}
+
+export const revisaoRepository = {
+  async obterUltimaFinalizada(cursoId: string): Promise<UltimaRevisaoCurso | null> {
+    const { data: auth, error: authError } = await supabase.auth.getUser();
+    if (authError || !auth.user) throw new Error('Entre na sua conta para consultar a última revisão.');
+    const { data, error } = await supabase.from('course_review_sessions')
+      .select('id,user_id,course_id,mode,finished_at,correct_count,total_count,approved,bonus_earned,bonus_outcome,xp_event_id')
+      .eq('user_id', auth.user.id).eq('course_id', cursoId).not('finished_at', 'is', null)
+      .order('finished_at', { ascending: false }).order('id', { ascending: false }).limit(1);
+    if (error) throw traduzirErroRevisao(error);
+    if (!Array.isArray(data) || data.length > 1) return respostaRevisaoInvalida();
+    if (data.length === 0) return null;
+    const row = objetoRevisao(data[0]);
+    if (idRevisao(row.user_id) !== auth.user.id || idRevisao(row.course_id) !== cursoId) return respostaRevisaoInvalida();
+    const mode = opcaoRevisao(row.mode, ['normal', 'bonus']);
+    const result = lerResultadoRevisao({ ...row, session_id: row.id });
+    if ((mode === 'normal') !== (result.bonus_outcome === 'not_applicable')) return respostaRevisaoInvalida();
+    return { course_id: cursoId, mode, result };
+  },
+  async obterDisponibilidade(cursoId: string): Promise<DisponibilidadeRevisao> {
+    const row = lerDisponibilidadeRevisao(await linhaRpcRevisao(supabase.rpc('course_review_status', { p_course_id: cursoId })));
+    if (row.course_id.toLowerCase() !== cursoId.toLowerCase()) return respostaRevisaoInvalida();
+    return row;
+  },
+  async obterOcorrenciaAtual(): Promise<OcorrenciaRevisao | null> {
+    const row = await linhaRpcRevisao(supabase.rpc('my_current_course_review'), true);
+    return row === null ? null : lerOcorrenciaRevisao(row);
+  },
+  async obterOcorrencia(ocorrenciaId: string): Promise<OcorrenciaRevisao> {
+    const row = lerOcorrenciaRevisao(await linhaRpcRevisao(supabase.rpc('my_course_review_occurrence', { p_occurrence_id: ocorrenciaId })));
+    if (row.occurrence_id.toLowerCase() !== ocorrenciaId.toLowerCase()) return respostaRevisaoInvalida();
+    return row;
+  },
+  async iniciar({ cursoId, ocorrenciaId, requestId }: {
+    cursoId: string; ocorrenciaId?: string; requestId: string;
+  }): Promise<SessaoRevisao> {
+    const row = lerSessaoRevisao(await linhaRpcRevisao(supabase.rpc('start_course_review', {
+      p_course_id: cursoId, p_request_id: requestId,
+      ...(ocorrenciaId === undefined ? {} : { p_occurrence_id: ocorrenciaId }),
+    })));
+    if (row.course_id.toLowerCase() !== cursoId.toLowerCase()
+      || row.occurrence_id?.toLowerCase() !== ocorrenciaId?.toLowerCase()
+      || row.mode !== (ocorrenciaId === undefined ? 'normal' : 'bonus')) return respostaRevisaoInvalida();
+    return row;
+  },
+  async obter(sessaoId: string): Promise<SessaoRevisao> {
+    const row = lerSessaoRevisao(await linhaRpcRevisao(supabase.rpc('my_course_review', { p_session_id: sessaoId })));
+    if (row.session_id.toLowerCase() !== sessaoId.toLowerCase()) return respostaRevisaoInvalida();
+    return row;
+  },
+  async salvarResposta(sessaoId: string, questaoId: string, submitted: RespostaRevisao): Promise<FeedbackRespostaRevisao> {
+    const row = objetoRevisao(await linhaRpcRevisao(supabase.rpc('submit_course_review_answer', {
+      p_session_id: sessaoId, p_question_id: questaoId, p_submitted: submitted,
+    })));
+    const feedback = { question_id: idRevisao(row.question_id), is_correct: booleanoRevisao(row.is_correct),
+      answered_count: numeroRevisao(row.answered_count), total_count: numeroRevisao(row.total_count) };
+    if (feedback.question_id.toLowerCase() !== questaoId.toLowerCase() || feedback.answered_count > feedback.total_count
+      || feedback.total_count === 0) return respostaRevisaoInvalida();
+    return feedback;
+  },
+  async finalizar(sessaoId: string): Promise<ResultadoRevisao> {
+    const result = lerResultadoRevisao(await linhaRpcRevisao(supabase.rpc('finalize_course_review', { p_session_id: sessaoId })));
+    if (result.session_id.toLowerCase() !== sessaoId.toLowerCase()) return respostaRevisaoInvalida();
+    return result;
+  },
+};
+
 // notifications. O usuário só enxerga as próprias. A criação acontece no servidor
 // (notify_* em salaRepository, missaoRepository, cursoRepository e amizadeRepository).
 export const notificacaoRepository = {
@@ -1212,13 +1609,15 @@ export const notificacaoRepository = {
   },
 
   async deletar(id: string): Promise<void> {
-    const { error } = await supabase.from('notifications').delete().eq('id', id);
+    const { data, error } = await supabase.from('notifications').delete().eq('id', id).select('id');
     if (error) throw new Error(`Erro ao deletar notificação: ${error.message}`);
+    if (!data?.some(row => row.id === id)) throw new Error('Notificação não encontrada ou sem permissão para remover.');
   },
 
-  async deletarLidas(): Promise<void> {
-    const { error } = await supabase.from('notifications').delete().eq('is_read', true);
+  async deletarLidas(): Promise<string[]> {
+    const { data, error } = await supabase.from('notifications').delete().eq('is_read', true).select('id');
     if (error) throw new Error(`Erro ao deletar notificações lidas: ${error.message}`);
+    return (data ?? []).map(row => row.id);
   }
 };
 
