@@ -99,6 +99,13 @@ type ContextoConclusao = 'course' | 'room';
 type Participa = Tables<'room_members'>;
 type CreateParticipaInput = TablesInsert<'room_members'>;
 
+// Estatísticas da sala para o educador (migração 0042).
+type EstatisticasSalaGeral = FunctionReturn<'room_stats_overview'>[number];
+type EstatisticasSalaAluno = FunctionReturn<'room_stats_students'>[number];
+type EstatisticasSalaModulo = FunctionReturn<'room_stats_modules'>[number];
+type QuestaoMaisErrada = FunctionReturn<'room_stats_hard_questions'>[number];
+
+
 // Id do usuário logado (usado pelos atalhos que gravam em nome de quem está autenticado).
 async function obterIdUsuarioAtual(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
@@ -369,6 +376,31 @@ export const salaRepository = {
     });
     if (error) throw new Error(`Erro ao verificar educador da sala: ${error.message}`);
     return data ?? false;
+  },
+
+  // Estatísticas do pop-up do educador. Só o educador da sala consegue chamar.
+  async estatisticasGerais(idSala: string): Promise<EstatisticasSalaGeral | null> {
+    const { data, error } = await supabase.rpc('room_stats_overview', { p_room_id: idSala });
+    if (error) throw new Error(`Erro ao carregar visão geral da sala: ${error.message}`);
+    return data?.[0] ?? null;
+  },
+  
+  async estatisticasAlunos(idSala: string): Promise<EstatisticasSalaAluno[]> {
+    const { data, error } = await supabase.rpc('room_stats_students', { p_room_id: idSala });
+    if (error) throw new Error(`Erro ao carregar alunos da sala: ${error.message}`);
+    return data || [];
+  },
+  
+  async estatisticasModulos(idSala: string): Promise<EstatisticasSalaModulo[]> {
+    const { data, error } = await supabase.rpc('room_stats_modules', { p_room_id: idSala });
+    if (error) throw new Error(`Erro ao carregar conclusão por módulo: ${error.message}`);
+    return data || [];
+  },
+  
+  async questoesMaisErradas(idSala: string): Promise<QuestaoMaisErrada[]> {
+    const { data, error } = await supabase.rpc('room_stats_hard_questions', { p_room_id: idSala });
+    if (error) throw new Error(`Erro ao carregar questões com mais erros: ${error.message}`);
+    return data || [];
   },
 
   async deletar(id: string): Promise<void> {
