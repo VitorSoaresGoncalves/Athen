@@ -20,6 +20,7 @@ const ICONE_TIPO: Record<TipoNotificacao, string> = {
   convite_sala: "🚪",
   missao: "🎯",
   lembrete_estudo: "⏰",
+  revisao_curso: "📚",
 };
 
 const ROTULO_TIPO: Record<TipoNotificacao, string> = {
@@ -28,6 +29,7 @@ const ROTULO_TIPO: Record<TipoNotificacao, string> = {
   convite_sala: "Convite de sala",
   missao: "Missão",
   lembrete_estudo: "Lembrete de estudo",
+  revisao_curso: "Revisão de curso",
 };
 
 function iconeTipo(tipo: TipoNotificacao) {
