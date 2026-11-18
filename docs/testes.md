@@ -112,6 +112,8 @@ O GitHub Actions executa, em eventos elegíveis:
 
 Os gatilhos e artefatos estão no [workflow](../.github/workflows/ci.yml). A integração de `test:issue47` em `test:db` não comprova sucesso do job; aprovação remota depende da execução do workflow.
 
+O job `integration` fornece `SUPABASE_DB_URL` da pilha descartável local tanto ao harness SQL quanto às jornadas reais de revisão, que também precisam preparar e conferir fixtures PostgreSQL.
+
 A Vercel tem apenas [rewrite de rotas versionado](../codigo-base/vercel.json), sem comando de testes declarado. Configuração de Preview/build no painel não foi inspecionada. Um build de hospedagem não equivale à execução das suítes.
 
 ## Mudanças exclusivamente documentais

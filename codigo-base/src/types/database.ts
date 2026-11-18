@@ -2124,6 +2124,7 @@ export type Database = {
         Args: { p_attempt_id: string }
         Returns: undefined
       }
+      assert_room_educator: { Args: { p_room_id: string }; Returns: undefined }
       check_season_alerts: {
         Args: { p_grace_minutes?: number }
         Returns: number
@@ -2709,6 +2710,69 @@ export type Database = {
       resolve_login_email: {
         Args: { p_password: string; p_username: string }
         Returns: string
+      }
+      room_first_answers: {
+        Args: { p_room_id: string }
+        Returns: {
+          is_correct: boolean
+          question_id: string
+          user_id: string
+        }[]
+      }
+      room_stats_hard_questions: {
+        Args: { p_room_id: string }
+        Returns: {
+          answers_count: number
+          first_try_rate: number
+          lesson_title: string
+          prompt: string
+          question_id: string
+        }[]
+      }
+      room_stats_modules: {
+        Args: { p_room_id: string }
+        Returns: {
+          completion_pct: number
+          lesson_count: number
+          module_id: string
+          module_position: number
+          title: string
+        }[]
+      }
+      room_stats_overview: {
+        Args: { p_room_id: string }
+        Returns: {
+          active_members: number
+          attention_count: number
+          avg_first_try: number
+          avg_progress: number
+        }[]
+      }
+      room_stats_students: {
+        Args: { p_room_id: string }
+        Returns: {
+          days_idle: number
+          display_name: string
+          first_try_rate: number
+          last_access: string
+          needs_attention: boolean
+          progress: number
+          user_id: string
+          xp: number
+        }[]
+      }
+      room_student_metrics: {
+        Args: { p_room_id: string }
+        Returns: {
+          days_idle: number
+          display_name: string
+          first_try_rate: number
+          last_access: string
+          needs_attention: boolean
+          progress: number
+          user_id: string
+          xp: number
+        }[]
       }
       search_profiles: {
         Args: { p_query: string }
