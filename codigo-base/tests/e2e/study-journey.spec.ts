@@ -31,9 +31,10 @@ test('jornada do estudante: entrar, escolher curso, estudar, acompanhar missão 
   })
   await test.step('escolhe um curso e se matricula', async () => {
     await page.getByRole('link', { name: 'Ver todos os cursos', exact: true }).click()
-    await page.getByRole('button', { name: /Lógica de Programação/ }).click()
+    await page.getByRole('region', { name: 'Recomendados para você', exact: true })
+      .getByRole('button', { name: /Lógica de Programação/ }).click()
     await page.getByRole('button', { name: 'Matricular-se', exact: true }).click()
-    await expect(page).toHaveURL(`/dashboard?curso=${ids.course}`)
+    await expect(page).toHaveURL('/dashboard')
     expect(platform.calls.find(call => call.path === 'enrollments' && call.method === 'POST')?.body).toEqual({ course_id: ids.course, user_id: ids.user })
   })
   await test.step('responde e finaliza uma aula', async () => {

@@ -22,6 +22,8 @@ Entrada comum para qualquer agente neste repositório. Leia este arquivo inteiro
 | Conceitos de produto | [Glossário](GLOSSARY.md) e [regras dos docs de domínio](docs/agents/domain.md) |
 | Specs ou tickets locais para skills | [Issue tracker](docs/agents/issue-tracker.md) |
 | Triagem de tickets | [Triage labels](docs/agents/triage-labels.md) |
+| Time do OpenCode, delegação, `/deliver` ou retomada de tarefa | [Protocolo do time](docs/agents/time-opencode.md) |
+| Registro didático de uma issue | [Guia de aprendizado](docs/aprendizado/issues/README.md) |
 
 ## Skills
 

@@ -83,6 +83,8 @@ jobs:
     name: Supabase local integration
     needs: quality
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
     defaults:
       run:
         working-directory: codigo-base
@@ -101,8 +103,6 @@ jobs:
         run: npx supabase start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit > "$RUNNER_TEMP/athen-supabase-start.log" 2>&1
       - name: SQL integration tests with rollback
         run: npm run test:db
-        env:
-          SUPABASE_DB_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Real student journey

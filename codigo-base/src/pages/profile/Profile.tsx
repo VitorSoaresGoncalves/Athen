@@ -284,7 +284,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
 
   function openCourse(courseId?: string) {
     if (onOpenCourse) onOpenCourse(courseId);
-    else navigate(courseId ? `/dashboard?curso=${courseId}` : "/dashboard");
+    else navigate("/dashboard", { state: courseId ? { courseId } : undefined });
   }
 
   const [authUser, setAuthUser] = useState<User | null>(null);

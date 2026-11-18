@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { CourseReviewCard } from "../components/course-review/CourseReviewCard";
 import { LessonModal } from "../components/lesson/LessonModal";
 import { CursoNotebook } from "../components/notebook/CursoNotebook";
 import { PageLayout } from "../components/layout/PageLayout";
@@ -107,11 +108,6 @@ function createSmoothPath(points: { x: number; y: number }[]) {
   return path;
 }
 
-function getRequestedCourseId(courseId?: string) {
-  if (courseId) return courseId;
-  return new URLSearchParams(window.location.search).get("curso") ?? undefined;
-}
-
 // Aulas que o usuário logado já concluiu.
 // - Sem sala: conclusões em contexto de curso.
 // - Com sala: conclusões em contexto de sala cuja tentativa foi feita NESSA sala
@@ -183,10 +179,25 @@ async function findLastActivity(
 }
 
 export default function Dashboard({ courseId }: DashboardProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const parametros = new URLSearchParams(location.search);
+  const cursoFromState = (location.state as { courseId?: string } | null)?.courseId;
+  const cursoUrl = cursoFromState ?? parametros.get("curso") ?? courseId;
+  const salaUrl = parametros.get("sala") ?? undefined;
+  const revisaoUrl = parametros.get("revisao");
+  const pedidoUrl = parametros.get("pedido") ?? undefined;
+  const sessaoUrl = parametros.get("sessao") ?? undefined;
+  const temRevisao = revisaoUrl !== null;
+  const uuidValido = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  const linkRevisaoInvalido = temRevisao && (!cursoUrl || Boolean(salaUrl) || Boolean(pedidoUrl && sessaoUrl)
+    || (revisaoUrl !== "normal" && !uuidValido(revisaoUrl ?? ""))
+    || (pedidoUrl !== undefined && !uuidValido(pedidoUrl))
+    || (sessaoUrl !== undefined && !uuidValido(sessaoUrl)));
 
   const [lousaAberta, setLousaAberta] = useState(false);
   const [courses, setCourses] = useState<Curso[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(() => getRequestedCourseId(courseId));
+  const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(cursoUrl);
   const [course, setCourse] = useState<Curso | null>(null);
   const [dashboardModules, setDashboardModules] = useState<DashboardModule[]>([]);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
@@ -204,6 +215,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const trailRef = useRef<HTMLDivElement>(null);
   const dragState = useRef({ dragging: false, startX: 0, scrollLeft: 0, moved: false });
   const noticeTimer = useRef<number | undefined>(undefined);
+  const [reviewRefresh, setReviewRefresh] = useState(0);
+  const reviewTriggerRef = useRef<HTMLButtonElement>(null);
+  const reviewReturnRef = useRef<HTMLElement | null>(null);
 
   // Mostra um aviso rápido na tela e some sozinho.
   function showNotice(message: string) {
@@ -227,7 +241,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
       setSalasError("");
 
       try {
-        const requestedCourseId = getRequestedCourseId(courseId);
+        const requestedCourseId = cursoUrl;
         const { data: userData } = await supabase.auth.getUser();
         const user = userData.user;
         if (!user) throw new Error("Você precisa estar logado para ver sua trilha.");
@@ -260,6 +274,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
         const requestedCourse = requestedCourseId ? visibleCourses.find((item) => item.id === requestedCourseId) : undefined;
         if (requestedCourseId && !requestedCourse) throw new Error("Curso não encontrado.");
+        if (salaUrl && !mySalas.some(item => item.id === salaUrl && item.course_id === requestedCourseId)) {
+          throw new Error("Sala não encontrada para este curso.");
+        }
 
         // O link (?curso=) manda. Sem link, abre onde a pessoa estudou por último (curso ou sala)
         // e, sem nenhuma conclusão aproveitável, o curso matriculado mais recente.
@@ -277,7 +294,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           .find((start): start is { course: Curso; salaId: string } => start.course !== undefined);
 
         const start: { course?: Curso; salaId?: string } | undefined = requestedCourse
-          ? { course: requestedCourse }
+          ? { course: requestedCourse, salaId: salaUrl }
           : lastActivity ?? (enrolledCourses[0] ? { course: enrolledCourses[0] } : firstRoomStart);
         const initialCourse = start?.course;
 
@@ -310,7 +327,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
     void loadCourses();
     return () => { cancelled = true; };
-  }, [courseId]);
+  }, [cursoUrl, salaUrl]);
 
   // Busca módulos, aulas e conclusões do curso escolhido.
   useEffect(() => {
@@ -483,7 +500,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
     // do comportamento diferente de scrollIntoView em cada navegador.
     const targetScroll = selectedItem.offsetLeft + selectedItem.offsetWidth / 2 - element.clientWidth / 2;
     const maxScroll = element.scrollWidth - element.clientWidth;
-    element.scrollTo({ left: Math.max(0, Math.min(targetScroll, maxScroll)), behavior: "smooth" });
+    element.scrollTo({ left: Math.max(0, Math.min(targetScroll, maxScroll)),
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [activeIndex, trail.length]);
 
   function handlePointerDown(clientX: number) {
@@ -516,6 +534,11 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setActiveSalaId(undefined);
     setSelectedCourseId(nextCourseId);
     setCoursePickerOpen(false);
+    const next = new URLSearchParams(location.search);
+    next.delete("curso");
+    next.delete("sala");
+    for (const key of ["revisao", "pedido", "sessao"]) next.delete(key);
+    navigate({ pathname: location.pathname, search: next.toString() }, { state: { courseId: nextCourseId } });
   }
 
   // Escolher uma sala abre o curso dela e passa a registrar as aulas como atividade da sala
@@ -526,6 +549,12 @@ export default function Dashboard({ courseId }: DashboardProps) {
     setActiveSalaId(sala.id);
     setSelectedCourseId(sala.course_id);
     setCoursePickerOpen(false);
+    // Make the context explicit so back/reload cannot reopen a course review in a room.
+    const next = new URLSearchParams(location.search);
+    next.delete("curso");
+    next.set("sala", sala.id);
+    for (const key of ["revisao", "pedido", "sessao"]) next.delete(key);
+    navigate({ pathname: location.pathname, search: next.toString() }, { state: { courseId: sala.course_id, salaId: sala.id } });
   }
 
   // 1º clique seleciona a aula; 2º clique (na aula já selecionada) abre o pop-up
@@ -548,6 +577,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
   // O servidor já gravou a conclusão em finalize_attempt: aqui só recarregamos
   // as conclusões e avançamos a seleção para a próxima aula.
   async function handleLessonCompleted(lessonId: string) {
+    setReviewRefresh(value => value + 1);
     try {
       setCompletedLessonIds(await loadCompletedLessonIds(activeSalaId));
     } catch {
@@ -558,6 +588,56 @@ export default function Dashboard({ courseId }: DashboardProps) {
     const nextLessonIndex = trail.findIndex((item, index) => index > lessonIndex && item.type === "lesson");
     if (lessonIndex === activeIndex && nextLessonIndex >= 0) setActiveIndex(nextLessonIndex);
   }
+
+  function abrirRevisao(idCurso: string, occurrenceId?: string) {
+    if (activeSalaId || salaUrl) return;
+    reviewReturnRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setOpenLesson(null);
+    setActiveSalaId(undefined);
+    setSelectedCourseId(idCurso);
+    const next = new URLSearchParams(location.search);
+    next.delete("curso");
+    next.delete("sala");
+    next.set("revisao", occurrenceId ?? "normal");
+    next.delete("pedido");
+    next.delete("sessao");
+    navigate({ pathname: location.pathname, search: next.toString() }, { state: { courseId: idCurso } });
+  }
+
+  function fecharRevisao() {
+    setOpenLesson(null);
+    const next = new URLSearchParams(location.search);
+    for (const key of ["revisao", "pedido", "sessao"]) next.delete(key);
+    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true, state: location.state });
+    // Deep links may have no original trigger; the course review CTA is a fallback.
+    const trigger = reviewReturnRef.current;
+    window.requestAnimationFrame(() => {
+      if (trigger?.isConnected) trigger.focus();
+      else (reviewTriggerRef.current ?? document.querySelector<HTMLButtonElement>(".dashboard-course-trigger"))?.focus();
+    });
+  }
+
+  function registrarPedido(requestId: string) {
+    const next = new URLSearchParams(location.search);
+    next.set("pedido", requestId);
+    next.delete("sessao");
+    // Persist the intention before LessonModal's effect starts the RPC.
+    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true, state: location.state });
+  }
+
+  function registrarSessao(sessionId: string) {
+    const next = new URLSearchParams(location.search);
+    next.set("sessao", sessionId);
+    next.delete("pedido");
+    navigate({ pathname: location.pathname, search: next.toString() }, { replace: true, state: location.state });
+  }
+
+  const showReviewCard = !loading && !errorMessage && course?.id === selectedCourseId && !activeSalaId && !salaUrl;
+  const reviewCard = showReviewCard && course && (
+    <CourseReviewCard key={course.id} courseId={course.id} courseTitle={course.title}
+      refreshKey={reviewRefresh} triggerRef={reviewTriggerRef}
+      onReview={(occurrenceId) => abrirRevisao(course.id, occurrenceId)} />
+  );
 
   // Move o carrossel para o módulo anterior ou para o próximo módulo.
   function moveCarousel(direction: -1 | 1) {
@@ -698,6 +778,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
     <PageLayout
       variant="bare"
       className="tela"
+      offset={false}
+      mainClassName={`dashboard-main${showReviewCard ? " dashboard-main--review-card" : ""}`}
       overlay={
         <SidebarRight
           aberta={lousaAberta}
@@ -707,6 +789,13 @@ export default function Dashboard({ courseId }: DashboardProps) {
         />
       }
     >
+      {reviewCard}
+      {linkRevisaoInvalido && (
+        <div className="dashboard-review-error" role="alert">
+          Link de revisão inválido: confira o curso individual, a ocorrência e o pedido ou sessão.
+          <button type="button" onClick={fecharRevisao}>Fechar revisão</button>
+        </div>
+      )}
       {loading ? (
         <div className="dashboard dashboard--state min-w-0">Carregando sua trilha...</div>
       ) : errorMessage || !course || !activeModule ? (
@@ -855,7 +944,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
         </div>
       )}
 
-      {course && openLesson && (
+      {course && openLesson && !temRevisao && (
         <LessonModal
           key={openLesson.aula.id}
           aula={openLesson.aula}
@@ -866,6 +955,23 @@ export default function Dashboard({ courseId }: DashboardProps) {
           jaConcluida={completedLessonIds.has(openLesson.aula.id)}
           onFechar={() => setOpenLesson(null)}
           onConcluida={(lessonId) => void handleLessonCompleted(lessonId)}
+        />
+      )}
+      {temRevisao && cursoUrl && !linkRevisaoInvalido
+        && !loading && !errorMessage && !activeSalaId && course?.id === cursoUrl
+        && selectedCourseId === cursoUrl && (
+        <LessonModal
+          key={`revisao:${cursoUrl}:${revisaoUrl}`}
+          modo="revisao"
+          cursoId={cursoUrl}
+          ocorrenciaId={revisaoUrl === "normal" ? undefined : revisaoUrl ?? undefined}
+          pedidoId={pedidoUrl}
+          sessaoId={sessaoUrl}
+          cor={activeTheme.primary}
+          onFechar={fecharRevisao}
+          onPedido={registrarPedido}
+          onSessao={registrarSessao}
+          onFinalizada={() => setReviewRefresh(value => value + 1)}
         />
       )}
     </PageLayout>

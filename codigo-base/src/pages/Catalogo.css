@@ -192,6 +192,10 @@
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 760px) {
+  .catalogo-layout > .sidebarL { position: relative; width: 100%; height: auto; }
+  .catalogo-layout > .sidebarL > nav { flex-direction: row; overflow-x: auto; white-space: nowrap; }
+  .catalogo-layout > .sidebarL > nav > a { width: auto; flex-shrink: 0; }
+  .catalogo-layout > main { padding-left: 0 !important; }
   .catalogo__main { @apply px-[20px] pt-[28px]; }
   .catalogo__cabecalho { @apply flex-col items-start gap-[14px]; }
   .catalogo__titulo { @apply text-[36px]; }
@@ -214,6 +218,14 @@
   transition: border-color 0.2s ease, color 0.2s ease;
 }
 .catalogo__botao-secundario:hover { border-color: color-mix(in srgb, var(--color-violet-mid) 50%, transparent); @apply text-ink; }
+
+/* ---------- Botão terciário ---------- */
+.catalogo__botao-terciario {
+  @apply inline-flex h-[44px] cursor-pointer items-center justify-center rounded-[12px] border border-line bg-surface px-[18px] text-[13px] font-bold text-violet-pale;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.catalogo__botao-terciario:hover { border-color: color-mix(in srgb, var(--color-violet-mid) 50%, transparent); @apply text-ink; }
+
 
 /* ---------- Grade e cards ---------- */
 .catalogo__grade { @apply mt-[8px] grid grid-cols-1 gap-[18px] min-[760px]:grid-cols-2 min-[1200px]:grid-cols-3; }
@@ -297,6 +309,16 @@
   border-radius: 11px;
 }
 .catalogo__botao-secundario:hover { background-color: rgba(255, 255, 255, 0.08); }
+
+/* Botão terciário do rodapé do modal (igual ao upstream). */
+.catalogo__botao-terciario {
+  @apply h-[44px] cursor-pointer bg-[rgba(255,255,255,0.035)] px-[19px] text-[11px] text-violet-pale;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 11px;
+}
+.catalogo__botao-terciario:hover { background-color: rgba(255, 255, 255, 0.08); }
+
 /* Vem depois do primário para sobrescrever altura e fonte. */
 .catalogo__botao-entrar { @apply h-[44px] min-w-[158px] text-[11px]; }
 

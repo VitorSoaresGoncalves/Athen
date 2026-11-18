@@ -8,7 +8,7 @@ export const logoGhost = "/Athen_ghost.png";
 export const ROUTES = {
   login: "/login-page",
   register: "/register-page",
-  explore: "/explorar",
+  explore: "/catalogo",
   course: (slug: string) => `/curso/${slug}`,
 };
 
@@ -77,7 +77,7 @@ export interface HowItWorksStep {
 
 // Ajuste os destinos conforme as rotas reais do app. Todos exigem login (ver navigation.ts).
 export const NAV_LINKS = [
-  { label: "Explorar", to: "/catalogo" },
+  { label: "Explorar", to: ROUTES.explore },
   { label: "Ranking", to: "/ligas" },
   { label: "Criar Curso", to: "/criar-curso" },
 ];
