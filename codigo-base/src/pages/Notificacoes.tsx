@@ -266,7 +266,7 @@ export default function Notificacoes() {
                     aria-label={`Remover notificação: ${notificacao.title}`}
                     disabled={ocupado} aria-busy={acao === notificacao.id}
                     onClick={() => void remover(notificacao.id)}>
-                    Remover
+                    <span aria-hidden="true">×</span>
                   </button>
                 </li>
               ))}
