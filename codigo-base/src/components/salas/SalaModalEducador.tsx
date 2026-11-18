@@ -49,15 +49,29 @@ function descreverAtencao(aluno: { days_idle: number; progress: number; first_tr
   return partes.join(" · ");
 }
 
+function textoUltimoAcesso(diasParado: number) {
+  if (diasParado <= 0)
+    return "Hoje";
+
+  if (diasParado === 1) 
+    return "Ontem";
+
+  return `Há ${diasParado} dias`;
+}
+
 export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtualizar }: SalaModalEducadorProps) {
   const { avisos, jogadores, recarregarAvisos } = useSalaModal(sala, usuarioId);
   const { geral, alunos, erroEstatisticas } = useEstatisticasSala(sala.id);
   const emAtencao = alunos?.filter((aluno) => aluno.needs_attention) ?? [];
   const [copiado, setCopiado] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  const [ soParados, setSoParados ] = useState(false);
   const [erro, setErro] = useState("");
   const [tituloAviso, setTituloAviso] = useState("");
   const [textoAviso, setTextoAviso] = useState("");
+  const alunosVisiveis = soParados
+          ? (alunos ?? []).filter((aluno) => aluno.days_idle >= 7)
+          : (alunos ?? []);
 
   async function copiarCodigo() {
     try {
@@ -161,35 +175,63 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
       id: "alunos",
       rotulo: "Alunos",
       painel: (
-        // PLACEHOLDER (depende de room_stats): tabela de alunos.
-        // Linhas fictícias só para mostrar o layout; nada vem do banco.
         <div className="salas__painel-aba">
-          <p className="salas__preview-aviso" role="note">
-            <Icone nome="people" tamanho={15} />
-            Pré-visualização — dados de exemplo, ainda não vêm do banco.
-          </p>
-          <div className="salas__filtros-alunos" aria-hidden="true">
-            <span className="salas__chip salas__chip--ativo">Todos</span>
-            <span className="salas__chip">Parados 7+ dias</span>
-          </div>
-          <table className="salas__tabela">
-            <thead>
-              <tr>
-                <th scope="col">Aluno</th>
-                <th scope="col">XP</th>
-                <th scope="col">Progresso</th>
-                <th scope="col">Acerto de primeira</th>
-                <th scope="col">Último acesso</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Ana Souza</td><td>420</td><td>78%</td><td>71%</td><td>Hoje</td></tr>
-              <tr><td>Bruno Lima</td><td>310</td><td>15%</td><td>52%</td><td>Há 7 dias</td></tr>
-              <tr><td>Carla Dias</td><td>560</td><td>92%</td><td>88%</td><td>Ontem</td></tr>
-              <tr><td>Diego Reis</td><td>240</td><td>40%</td><td>63%</td><td>Há 2 dias</td></tr>
-              <tr><td>Aluno</td><td>180</td><td>22%</td><td>45%</td><td>Há 12 dias</td></tr>
-            </tbody>
-          </table>
+          {alunos === null && <p className="salas__vazio-painel">Carregando Alunos...</p>}
+
+          {alunos !== null && alunos.length === 0 && (
+            <p className="salas__vazio-painel">Ainda não há alunos nesta sala.</p>
+          )}
+
+          {alunos !== null && (
+            <>
+              <div className="salas__filtros-alunos">
+                <button
+                type="button"
+                className={`salas__chip${!soParados ? " salas__chip--ativo" : ""}`}
+                aria-pressed={!soParados}
+                onClick={() => setSoParados(false)}
+                >
+                  Todos
+                </button>
+
+                <button
+                type="button"
+                className={`salas__chip${soParados ? " salas__chip--ativo" : ""}`}
+                aria-pressed={soParados}
+                onClick={() => setSoParados(true)}
+                >
+                  Parados 6+ dias
+                </button>
+              </div>
+
+
+              <table className="salas__tabela">
+                <thead>
+                  <tr>
+                    <th scope="col">Aluno</th>
+                    <th scope="col">XP</th>
+                    <th scope="col">Progresso</th>
+                    <th scope="col">Acerto de primeira</th>
+                    <th scope="col">Último acesso</th>
+                  </tr>
+                </thead>
+                
+                <tbody>
+                  {alunosVisiveis.map((aluno) => (
+                    <tr key={aluno.user_id}>
+                      <td>{aluno.display_name}</td>
+                      <td>{aluno.xp}</td>
+                      <td>{Math.round(Number(aluno.progress))}%</td>
+                      <td>{aluno.first_try_rate === null ? "—" : `${Math.round(Number(aluno.first_try_rate))}%`}</td>
+                      <td>{textoUltimoAcesso(aluno.days_idle)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          
+            </>
+          )}
+
         </div>
       ),
     },
