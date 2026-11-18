@@ -77,9 +77,8 @@ export interface HowItWorksStep {
 
 // Ajuste os destinos conforme as rotas reais do app. Todos exigem login (ver navigation.ts).
 export const NAV_LINKS = [
-  { label: "Explorar", to: ROUTES.explore },
-  { label: "Comunidade", to: "/comunidade" },
-  { label: "Ranking", to: "/ranking" },
+  { label: "Explorar", to: "/catalogo" },
+  { label: "Ranking", to: "/ligas" },
   { label: "Criar Curso", to: "/criar-curso" },
 ];
 

@@ -38,7 +38,7 @@ export default function Hub() {
           <Route path="/crud" element={<ProtectedRoute><CrudConsole /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/salas" element={<ProtectedRoute><Salas /></ProtectedRoute>} />
-          {/* <Route path="/ranking" element={<ProtectedRoute><Ranking /></ProtectedRoute>} /> */}
+          {/* <Route path="/ligas" element={<ProtectedRoute><ligas /></ProtectedRoute>} /> */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
           <Route path="/amigos" element={<ProtectedRoute><Amigos /></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { NAV_LINKS, ROUTES, logoColor, type Learner } from "../data";
 import { useGuardedNavigate } from "../navigation";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   me: Learner | null;

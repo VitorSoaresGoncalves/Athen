@@ -1,8 +1,17 @@
 import { logoColor } from "../data";
+import { useGuardedNavigate } from "../navigation";
+import { useNavigate } from "react-router-dom";
 
-const FOOTER_LINKS = ["Sobre", "Blog", "Carreiras", "Ajuda", "Privacidade", "Termos"];
+const FOOTER_LINKS = [
+  { label: "Sobre", to: "/sobre" },
+  { label: "Ajuda", to: "/ajuda" },
+  { label: "Privacidade", to: "/privacidade" },
+  { label: "Termos", to: "/termos" },
+];
 
 export default function Footer() {
+  const navigate = useNavigate();
+  const goTo = useGuardedNavigate();
   return (
     <footer
       className="px-6 md:px-16 py-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8"
@@ -28,8 +37,13 @@ export default function Footer() {
       </div>
       <div className="flex flex-wrap gap-6">
         {FOOTER_LINKS.map((l) => (
-          <a key={l} href="#" className="text-xs hover:opacity-80 transition-opacity" style={{ color: "#A486D5", fontFamily: "var(--font-ui)" }}>
-            {l}
+          <a
+            key={l.label}
+            href={l.to}
+            className="text-sm transition-colors hover:opacity-80"
+            style={{ fontFamily: "var(--font-ui)", color: "#C9B8E8" }}
+          >
+            {l.label}
           </a>
         ))}
       </div>
