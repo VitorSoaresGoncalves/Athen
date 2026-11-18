@@ -45,7 +45,7 @@ export default function CtaSection({ students, loggedIn }: CtaSectionProps) {
           : "Entre agora e ajude a construir a comunidade que está transformando a forma de aprender."}
       </p>
       <button
-        onClick={() => (loggedIn ? void goTo(ROUTES.explore) : navigate(ROUTES.register))}
+        onClick={() => (loggedIn ? void goTo("/catalogo") : navigate(ROUTES.register))}
         className="text-base font-semibold px-10 py-4 rounded-full transition-transform hover:scale-105 relative z-10"
         style={{ background: "#FFCC00", color: "#54318C", fontFamily: "var(--font-ui)" }}
       >

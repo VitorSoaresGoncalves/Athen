@@ -63,6 +63,14 @@ A agenda global, sorteio semanal de um curso, quotas por módulo, meta, prêmio 
 
 ## Hospedagem e integrações
 
+Até 760px, o Catálogo usa a navegação superior com rolagem horizontal já adotada em Ligas, liberando a largura do conteúdo e dos carrosséis. O teste de 390px verifica ausência de rolagem horizontal na página e o início do conteúdo em `x=0`.
+
+O Catálogo usa `catalog_course_feed()` para compor carrosséis de recomendações, matrículas recentes e notas ponderadas; os critérios ficam na [referência do banco](banco-de-dados/documentacao-bd.md#catálogo-em-carrosséis-0047). O pop-up mantém a entrada de revisão do curso e a navegação por estado descritas acima. Filtros permitem exibir a grade completa; Escape devolve o foco ao botão de filtros e as setas respeitam redução de movimento.
+
+`Hub.tsx` também define as páginas públicas `/sobre`, `/ajuda`, `/termos` e `/privacidade`, as telas `/acesso-negado`, `/erro`, `/manutencao` e o fallback 404. O botão “Ver todos” da landing usa a rota compartilhada `/catalogo`. As páginas de erro não implementam captura global de exceções nem autorização de dados.
+
+`VITE_MAINTENANCE_MODE=true` substitui a aplicação inteira pela página de manutenção. `VITE_MAINTENANCE_UNTIL` aceita uma data ISO opcional para a previsão de retorno; valor inválido omite a previsão. Como são variáveis de build do Vite, alterar o modo exige novo build/deploy. Omitir o modo, ou usar valor diferente de `true`, mantém as rotas normais.
+
 O build produz assets estáticos em `codigo-base/dist/`. Vercel é o destino citado no material histórico; `codigo-base/vercel.json` define o fallback das rotas para `index.html`, sem declarar testes. A configuração local `codigo-base/supabase/config.toml` permite iniciar a pilha de ensaio. Deploy, variáveis e comandos do painel da hospedagem precisam ser verificados no ambiente.
 
 O perfil usa o bucket `avatars` para avatar e banner. A existência do bucket e suas políticas precisam ser verificadas no ambiente; a chamada no cliente não garante o provisionamento do recurso.

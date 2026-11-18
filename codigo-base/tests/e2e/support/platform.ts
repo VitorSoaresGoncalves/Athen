@@ -88,6 +88,10 @@ export async function installPlatform(page: Page, authenticated = true) {
       if (path === 'logout') return reply(route, { status: 204 })
     }
     if (url.pathname.includes('/rpc/')) {
+      if (path === 'catalog_course_feed') return reply(route, { data: tables.courses.map(course => ({
+        course_id: course.id, rating_avg: 0, rating_count: 0, enrollments_total: 0,
+        enrollments_7d: 0, top_rated_score: 0, recommended_score: 1, is_enrolled: false,
+      })) })
       const emptyLists = ['friends_course_pac', 'friends_course_pac_v2', 'my_missions', 'my_mission_detail', 'current_season', 'my_season_summary', 'my_season_standings', 'my_season_group', 'my_season_history', 'global_ranking', 'room_ranking', 'room_pac', 'search_profiles', 'home_categories', 'home_course_students', 'home_featured_courses', 'home_top_learners', 'home_featured_reviews']
       if (emptyLists.includes(path)) return reply(route, { data: [] })
       if (path === 'my_current_course_review') return reply(route, { data: [] })

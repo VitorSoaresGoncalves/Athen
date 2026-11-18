@@ -12,6 +12,8 @@ A consulta final daquele catálogo remoto confirmou `0041` como última migraç�
 
 ### Tipos locais da revisão de curso
 
+**Conferência remota em 2026-11-18:** o histórico de `testeAthen` já continha `0042–0046`. Os corpos das funções de `0045/0046` conferiram com as migrations versionadas. A `0047` foi ensaiada localmente, executada no remoto em transação com rollback e depois aplicada por `db push --linked --skip-vault`, sem seeds ou roles extras. O dry-run posterior não encontrou pendências. As nove funções auditadas de `0045–0047` conferem com as fontes; índice e ACLs da RPC do catálogo foram verificados. Os harnesses com fixtures e jornadas reais foram executados somente no banco local descartável.
+
 Nesta feature, `src/types/database.ts` foi regenerado do esquema **local `0001–0045`**, com Supabase CLI `2.121.0`, por `supabase gen types typescript --local --schema public`. A saída foi gravada em UTF-8 sem BOM, separada de stderr; uma limpeza automática removeu espaços finais sem alterar os tokens TypeScript. Não houve reconstrução manual das definições.
 
 Os tipos anteriores eram UTF-16LE e provinham do remoto vinculado. A geração local não contém os seguintes objetos daquele retrato:
@@ -23,9 +25,17 @@ Os tipos anteriores eram UTF-16LE e provinham do remoto vinculado. A geração l
 
 Isso é divergência prévia entre o retrato remoto e a sequência numerada local, não exclusão desses objetos remotos pela feature. As seis funções `home_*` têm um [script opcional fora das migrações](../../codigo-base/supabase/home_public_data.sql) e [consumidores com fallback](../../codigo-base/src/pages/home-page/services.ts). A inspeção de `src` não encontrou consumidores das demais definições removidas dos tipos. Não restaure objetos à mão no arquivo gerado nem aplique scripts opcionais silenciosamente para igualar os dois ambientes.
 
+## Catálogo em carrosséis (0047)
+
+`catalog_course_feed()` retorna somente cursos publicados e públicos, com médias/contagens de avaliações publicadas, matrículas acumuladas e dos últimos sete dias, pontuação bayesiana (`m=5`) e afinidade por categoria/tags do estudante autenticado. Avaliações são consideradas sem recorte de data; a janela de sete dias pertence às matrículas, não às notas. Matrículas do próprio criador não contam na popularidade. Cursos próprios ou já matriculados recebem recomendação nula. As matrículas são contadas pelo histórico existente, inclusive estados posteriores da matrícula.
+
+A [0047](../../codigo-base/supabase/migrations/0047_catalog_course_feed.sql) acrescenta uma função e um índice; não reescreve dados de estudo ou XP. A função usa `SECURITY DEFINER` para agregações, com `EXECUTE` somente para `authenticated`; não retorna matrículas de outros usuários. O harness [de leituras](../../codigo-base/supabase/testes-leituras/catalogo.sql) verifica visibilidade, ACL, afinidade, janela de matrículas e avaliações antigas/publicadas no banco local com rollback.
+
+Na integração dos PRs 65–67, os tipos foram regenerados do banco local `0001–0047`, em UTF-8, preservando os contratos de revisão e estatísticas de sala. Objetos remotos opcionais ausentes da sequência local continuam sujeitos aos limites descritos em “Tipos locais da revisão de curso”.
+
 ## Fontes e ordem de leitura
 
-1. [Migrações numeradas](../../codigo-base/supabase/migrations/), de `0001` a `0045` neste checkout: modelo, políticas, funções e suas alterações sucessivas. Leia a redefinição mais recente da função ou política que estiver alterando; a tabela abaixo aponta também para migrações anteriores quando elas continuam definindo parte da regra.
+1. [Migrações numeradas](../../codigo-base/supabase/migrations/), de `0001` a `0047` neste checkout: modelo, políticas, funções e suas alterações sucessivas. Leia a redefinição mais recente da função ou política que estiver alterando; a tabela abaixo aponta também para migrações anteriores quando elas continuam definindo parte da regra.
 2. [Tipos gerados](../../codigo-base/src/types/database.ts): estrutura tipada consumida pelo frontend. São uma fotografia de geração, não prova de que o SQL foi aplicado no ambiente de destino.
 3. [Consultas do cliente](../../codigo-base/src/data/repositories.ts): tabelas, views e RPCs efetivamente utilizadas.
 4. [Estatísticas de sala — issue 56](estatisticas-sala.md): contratos e correções da migration `0046_room_stats.sql`, preparada para coexistir com `0042–0045` da issue 47.

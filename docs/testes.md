@@ -39,6 +39,10 @@ O [Husky](../codigo-base/.husky/pre-commit) executa somente lint-staged/ESLint n
 
 ## Interface determinística
 
+O pipeline SQL `test:db` também encerra com `npm run test:read-models`: o runner em [testes-leituras](../codigo-base/supabase/testes-leituras/run-harness.ts) executa o harness da issue 56 e o catálogo da 0047, em série e com rollback. Recusa alvo diferente de `127.0.0.1:55322/postgres`; exige o banco local descartável com `0001–0047`. Não imprime credenciais. Esse gate também participa do job de integração que já chama `test:db`.
+
+As fixtures HTTP incluem `catalog_course_feed` com DTOs controlados, sem recalcular o algoritmo SQL. O E2E do catálogo usa o painel de filtros atual e confere retorno de foco por Escape; o da landing verifica “Ver todos” até `/catalogo` autenticado. A nova descrição do ranking distingue notas publicadas sem corte temporal e matrículas dos últimos sete dias.
+
 A [configuração principal](../codigo-base/playwright.config.ts) inicia seu próprio build/preview em `127.0.0.1:4173`, com URL/chave Supabase fictícias. Não reutiliza servidor existente: libere a porta antes de executar. Usa dois workers, Chromium, pt-BR e fuso de Brasília.
 
 As novas suítes usam [fixtures HTTP](../codigo-base/tests/e2e/support/platform.ts) independentes por teste, sem reproduzir algoritmos SQL. Dashboard e ligas mantêm seus cenários controlados específicos. O fluxo padrão simulado está em [study-journey.spec.ts](../codigo-base/tests/e2e/study-journey.spec.ts).
@@ -66,7 +70,7 @@ npm run test:db
 npm run test:e2e:live
 ```
 
-`test:db` executa **`test:issue42 && test:issue47`**, em série e interrompendo em falha. O [runner da issue 42](../codigo-base/supabase/testes-issue-42/run-harness.ts) executa `harness.sql`, `live-standings.sql`, `missions.sql` e `review-fixes.sql`. Habilita asserções PL/pgSQL, limita conexão/query e reverte os ensaios. O quarto script recebe a transação pelo runner. Há limpeza temporária de tabelas em alguns ensaios: rollback não elimina bloqueios/interferência durante a execução; mantenha o alvo isolado.
+`test:db` executa **`test:issue42 && test:issue47 && test:read-models`**, em série e interrompendo em falha. O [runner da issue 42](../codigo-base/supabase/testes-issue-42/run-harness.ts) executa `harness.sql`, `live-standings.sql`, `missions.sql` e `review-fixes.sql`. Habilita asserções PL/pgSQL, limita conexão/query e reverte os ensaios. O quarto script recebe a transação pelo runner. Há limpeza temporária de tabelas em alguns ensaios: rollback não elimina bloqueios/interferência durante a execução; mantenha o alvo isolado.
 
 A [jornada real](../codigo-base/tests/live/local-study.spec.ts) usa [configuração própria](../codigo-base/playwright.live.config.ts), preview em 4175 e URL/chave da pilha **local**, obtidas sem imprimir segredos por `supabase status -o json`. Recusa API não loopback. Cadastra uma conta aleatória, faz login, matricula-se no curso do seed, responde uma aula, verifica XP/progresso após reload, lê missões e sai. Não usa interceptação HTTP ou sessão fictícia. Não gera traces de credenciais; mantém screenshots de falha. Sem backend local, falha explicitamente na preparação.
 

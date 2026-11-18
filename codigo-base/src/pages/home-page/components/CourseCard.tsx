@@ -1,4 +1,5 @@
 import { ROUTES, type Course } from "../data";
+import { useNavigate } from "react-router-dom";
 import { useGuardedNavigate } from "../navigation";
 
 interface CourseCardProps {
@@ -7,6 +8,7 @@ interface CourseCardProps {
 }
 
 export default function CourseCard({ course: c, loggedIn }: CourseCardProps) {
+  const navigate = useNavigate();
   const goTo = useGuardedNavigate();
   const hasCover = !!c.coverUrl;
   const accent = hasCover ? "#FFCC00" : c.accent;
@@ -15,7 +17,7 @@ export default function CourseCard({ course: c, loggedIn }: CourseCardProps) {
   return (
     <button
       type="button"
-      onClick={() => void goTo(ROUTES.course(c.slug))}
+      onClick={() => (loggedIn ? void goTo("/catalogo") : navigate(ROUTES.register))}
       className="relative rounded-3xl overflow-hidden cursor-pointer group text-left w-full"
       style={{
         background: hasCover
@@ -61,7 +63,7 @@ export default function CourseCard({ course: c, loggedIn }: CourseCardProps) {
           className="font-semibold text-sm px-5 py-2 rounded-full"
           style={{ background: "#FFCC00", color: "#54318C", fontFamily: "var(--font-ui)" }}
         >
-          {loggedIn ? "Começar agora" : "Criar conta para começar"}
+          {loggedIn ? "Ver cursos" : "Criar conta para começar"}
         </span>
       </div>
     </button>

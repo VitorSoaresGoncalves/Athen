@@ -7,10 +7,15 @@ test('catálogo busca sem acentos, filtra categoria e mostra ausência de matrí
   await page.getByPlaceholder('Buscar por nome ou assunto...').fill('logica')
   await expect(page.getByRole('heading', { name: 'História Antiga', exact: true })).toHaveCount(0)
   await page.getByPlaceholder('Buscar por nome ou assunto...').clear()
-  await page.getByLabel('Filtrar por categoria').selectOption('Humanas')
+  await page.getByRole('button', { name: 'Filtros', exact: true }).click()
+  await page.getByRole('button', { name: 'Humanas', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'História Antiga', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Lógica de Programação', exact: true })).toHaveCount(0)
-  await page.getByLabel('Filtrar por categoria').selectOption('')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: /Filtros/ })).toBeFocused()
+  await page.getByRole('button', { name: /Filtros/ }).click()
+  await page.getByRole('button', { name: 'Todas as categorias', exact: true }).click()
+  await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Meus cursos', exact: true }).click()
   await expect(page.getByText('Você ainda não está matriculado em nenhum curso.', { exact: true })).toBeVisible()
 })
@@ -21,6 +26,43 @@ test('catálogo expõe falha da consulta sem inventar cursos', async ({ page, pl
   await expect(page.getByText(/Catálogo indisponível/)).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Lógica de Programação', exact: true })).toHaveCount(0)
 })
+
+for (const width of [390, 1440]) {
+  test(`filtros e carrossel mantêm foco e redução de movimento em ${width}px`, async ({ page, platform }, testInfo) => {
+    for (let index = 0; index < 7; index++) {
+      platform.tables.courses.push({ ...platform.tables.courses[0], id: `carousel-${index}`, title: `Curso ${index}` })
+    }
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.goto('/catalogo')
+    const next = page.getByRole('button', { name: 'Próximo: Recomendados para você', exact: true })
+    await expect(next).toBeVisible()
+    const track = page.locator('.catalogo__trilha').first()
+    await track.evaluate(element => {
+      const original = element.scrollBy.bind(element)
+      element.scrollBy = (options?: ScrollToOptions | number, y?: number) => {
+        if (typeof options === 'number') {
+          original(options, y ?? 0)
+          return
+        }
+        element.dataset.requestedBehavior = options?.behavior
+        original(options)
+      }
+    })
+    await next.click()
+    await expect(track).toHaveAttribute('data-requested-behavior', 'instant')
+    const filters = page.getByRole('button', { name: 'Filtros', exact: true })
+    await filters.click()
+    await page.getByRole('button', { name: 'Todas as categorias', exact: true }).focus()
+    await page.keyboard.press('Escape')
+    await expect(filters).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    if (width < 760) {
+      expect(await page.locator('.catalogo').evaluate(element => element.getBoundingClientRect().left)).toBe(0)
+    }
+    await page.screenshot({ path: testInfo.outputPath(`catalogo-${width}.png`), animations: 'disabled' })
+  })
+}
 
 test('salas permite entrar por código e apresenta a sala retornada', async ({ page, platform }) => {
   platform.on('join_room', ({ body }) => {
