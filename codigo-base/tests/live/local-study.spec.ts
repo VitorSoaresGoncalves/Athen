@@ -29,7 +29,7 @@ test('cadastro, matrícula e conclusão persistem no Supabase local real', async
   await page.getByRole('link', { name: 'Ver todos os cursos', exact: true }).click()
   await page.getByRole('button', { name: /Lógica de Programação/ }).click()
   await page.getByRole('button', { name: 'Matricular-se', exact: true }).click()
-  await expect(page).toHaveURL('/dashboard?curso=00000000-0000-4000-c000-00000000000a')
+  await expect(page).toHaveURL('/dashboard')
   await page.getByRole('button', { name: 'Aula O que é lógica', exact: true }).click()
   await page.getByRole('button', { name: 'Começar atividade', exact: true }).click()
   await page.getByRole('checkbox', { name: 'Uma sequência de passos', exact: true }).click()

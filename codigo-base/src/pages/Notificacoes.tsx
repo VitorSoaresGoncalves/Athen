@@ -121,16 +121,17 @@ export default function Notificacoes() {
     setAbrindoId(notificacao.id);
     setErroAbertura("");
     try {
-      let destino = linkNotificacao(notificacao);
+      let destino: string | null | { pathname: string; search?: string; state?: { courseId?: string; revisao?: string } } = linkNotificacao(notificacao);
       if (notificacao.type === "revisao_curso") {
         if (!notificacao.reference_id) throw new Error("Esta notificação não identifica uma revisão de curso.");
         const ocorrencia = await revisaoRepository.obterOcorrencia(notificacao.reference_id);
         if (!ocorrencia.course_id) throw new Error("Esta revisão não tem um curso atribuído.");
-        // Só o curso oficial da ocorrência própria, nunca título/curso ativo.
-        destino = `/dashboard?${new URLSearchParams({
-          curso: ocorrencia.course_id,
-          revisao: ocorrencia.occurrence_id,
-        })}`;
+        // Mantém a seleção do curso em state para não expor o id na URL.
+        destino = {
+          pathname: "/dashboard",
+          search: new URLSearchParams({ revisao: ocorrencia.occurrence_id }).toString(),
+          state: { courseId: ocorrencia.course_id },
+        };
       }
       if (!notificacao.is_read) {
         try {
@@ -141,7 +142,10 @@ export default function Notificacoes() {
           setErroAbertura(error instanceof Error ? error.message : "Não foi possível marcar a notificação como lida.");
         }
       }
-      if (destino) navigate(destino);
+      if (destino) {
+        if (typeof destino === "string") navigate(destino);
+        else navigate({ pathname: destino.pathname, search: destino.search }, { state: destino.state });
+      }
     } catch (error) {
       setErroAbertura(error instanceof Error ? error.message : "Não foi possível abrir a revisão. Tente novamente.");
     } finally {
@@ -262,7 +266,7 @@ export default function Notificacoes() {
                     aria-label={`Remover notificação: ${notificacao.title}`}
                     disabled={ocupado} aria-busy={acao === notificacao.id}
                     onClick={() => void remover(notificacao.id)}>
-                    Remover
+                    <span aria-hidden="true">×</span>
                   </button>
                 </li>
               ))}

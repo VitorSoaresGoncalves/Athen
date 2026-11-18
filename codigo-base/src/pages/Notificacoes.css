@@ -99,14 +99,22 @@
 
 /* Remoção é uma ação separada da navegação, sem botões aninhados. */
 .notificacoes__acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-.notificacoes__lista > li { display: flex; align-items: flex-start; gap: 8px; }
-.notificacoes__lista .notificacoes__item { min-width: 0; flex: 1; }
+.notificacoes__lista > li { position: relative; }
+.notificacoes__lista .notificacoes__item { width: 100%; min-width: 0; }
 .notificacoes__remover {
-  min-height: 44px; padding: 10px; flex-shrink: 0; cursor: pointer;
-  border: 1px solid var(--color-line); border-radius: 12px;
-  color: #fecaca; background: var(--color-surface); font-size: 13px;
+  position: absolute; right: 12px; top: 38px;
+  width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex-shrink: 0; cursor: pointer;
+  border: 1px solid transparent; border-radius: 50%;
+  color: var(--color-muted); background: transparent;
+  font-size: 21px; line-height: 1;
 }
-.notificacoes__remover:hover:not(:disabled) { border-color: #fecaca; }
+.notificacoes__remover span { margin-top: -2px; }
+.notificacoes__remover:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-muted) 45%, transparent);
+  color: var(--color-ink); background: var(--color-surface);
+}
 .notificacoes button:disabled { cursor: wait; opacity: .55; transform: none; }
 .notificacoes button:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 3px; }
 .notificacoes__feedback { margin-top: 16px; color: var(--color-violet-pale); }

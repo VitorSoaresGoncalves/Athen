@@ -10,8 +10,11 @@ import {
   cursoRepository,
   matriculaRepository,
   moduloRepository,
+  revisaoRepository,
   tentativaRepository,
   usuarioRepository,
+  type DisponibilidadeRevisao,
+  type OcorrenciaRevisao,
 } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -107,15 +110,16 @@ type CursoModalProps = {
   educador: string;
   nota: number;
   avaliacoes: number;
+  statusMatriculaInicial?: StatusMatricula | null;
   onFechar: () => void;
   onAtualizar: () => void;
 };
 
-function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }: CursoModalProps) {
+export function CursoModal({ curso, educador, nota, avaliacoes, statusMatriculaInicial = null, onFechar, onAtualizar }: CursoModalProps) {
   const navigate = useNavigate();
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [modulos, setModulos] = useState<ModuloComAulas[]>([]);
-  const [statusMatricula, setStatusMatricula] = useState<StatusMatricula | null>(null);
+  const [statusMatricula, setStatusMatricula] = useState<StatusMatricula | null>(statusMatriculaInicial);
   const [moduloAberto, setModuloAberto] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -124,6 +128,16 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
   const [aulaAberta, setAulaAberta] = useState<{ aula: AulaView; modulo: ModuloComAulas; indice: number } | null>(null);
   // Recarrega a trilha/desempenho sem piscar o "Carregando" (ex.: após concluir uma aula).
   const [recarregarToken, setRecarregarToken] = useState(0);
+
+  // Revisão do curso aberta por cima do pop-up. A intenção (pedido) e a sessão
+  // ficam em estado local: aqui não há URL para persisti-las como no Dashboard.
+  const [revisao, setRevisao] = useState<{ ocorrenciaId?: string; pedidoId?: string; sessaoId?: string } | null>(null);
+  const [disponibilidadeRevisao, setDisponibilidadeRevisao] = useState<DisponibilidadeRevisao | null>(null);
+  const [ocorrenciaRevisao, setOcorrenciaRevisao] = useState<OcorrenciaRevisao | null>(null);
+  const [revisaoErro, setRevisaoErro] = useState(false);
+  const [revisaoCarregando, setRevisaoCarregando] = useState(true);
+  const [agoraRevisao, setAgoraRevisao] = useState(Date.now);
+  const [recarregarRevisao, setRecarregarRevisao] = useState(0);
 
   // Avaliação do próprio usuário (undefined = carregando, null = ainda não avaliou).
   const [minhaAvaliacao, setMinhaAvaliacao] = useState<{ rating: number; comment: string } | null | undefined>(undefined);
@@ -192,6 +206,38 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
     return () => { cancelado = true; };
   }, [curso.id, recarregarToken]);
 
+  // Disponibilidade da revisão e bônus semanal atual (o servidor decide; aqui só exibimos).
+  // Recarrega após concluir uma aula, pois isso pode tornar o curso elegível.
+  useEffect(() => {
+    let cancelado = false;
+    async function carregarRevisao() {
+      setRevisaoCarregando(true);
+      const [disponibilidade, atual] = await Promise.allSettled([
+        revisaoRepository.obterDisponibilidade(curso.id),
+        revisaoRepository.obterOcorrenciaAtual(),
+      ]);
+      if (cancelado) return;
+      setDisponibilidadeRevisao(disponibilidade.status === "fulfilled" ? disponibilidade.value : null);
+      setOcorrenciaRevisao(atual.status === "fulfilled" && atual.value?.course_id === curso.id ? atual.value : null);
+      setRevisaoErro(disponibilidade.status === "rejected" || atual.status === "rejected");
+      setAgoraRevisao(Date.now());
+      setRevisaoCarregando(false);
+    }
+    void carregarRevisao();
+    return () => { cancelado = true; };
+  }, [curso.id, recarregarToken, recarregarRevisao]);
+
+  const bonusRevisao = ocorrenciaRevisao?.state === "available"
+    && Date.parse(ocorrenciaRevisao.expires_at) > agoraRevisao;
+  const podeRevisar = !revisaoCarregando && !revisaoErro && Boolean(disponibilidadeRevisao?.can_review);
+  const dicaRevisao = revisaoErro
+    ? "Não foi possível consultar a revisão deste curso."
+    : disponibilidadeRevisao?.reason === "REVIEW_EMPTY"
+      ? "Este curso não tem questões para revisão."
+      : !disponibilidadeRevisao?.can_review
+        ? "Conclua todas as aulas para revisar este curso."
+        : bonusRevisao ? "Bônus disponível: +10 XP com 70% de acerto." : "Prática normal, sem XP.";
+
   // Matricula (se preciso) e abre a trilha no Dashboard.
   async function entrar() {
     setEntrando(true);
@@ -203,7 +249,7 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
         await matriculaRepository.atualizarStatus(curso.id, usuarioId, "active");
       }
       onAtualizar();
-      navigate(`/dashboard?curso=${curso.id}`);
+      navigate("/dashboard", { state: { courseId: curso.id } });
     } catch (error) {
       setErro(`Não foi possível entrar no curso: ${mensagemDoErro(error)}`);
       setEntrando(false);
@@ -256,7 +302,7 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
       rotuladoPor="catalogo-modal-titulo"
       /* Com uma aula aberta por cima, o Esc fecha só a aula (o LessonModal cuida
          do fechamento); o pop-up do curso ignora o Esc nesse momento. */
-      fecharComEsc={aulaAberta === null}
+      fecharComEsc={aulaAberta === null && revisao === null}
     >
         <div className="modal__rolagem">
           <div className="modal__banner">
@@ -431,6 +477,13 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
           </p>
           <div className="modal__acoes">
             <button className="catalogo__botao-secundario" type="button" onClick={onFechar}>Fechar</button>
+            {matriculado && (
+              <button className="catalogo__botao-terciario" type="button" title={dicaRevisao}
+                disabled={!podeRevisar}
+                onClick={() => setRevisao({ ocorrenciaId: bonusRevisao ? ocorrenciaRevisao?.occurrence_id : undefined })}>
+                Revisar curso{bonusRevisao ? " · +10 XP" : ""}
+              </button>
+            )}
             <button className="catalogo__botao-primario catalogo__botao-entrar" type="button" onClick={() => void entrar()} disabled={entrando}>
               {entrando ? "Abrindo..." : matriculado ? "Continuar curso" : "Matricular-se"} <Icone nome="arrow" tamanho={18} />
             </button>
@@ -455,6 +508,24 @@ function CursoModal({ curso, educador, nota, avaliacoes, onFechar, onAtualizar }
         }}
       />
     )}
+
+    {/* Revisão por cima do pop-up, no contexto individual (nunca em sala). Cada
+        "Tentar novamente" gera um novo pedido; repetir o mesmo recupera a sessão. */}
+    {revisao && (
+      <LessonModal
+        key={`revisao:${curso.id}:${revisao.ocorrenciaId ?? "normal"}`}
+        modo="revisao"
+        cursoId={curso.id}
+        ocorrenciaId={revisao.ocorrenciaId}
+        pedidoId={revisao.pedidoId}
+        sessaoId={revisao.sessaoId}
+        cor={corDoModulo(modulos[0]?.color ?? null, 0)}
+        onFechar={() => { setRevisao(null); setRecarregarRevisao((token) => token + 1); }}
+        onPedido={(pedidoId) => setRevisao((atual) => atual && { ...atual, pedidoId, sessaoId: undefined })}
+        onSessao={(sessaoId) => setRevisao((atual) => atual && { ...atual, sessaoId, pedidoId: undefined })}
+        onFinalizada={() => { setRecarregarRevisao((token) => token + 1); onAtualizar(); }}
+      />
+    )}
     </>
   );
 }
@@ -474,6 +545,7 @@ type CursoComMeta = {
   nota: number;
   avaliacoes: number;
   matriculado: boolean;
+  statusMatricula: StatusMatricula | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -522,6 +594,7 @@ export default function Catalogo() {
               nota: media.media,
               avaliacoes: media.total,
               matriculado: matricula?.status === "active" || matricula?.status === "completed",
+              statusMatricula: matricula?.status ?? null,
             };
           }),
         );
@@ -671,6 +744,7 @@ export default function Catalogo() {
           educador={cursoAberto.educador}
           nota={cursoAberto.nota}
           avaliacoes={cursoAberto.avaliacoes}
+          statusMatriculaInicial={cursoAberto.statusMatricula}
           onFechar={() => setCursoAberto(null)}
           onAtualizar={() => setRecarregarToken((t) => t + 1)}
         />

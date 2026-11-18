@@ -182,7 +182,7 @@ test(`revisão real ${delivered ? 'por aviso entregue e lido' : bonus ? 'bonific
     } else {
       await page.getByRole('button', { name: 'Revisar curso', exact: true }).click()
     }
-    await expect(page).toHaveURL(new RegExp(`curso=${ids.course}.*revisao=${bonus ? occurrenceId : 'normal'}`))
+    await expect(page).toHaveURL(`/dashboard?revisao=${bonus ? occurrenceId : 'normal'}`)
     if (bonus) {
       await expect(page.getByText(/Revisão com bônus.*Meta: 70%/)).toBeVisible()
     } else {
