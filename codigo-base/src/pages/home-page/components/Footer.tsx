@@ -10,8 +10,6 @@ const FOOTER_LINKS = [
 ];
 
 export default function Footer() {
-  const navigate = useNavigate();
-  const goTo = useGuardedNavigate();
   return (
     <footer
       className="px-6 md:px-16 py-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-8"
