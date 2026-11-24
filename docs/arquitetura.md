@@ -29,10 +29,10 @@ Caminhos abaixo são relativos a `codigo-base/`.
 | Salas | `src/pages/Salas.tsx` | Participação, criação, detalhe, avisos e missões |
 | Perfil e configuração | `src/pages/profile/Profile.tsx`, `src/pages/ConfigPage.tsx` | Edição de perfil, preferências e operações de conta |
 | Perfil compartilhado | `src/components/sidebar/SidebarLeft.tsx` | Cache próprio, assinantes e evento de atualização de perfil |
-| Caderno | `src/pages/Notebook.tsx`, `src/components/notebook/CursoNotebook.tsx` | Anotações e caderno associado ao curso |
+| Caderno | `src/pages/Notebook.tsx`, `src/components/notebook/CursoNotebook.tsx`/`CursoNotebook.css`, `notebook-geometry.ts` | Estante separada; janela de curso não modal com clamp puro da área visível, editor único e proteção de rascunho |
 | Social | `src/pages/Amigos.tsx`, `src/pages/Notificacoes.tsx` | Amizades e notificações |
 | Temporadas e classificação | `src/pages/Ligas.tsx` | Grupo, classificação, projeções e histórico de temporada |
-| Layout e tema | `src/components/layout/PageLayout.tsx`, `src/index.css` | Estrutura comum e tokens; regras no [guia de estilos](estilo-padrao.md) |
+| Layout e tema | `src/components/layout/PageLayout.tsx`/`PageLayout.css`, `src/components/sidebar/SidebarLeft.tsx`/`SidebarLeft.css`, `src/index.css` | Reserva única pelo offset efetivo, largura física de 230px e disclosure móvel compartilhado; regras no [guia de estilos](estilo-padrao.md) e [responsividade](responsividade.md) |
 | Regras persistidas | `supabase/migrations/` | RLS, tentativas, XP, conclusões, rankings e demais regras SQL |
 
 A implementação atual concentra muita composição de dados nas telas. Não há uma pasta `src/domain/` nem TanStack Query neste checkout; referências antigas a esses módulos não descrevem a estrutura presente. `repositories.ts` é um arquivo compartilhado com vários módulos por conceito, e não há uma implementação intermediária de servidor Node no código consultado.
@@ -63,7 +63,9 @@ A agenda global, sorteio semanal de um curso, quotas por módulo, meta, prêmio 
 
 ## Hospedagem e integrações
 
-Até 760px, o Catálogo usa a navegação superior com rolagem horizontal já adotada em Ligas, liberando a largura do conteúdo e dos carrosséis. O teste de 390px verifica ausência de rolagem horizontal na página e o início do conteúdo em `x=0`.
+As 12 entradas internas que usam `PageLayout` compartilham o disclosure superior até760px inclusive, sem reserva lateral; acima disso sidebar/reserva usam230px físicos. `--sidebar-left-width` é a dimensão física e `--sidebar-left-offset` a reserva efetiva herdada pelas âncoras do Dashboard/notebook. Catálogo/Ligas não têm mais implementação paralela da casca. `SidebarLeft` concentra estado móvel, foco e opções de conta, sem novas props aos chamadores nem alteração do cache de perfil/eventos. Salas adapta listagem/adição com main único; detalhes internos seguem fora desse recorte.
+
+No incremento2, Dashboard usa composição compacta até1000px de largura ou600px de altura, com controles/cartão no fluxo e documento rolável, independente da revisão/sidebar. Um slot comum mantém a mesma instância do notebook e da `SidebarRight` no carregamento/vazio/erro; sem curso não inventa notebook. `SidebarRight.css` alterna painel fixo/disclosure sem remontar consultas. Seletor reutiliza `Modal`; posições/centralização da trilha são recalculadas por resize mantendo seleção. Notebook separa geometria pura do acesso a dados, limita dimensões antes de posição e não recarrega editor por viewport; falha de salvar interrompe troca/criação encadeada. `ConfirmDialog` contém/devolve foco e intercepta Escape apenas na confirmação superior. Contrato/limites e gates de navegador/zoom: [responsividade](responsividade.md#incremento-2-implementado--notebook-e-dashboard). `/caderno` e demais miolos não foram adaptados por esse incremento.
 
 O Catálogo usa `catalog_course_feed()` para compor carrosséis de recomendações, matrículas recentes e notas ponderadas; os critérios ficam na [referência do banco](banco-de-dados/documentacao-bd.md#catálogo-em-carrosséis-0047). O pop-up mantém a entrada de revisão do curso e a navegação por estado descritas acima. Filtros permitem exibir a grade completa; Escape devolve o foco ao botão de filtros e as setas respeitam redução de movimento.
 

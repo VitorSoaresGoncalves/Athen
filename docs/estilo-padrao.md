@@ -51,17 +51,19 @@ Buscas do Catálogo e de Salas e campos de autenticação ainda herdam a fonte d
 
 ## Layout e composição
 
-`PageLayout` é a estrutura comum das páginas internas que o utilizam. Ele inclui a sidebar e reserva seu deslocamento por padrão. Confira a constante `SIDEBAR_LEFT_WIDTH` e as props no arquivo em vez de duplicar essa medida.
+`PageLayout` é a estrutura comum das páginas internas que o utilizam. Ele inclui a sidebar e reserva seu deslocamento por padrão. A largura física é `--sidebar-left-width: 230px` em `index.css`; `PageLayout.css` define `--sidebar-left-offset`, igual à largura no desktop e zero até 760px inclusive. Não duplicar a medida nem compensá-la por estilo inline. O contrato móvel e seus limites estão no [guia de responsividade](responsividade.md#incremento-1-implementado--casca-e-salas).
 
 - `contained` fornece o contêiner padrão e a base visual de corpo; `bare` deixa o conteúdo e o estilo principal com a página.
-- `offset={false}` transfere à página a responsabilidade pelo deslocamento. Essa opção não implementa por si só uma sidebar responsiva.
+- `offset={false}` transfere à página apenas a responsabilidade pelo deslocamento; a navegação responsiva permanece compartilhada. Dashboard usa agora o offset padrão.
 - `overlay` acomoda conteúdo fora do fluxo principal. Confira também posição e empilhamento dos overlays na tela.
 
 Nas páginas da família Catálogo/Salas/Amigos/Ligas/Notificações/Configurações, o padrão recorrente é cabeçalho com caminho pequeno em caixa alta, título Gabriela de destaque, subtítulo discreto e área principal com recuos. Catálogo, Salas, Notificações e Configurações usam títulos de 46px e recuos de 56px/42px, reduzidos perto de 760px para 36px e 20px/28px; confira as variantes em seus próprios arquivos. São referências dessa família, não medidas obrigatórias para a página inicial, o perfil ou a trilha.
 
-A trilha tem geometria, rolagem horizontal e ajustes voltados a desktop. As regras de viewport das listagens não comprovam adaptação móvel da trilha nem da sidebar fixa.
+A sidebar compartilhada é fixa/rolável no desktop e disclosure superior no fluxo até 760px, inicialmente recolhido. Conta usa disclosure de botões nativos, com Escape hierárquico; não é widget `menu`. A trilha mantém geometria, rolagem horizontal e ajustes voltados a desktop. A casca não comprova adaptação móvel integral da trilha.
 
 O dashboard segue a composição de `embertoni/Athen-Teste`, branch `sprint04`, commit [59bfd13](https://github.com/embertoni/Athen-Teste/commit/59bfd138bc79fb3ce6513e04a645de2fa64c4c1a): deslocamento de 230px pelo `PageLayout`, seletor fixo com `top-6` e recuo de 64px após esse deslocamento, botão do caderno de 84px com `bottom-6` e carrossel em três posições, com o módulo atual ao centro. `top-6` e `bottom-6` usam a escala em rem do Tailwind; com a raiz de 18px, correspondem a 27px. A `SidebarRight` mantém sua apresentação própria, com ranking e missões reais, como exceção explícita à referência. A indicação da sala ativa é acessível sem acrescentar uma linha visível ao cabeçalho.
+
+Essa geometria vale no desktop amplo/alto. Até1000px de largura **ou**600px de altura, controles/cartão/SidebarRight passam ao fluxo e documento rola, sem reserva inferior fixa nem condição por revisão. A trilha permanece horizontal delimitada; carrossel encolhe em qualquer contexto. Notebook conserva papel creme, mas limita retângulo à área visível com margem8, mantém editor único e oferece ajustes nativos sem gesto obrigatório. Seletor usa `Modal`; notebook é não modal abaixo dele, com confirmação superior. Detalhes de foco/limites e alcance: [incremento2](responsividade.md#incremento-2-implementado--notebook-e-dashboard).
 
 ## Superfícies, ações e campos
 
@@ -101,7 +103,7 @@ Fontes: [Dashboard.tsx](../codigo-base/src/pages/Dashboard.tsx)/[CSS](../codigo-
 
 O diálogo implementa foco inicial no controle de fechar, ciclo Tab/Shift+Tab dentro dos controles, Escape, fechamento pelo fundo/botão e devolução ao gatilho conectado (ou ação de curso como fallback de deep link). Clique interno não fecha. Controles ocupados ficam desabilitados, exceto saída/fechamento; erros usam `role="alert"` e feedback/resultado têm anúncio de estado. Esses mecanismos devem ser exercitados, não apenas inferidos do markup.
 
-O corpo do modal rola sem perder cabeçalho/rodapé. Até 560px, usa margens de 12px, altura limitada por `100dvh`, pares em coluna e ações que quebram linha. Até 760px, a navegação lateral do Dashboard passa ao fluxo superior com rolagem horizontal, liberando a largura da área principal. No desktop, o cartão ocupa o espaço lateral inferior, com largura responsiva, sem acrescentar faixa inferior ou deslocar a trilha/carrossel. No mobile, o conteúdo principal rola acima dele, mantendo o carrossel e suas setas acessíveis. CSS remove animações/transições do modal e efeitos da trilha/carrossel sob `prefers-reduced-motion`; a centralização da trilha também evita smooth scroll nesse modo.
+O corpo do modal rola sem perder cabeçalho/rodapé. Até 560px, usa margens de 12px, altura limitada por `100dvh`, pares em coluna e ações que quebram linha. Até 760px, a navegação lateral do Dashboard usa o disclosure superior compartilhado. No desktop amplo/alto, o cartão ocupa o espaço lateral inferior, com largura responsiva, sem acrescentar faixa inferior ou deslocar a trilha/carrossel. No modo compacto do incremento2, o cartão segue após trilha/carrossel no fluxo, com altura natural, inclusive vazio/erro. CSS remove animações/transições do modal e efeitos da trilha/carrossel sob `prefers-reduced-motion`; a centralização da trilha também evita smooth scroll nesse modo.
 
 **Evidência local em 2026-11-16:** capturas 390×844/1440×900 foram geradas e inspecionadas sem sobreposição aparente; os E2E exercitam foco inicial/contido/devolvido, Escape, botão/fundo, erro/recuperação, limites do modal e movimento reduzido. Ações do dashboard usam tokens gold/violet e hover gold-light. Há contraste aparente nas capturas, sem auditoria automatizada abrangente de contraste. Os resultados e limites das suítes completas estão em [Testes](testes.md#revisão-de-curso-issue-47).
 
