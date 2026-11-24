@@ -1,0 +1,8 @@
+@reference "../index.css";
+
+@media (max-width: 760px) {
+  .amigos-layout > .sidebarL { position: relative; width: 100%; height: auto; }
+  .amigos-layout > .sidebarL > nav { flex-direction: row; overflow-x: auto; white-space: nowrap; }
+  .amigos-layout > .sidebarL > nav > a { width: auto; flex-shrink: 0; }
+  .amigos-layout > main { padding-left: 0 !important; }
+}

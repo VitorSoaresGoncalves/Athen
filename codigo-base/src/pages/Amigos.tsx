@@ -4,6 +4,7 @@ import { PageLayout } from "../components/layout/PageLayout";
 import { amizadeRepository, medalhaRepository, medalhaUsuarioRepository, usuarioRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
+import "./Amigos.css";
 
 type Perfil = Database["public"]["Tables"]["profiles"]["Row"];
 type Amizade = Database["public"]["Tables"]["friendships"]["Row"];
@@ -394,12 +395,12 @@ export default function Amigos() {
   };
 
   return (
-    <PageLayout variant="bare">
+    <PageLayout variant="bare" className="amigos-layout">
       <div className="min-h-svh bg-[#140a2b] font-body text-[#f4eeff]">
         <main className="relative isolate min-h-svh">
           <div className="pointer-events-none fixed -right-[120px] -top-[200px] -z-10 h-[560px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(120,63,220,0.2),rgba(20,10,43,0)_68%)]" />
 
-          <div className="mx-auto max-w-[1320px] px-[56px] pb-[48px] pt-[42px]">
+          <div className="mx-auto max-w-[1320px] px-[20px] pb-[48px] pt-[28px] min-[760px]:px-[56px] min-[760px]:pt-[42px]">
             <header className="mb-[32px]">
             <p className="mb-[10px] text-[10px] font-bold uppercase tracking-[1.4px] text-[#c9b8e8]/50">PLATAFORMA / <span className="text-[#ffcc00]">AMIGOS</span></p>
             <h1 className="font-display text-[36px] leading-[1.05] tracking-[-0.8px] text-[#f4eeff] min-[760px]:text-[46px]">Amigos</h1>
