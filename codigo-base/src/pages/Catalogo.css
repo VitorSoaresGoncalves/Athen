@@ -8,7 +8,7 @@
 
 /* ---------- Base ---------- */
 .catalogo {
-  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  @apply flex min-h-svh w-full min-w-0 bg-canvas font-body text-ink;
   /* O :root do projeto define line-height: 150%; aqui usamos o padrão. */
   line-height: normal;
 }
@@ -192,17 +192,12 @@
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 760px) {
-  .catalogo-layout > .sidebarL { position: relative; width: 100%; height: auto; }
-  .catalogo-layout > .sidebarL > nav { flex-direction: row; overflow-x: auto; white-space: nowrap; }
-  .catalogo-layout > .sidebarL > nav > a { width: auto; flex-shrink: 0; }
-  .catalogo-layout > main { padding-left: 0 !important; }
   .catalogo__main { @apply px-[20px] pt-[28px]; }
   .catalogo__cabecalho { @apply flex-col items-start gap-[14px]; }
   .catalogo__titulo { @apply text-[36px]; }
   .catalogo__busca { @apply basis-full; }
   .catalogo__filtros { @apply flex-1; }
   .catalogo__botao-ferramenta { @apply h-[48px] flex-1 px-[12px]; }
-  .catalogo__seta { @apply hidden; }
   .catalogo__trilha-item { flex-basis: min(78vw, 280px); }
 }
 
@@ -571,3 +566,72 @@ button.catalogo__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255
 .catalogo__seta:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 .catalogo__seta--prev { @apply -left-[18px]; }
 .catalogo__seta--next { @apply -right-[18px]; }
+
+/* Contenção local da listagem e do detalhe, sem ocultar texto de servidor. */
+.catalogo__main { overflow-wrap: anywhere; }
+.catalogo__brilho { right: 0; max-width: 100%; }
+.catalogo__cabecalho > *,
+.catalogo__card,
+.catalogo__card-corpo,
+.catalogo__trilha-item,
+.catalogo__painel { min-width: 0; }
+.catalogo__busca { min-width: 0; }
+.catalogo__identidade { grid-template-columns: 78px minmax(0, 1fr) minmax(0, 1fr); }
+.catalogo__sobre { grid-template-columns: 190px minmax(0, 1fr); }
+.catalogo__meta > div { flex-wrap: wrap; }
+.catalogo__modulo-botao { grid-template-columns: 34px minmax(0, 1fr) 20px; }
+.catalogo__aula { grid-template-columns: 20px minmax(0, 1fr) auto; }
+.catalogo__painel-cabecalho,
+.catalogo__avaliacao-acoes,
+.catalogo__taxa-resumo { flex-wrap: wrap; gap: 8px; }
+.catalogo__main :is(button, a):focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+:is(.catalogo__botao-primario, .catalogo__botao-secundario, .catalogo__botao-terciario) {
+  height: auto;
+  min-height: 44px;
+  max-width: 100%;
+  padding-block: 10px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.catalogo__chip { max-width: 100%; overflow-wrap: anywhere; }
+.catalogo__filtros-painel {
+  left: auto;
+  right: 0;
+  max-height: calc(100vh - 180px);
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.catalogo__filtros-topo { flex-wrap: wrap; gap: 8px; }
+.catalogo__interruptor { flex-shrink: 0; }
+@media (max-width: 760px) {
+  .catalogo__identidade { grid-template-columns: 56px minmax(0, 1fr); }
+  .catalogo__sobre { grid-template-columns: minmax(0, 1fr); }
+  .catalogo__meta-chips { justify-content: flex-start; }
+  .catalogo__aulas { padding-left: 12px; }
+  .catalogo__aula { grid-template-columns: 20px minmax(0, 1fr); padding-block: 8px; }
+  .catalogo__aula small { grid-column: 2; }
+  /* Ações em faixa própria: sem cobrir cartões nem exceder as bordas. */
+  .catalogo__carrossel { padding-bottom: 56px; }
+  .catalogo__seta { display: grid; top: auto; bottom: 0; transform: none; }
+  .catalogo__seta:hover { transform: none; }
+  .catalogo__seta--prev { left: 0; }
+  .catalogo__seta--next { right: 0; }
+  .catalogo__trilha-item { flex-basis: min(78vw, 280px); }
+  .catalogo__filtros-painel {
+    position: fixed;
+    inset: 90px 20px auto;
+    width: auto;
+    max-height: calc(100vh - 110px);
+    max-height: calc(100dvh - 110px);
+  }
+}
+@media (max-height: 450px) {
+  .catalogo__filtros-painel {
+    position: fixed;
+    inset: 10px 20px auto;
+    width: auto;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+}

@@ -199,7 +199,7 @@ export default function Notificacoes() {
   return (
     <PageLayout variant="bare">
       <div className="notificacoes">
-        <main className="notificacoes__main">
+        <div className="notificacoes__main">
           <div className="notificacoes__brilho" />
 
           <header className="notificacoes__cabecalho">
@@ -272,7 +272,7 @@ export default function Notificacoes() {
               ))}
             </ul>
           )}
-        </main>
+        </div>
       </div>
     </PageLayout>
   );

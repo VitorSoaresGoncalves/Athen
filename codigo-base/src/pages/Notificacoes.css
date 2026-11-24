@@ -8,7 +8,7 @@
 
 /* ---------- Base ---------- */
 .notificacoes {
-  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  @apply flex min-h-svh w-full bg-canvas font-body text-ink;
   line-height: normal;
 }
 
@@ -25,7 +25,7 @@
 
 /* O deslocamento da SidebarLeft é responsabilidade do PageLayout. */
 .notificacoes__main {
-  @apply relative isolate min-h-svh min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+  @apply relative isolate min-h-svh min-w-0 flex-1 px-[56px] pt-[42px] pb-[48px];
 }
 
 .notificacoes__brilho {
@@ -48,7 +48,7 @@
 
 /* ---------- Botão secundário (marcar todas) ---------- */
 .notificacoes__botao-secundario {
-  @apply inline-flex h-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-line bg-surface px-[18px] text-[13px] font-bold text-violet-pale;
+  @apply inline-flex min-h-[44px] shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-line bg-surface px-[18px] py-[10px] text-[13px] font-bold text-violet-pale;
   transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 .notificacoes__botao-secundario:hover {
@@ -99,11 +99,11 @@
 
 /* Remoção é uma ação separada da navegação, sem botões aninhados. */
 .notificacoes__acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-.notificacoes__lista > li { position: relative; }
+.notificacoes__lista > li { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: start; gap: 8px; }
 .notificacoes__lista .notificacoes__item { width: 100%; min-width: 0; }
 .notificacoes__remover {
-  position: absolute; right: 12px; top: 38px;
-  width: 28px; height: 28px; padding: 0;
+  position: static; margin-top: 8px;
+  width: 44px; height: 44px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0; cursor: pointer;
   border: 1px solid transparent; border-radius: 50%;
@@ -118,3 +118,8 @@
 .notificacoes button:disabled { cursor: wait; opacity: .55; transform: none; }
 .notificacoes button:focus-visible { outline: 3px solid var(--color-gold); outline-offset: 3px; }
 .notificacoes__feedback { margin-top: 16px; color: var(--color-violet-pale); }
+.notificacoes :is(div, li, button) { min-width: 0; }
+.notificacoes :is(p, h1, strong, span, button) { overflow-wrap: anywhere; }
+.notificacoes button { max-width: 100%; }
+.notificacoes__cabecalho, .notificacoes__linha-topo { flex-wrap: wrap; }
+.notificacoes__quando { white-space: normal; }

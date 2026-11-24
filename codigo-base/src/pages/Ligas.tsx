@@ -139,7 +139,7 @@ export default function Ligas() {
     : eu?.entry_kind === "late" ? "Entrada durante a semana" : "Inscrição registrada nesta temporada";
 
   return <PageLayout variant="bare" className="ligas-layout">
-    <div className="ligas"><main className="ligas__main">
+    <div className="ligas"><div className="ligas__main">
       <div className="ligas__brilho" />
       <header className="ligas__cabecalho"><div>
         <p className="ligas__caminho">PLATAFORMA / <span>LIGAS</span></p>
@@ -228,6 +228,6 @@ export default function Ligas() {
             </section>}
           </>}
         </>}
-    </main></div>
+    </div></div>
   </PageLayout>;
 }

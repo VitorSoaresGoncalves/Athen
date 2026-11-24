@@ -9,7 +9,7 @@
 
 /* ---------- Base ---------- */
 .configuracoes {
-  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  @apply flex min-h-svh w-full bg-canvas font-body text-ink;
   line-height: normal;
 }
 
@@ -26,7 +26,7 @@
 
 /* O deslocamento da SidebarLeft é responsabilidade do PageLayout. */
 .configuracoes__main {
-  @apply relative isolate min-h-svh min-w-0 flex-1 overflow-y-auto px-[56px] pt-[42px] pb-[48px];
+  @apply relative isolate min-h-svh min-w-0 flex-1 px-[56px] pt-[42px] pb-[48px];
 }
 
 .configuracoes__brilho {
@@ -271,9 +271,17 @@
 }
 
 /* ---------- Responsivo ---------- */
+.configuracoes :is(div, form, section, label, input) { min-width: 0; }
+.configuracoes :is(p, h1, h2, h3, small, label, button) { overflow-wrap: anywhere; }
+.configuracoes button { max-width: 100%; }
+.configuracoes button:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.configuracoes-card__heading, .configuracoes-danger, .configuracoes-confirmation,
+.configuracoes-confirmation__actions, .configuracoes-notification { flex-wrap: wrap; }
+.configuracoes-notification > div { flex: 1 1 160px; }
 @media (max-width: 760px) {
   .configuracoes__main { @apply px-[20px] pt-[28px]; }
   .configuracoes__titulo { @apply text-[36px]; }
-  .configuracoes-fields { grid-template-columns: 1fr; }
+  .configuracoes-fields { grid-template-columns: minmax(0, 1fr); }
+  .configuracoes-card { padding: 16px; }
   .configuracoes-danger { flex-direction: column; align-items: flex-start; }
 }
