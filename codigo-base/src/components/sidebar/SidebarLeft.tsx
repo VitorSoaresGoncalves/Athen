@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { notificacaoRepository, usuarioRepository } from '../../data/repositories';
 import { supabase } from '../../lib/supabase';
+import './SidebarLeft.css';
 
 // Rotas usadas pela sidebar. Ajuste aqui se no seu router forem diferentes.
 const PROFILE_ROUTE = '/profile';
@@ -204,6 +205,16 @@ function MailIcon({ className = 'h-5 w-5' }: { className?: string }) {
 
 export function SidebarLeft() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [estreito, setEstreito] = useState(() => window.matchMedia('(max-width: 760px)').matches);
+    const [expandido, setExpandido] = useState(false);
+    const asideRef = useRef<HTMLElement>(null);
+    const grupoRef = useRef<HTMLDivElement>(null);
+    const toggleRef = useRef<HTMLButtonElement>(null);
+    const contaRef = useRef<HTMLButtonElement>(null);
+    const focoPendente = useRef<'toggle' | 'destino' | 'conta' | null>(null);
+    const grupoId = useId();
+    const contaId = useId();
     const userSrc = useUserProfile();
     const naoLidas = useUnreadNotifications();
     const perfil = userSrc.profile;
@@ -216,7 +227,49 @@ export function SidebarLeft() {
     const [menuAberto, setMenuAberto] = useState(false);
     const perfilRef = useRef<HTMLDivElement>(null);
 
-    // Fecha o menu ao clicar fora ou pressionar Esc.
+    function recolher() {
+        if (estreito && grupoRef.current?.contains(document.activeElement)) {
+            toggleRef.current?.focus();
+        }
+        setExpandido(false);
+        setMenuAberto(false);
+    }
+
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 760px)');
+        function mudar(event: MediaQueryListEvent) {
+            const foco = document.activeElement;
+            if (event.matches && grupoRef.current?.contains(foco)) focoPendente.current = 'toggle';
+            if (!event.matches && foco === toggleRef.current) focoPendente.current = 'destino';
+            if (!event.matches && foco !== contaRef.current && perfilRef.current?.contains(foco)) focoPendente.current = 'conta';
+            setEstreito(event.matches);
+            setExpandido(false);
+            setMenuAberto(false);
+        }
+        media.addEventListener('change', mudar);
+        return () => media.removeEventListener('change', mudar);
+    }, []);
+
+    useLayoutEffect(() => {
+        if (focoPendente.current === 'toggle') toggleRef.current?.focus();
+        if (focoPendente.current === 'conta') contaRef.current?.focus();
+        if (focoPendente.current === 'destino') {
+            const nav = asideRef.current?.querySelector('nav');
+            (nav?.querySelector<HTMLAnchorElement>('[aria-current="page"]') ?? nav?.querySelector('a'))?.focus();
+        }
+        focoPendente.current = null;
+    }, [estreito]);
+
+    // Router/back/forward também limpam o disclosure, sem remontar dados/main.
+    useEffect(() => {
+        if (estreito && grupoRef.current?.contains(document.activeElement)) toggleRef.current?.focus();
+        // Limpeza em resposta a uma entrada externa (localização do router).
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setExpandido(false);
+        setMenuAberto(false);
+    }, [location, estreito]);
+
+    // Clique fora não toma o foco do destino clicado. Escape é tratado no aside.
     useEffect(() => {
         if (!menuAberto) return;
 
@@ -225,30 +278,24 @@ export function SidebarLeft() {
             if (perfilRef.current?.contains(evento.target)) return;
             setMenuAberto(false);
         }
-        function aoTeclar(evento: KeyboardEvent) {
-            if (evento.key === "Escape") setMenuAberto(false);
-        }
-
         document.addEventListener("mousedown", aoClicarFora);
-        document.addEventListener("keydown", aoTeclar);
         return () => {
             document.removeEventListener("mousedown", aoClicarFora);
-            document.removeEventListener("keydown", aoTeclar);
         };
     }, [menuAberto]);
 
     function verPerfil() {
-        setMenuAberto(false);
+        recolher();
         navigate(PROFILE_ROUTE);
     }
 
     function abrirConfiguracoes() {
-        setMenuAberto(false);
+        recolher();
         navigate(CONFIG_ROUTE);
     }
 
     async function sairDaConta() {
-        setMenuAberto(false);
+        recolher();
         try {
             await supabase.auth.signOut();
         } catch (error) {
@@ -260,12 +307,23 @@ export function SidebarLeft() {
 
     return (
         // corpo inteiro da sidebar — fundo e bordas seguem os tokens da plataforma
-        <aside className="
+        <aside ref={asideRef}
+            data-mobile-expanded={estreito && expandido ? 'true' : 'false'}
+            onKeyDown={(event) => {
+                if (event.key !== 'Escape') return;
+                if (menuAberto && perfilRef.current?.contains(event.target as Node)) {
+                    event.stopPropagation();
+                    setMenuAberto(false);
+                    contaRef.current?.focus();
+                } else if (estreito && expandido) {
+                    event.stopPropagation();
+                    recolher();
+                    toggleRef.current?.focus();
+                }
+            }}
+            className="
             sidebarL
-            fixed
             z-10
-            w-57.5
-            h-screen
             shrink-0
             box-border
             flex
@@ -276,11 +334,13 @@ export function SidebarLeft() {
             font-body
             text-ink"
         >
+            <div className="sidebarL__scroll">
             {/* Cabeçalho: ícone do app + nome "athen" e, à direita, atalho de correio
                 (notificações) com bolha de não lidas. */}
-            <section className="flex items-center justify-between gap-2 border-b border-line px-4 py-5">
+            <section className="sidebarL__header flex items-center justify-between gap-2 border-b border-line px-4 py-5">
                 <Link
                     to={DASHBOARD_ROUTE}
+                    onClick={recolher}
                     className="flex min-w-0 items-center gap-3 no-underline transition-opacity hover:opacity-90"
                     aria-label="Ir para o Dashboard"
                 >
@@ -290,6 +350,7 @@ export function SidebarLeft() {
 
                 <NavLink
                     to={NOTIFICACOES_ROUTE}
+                    onClick={recolher}
                     className={({ isActive }) =>
                         `relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-line transition-colors ${isActive
                             ? 'bg-violet/40 text-ink'
@@ -308,10 +369,20 @@ export function SidebarLeft() {
                         </span>
                     )}
                 </NavLink>
+                {estreito && <button
+                    ref={toggleRef}
+                    type="button"
+                    className="sidebarL__toggle"
+                    aria-label={expandido ? 'Recolher navegação' : 'Abrir navegação'}
+                    aria-expanded={expandido}
+                    aria-controls={grupoId}
+                    onClick={() => expandido ? recolher() : setExpandido(true)}
+                ><span aria-hidden="true">{expandido ? '✕' : '☰'}</span></button>}
             </section>
 
+            <div id={grupoId} ref={grupoRef} className="sidebarL__group" hidden={estreito && !expandido}>
             {/* Navegação principal */}
-            <nav className="flex flex-col gap-1 px-4 pt-4 pb-4">
+            <nav aria-label="Navegação principal" className="flex flex-col gap-1 px-4 pt-4 pb-4">
                 {itens.map((item) => {
                     const baseItemClass =
                         "flex items-center gap-[12px] w-full px-[12px] py-[10px] border-0 rounded-[10px] text-left text-[16px] cursor-pointer transition-colors";
@@ -319,6 +390,7 @@ export function SidebarLeft() {
                     return item.to ? (
                         <NavLink
                             to={item.to}
+                            onClick={recolher}
                             key={item.text}
                             className={({ isActive }) =>
                                 `${baseItemClass} ${isActive
@@ -332,6 +404,7 @@ export function SidebarLeft() {
                     ) : (
                         <a
                             href="#"
+                            onClick={recolher}
                             key={item.text}
                             className={`${baseItemClass} bg-transparent text-muted hover:bg-surface hover:text-ink`}
                         >
@@ -343,48 +416,12 @@ export function SidebarLeft() {
 
             {/* Botão de perfil no rodapé: avatar, nome/usuário e streak na mesma
                 linha. Clicar abre um menu com "Ver perfil" e "Sair da conta". */}
-            <div ref={perfilRef} className="relative mx-3 mb-4 mt-auto">
-                {/* Menu popover acima do botão */}
-                {menuAberto && (
-                    <div
-                        role="menu"
-                        aria-label="Opções de conta"
-                        className="absolute bottom-[calc(100%+8px)] left-0 right-0 overflow-hidden rounded-[12px] border border-line bg-surface shadow-xl shadow-black/40"
-                    >
-                        <button
-                            type="button"
-                            role="menuitem"
-                            onClick={verPerfil}
-                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40"
-                        >
-                            <span aria-hidden="true">👤</span>
-                            Ver perfil
-                        </button>
-                        <button
-                            type="button"
-                            role="menuitem"
-                            onClick={abrirConfiguracoes}
-                            className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40"
-                        >
-                            <span aria-hidden="true">⚙️</span>
-                            Configuração
-                        </button>
-                        <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => void sairDaConta()}
-                            className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-[#e8909e] transition-colors hover:bg-[#c2455a]/20"
-                        >
-                            <span aria-hidden="true">↩</span>
-                            Sair da conta
-                        </button>
-                    </div>
-                )}
-
+            <div ref={perfilRef} className="sidebarL__profile relative mx-3 mb-4 mt-auto">
                 <button
+                    ref={contaRef}
                     type="button"
                     onClick={() => setMenuAberto((aberto) => !aberto)}
-                    aria-haspopup="menu"
+                    aria-controls={contaId}
                     aria-expanded={menuAberto}
                     aria-label="Abrir opções de conta"
                     className="flex w-full flex-col overflow-hidden rounded-[16px] border border-line bg-surface text-left outline-none transition-colors hover:border-violet-mid focus-visible:ring-2 focus-visible:ring-gold"
@@ -437,6 +474,28 @@ export function SidebarLeft() {
                         )}
                     </div>
                 </button>
+                <div
+                    id={contaId}
+                    role="group"
+                    aria-label="Opções de conta"
+                    hidden={!menuAberto}
+                    className="sidebarL__account overflow-hidden rounded-[12px] border border-line bg-surface shadow-xl shadow-black/40"
+                >
+                    <button type="button" onClick={verPerfil}
+                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40">
+                        <span aria-hidden="true">👤</span>Ver perfil
+                    </button>
+                    <button type="button" onClick={abrirConfiguracoes}
+                        className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40">
+                        <span aria-hidden="true">⚙️</span>Configuração
+                    </button>
+                    <button type="button" onClick={() => void sairDaConta()}
+                        className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-[#e8909e] transition-colors hover:bg-[#c2455a]/20">
+                        <span aria-hidden="true">↩</span>Sair da conta
+                    </button>
+                </div>
+            </div>
+            </div>
             </div>
         </aside>
     )

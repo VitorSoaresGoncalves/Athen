@@ -1,0 +1,49 @@
+.sidebarL {
+  position: fixed;
+  width: var(--sidebar-left-width);
+  height: 100vh;
+  height: 100dvh;
+  /* O gradiente externo do Dashboard pertence a este invólucro, sem recorte. */
+  overflow: visible;
+}
+.sidebarL__scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+.sidebarL__header { flex-shrink: 0; }
+.sidebarL__group { display: flex; flex: 1 0 auto; flex-direction: column; min-width: 0; }
+.sidebarL__group[hidden] { display: none; }
+.sidebarL__profile { display: flex; flex-direction: column; }
+.sidebarL__account { order: -1; margin-bottom: 8px; }
+.sidebarL :is(a, button):focus-visible { outline: 2px solid var(--color-gold); outline-offset: -2px; }
+.sidebarL__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+@media (max-width: 760px) {
+  .sidebarL { position: relative; width: 100%; height: auto; overflow: visible; border-right: 0; }
+  .sidebarL__scroll { flex: none; overflow: visible; }
+  .sidebarL__header { padding: 12px 16px; }
+  .sidebarL__group > nav {
+    flex-direction: row;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-violet-pale) var(--color-surface);
+  }
+  .sidebarL__group > nav > a { width: auto; flex-shrink: 0; }
+  .sidebarL__account { order: 0; margin-top: 8px; margin-bottom: 0; }
+}

@@ -83,6 +83,7 @@
 .salas__ferramentas { @apply mb-[26px] flex gap-[12px]; }
 
 .salas__busca {
+  min-width: 0;
   @apply flex h-[52px] flex-1 items-center gap-[13px] bg-[rgba(49,31,82,0.42)] px-[18px] text-violet-pale/50;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
@@ -541,6 +542,7 @@
 /* Painel "Adicionar sala": entrar com código e criar sala */
 .salas__painel-acoes { @apply mb-[26px] grid grid-cols-2 gap-[14px]; }
 .salas__form {
+  min-width: 0;
   @apply flex flex-col gap-[10px] p-[20px];
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
@@ -720,6 +722,82 @@ button.salas__aula--botao:hover { @apply text-[#f4eeff]; background: rgba(255, 2
 .salas__conclusao-linha { @apply mb-[6px] flex items-center justify-between text-[12px] text-[#f4eeff]; }
 
 @media (max-width: 760px) {
+  .salas__main { padding: 28px 20px 48px; }
+  .salas__cabecalho { align-items: flex-start; flex-direction: column; gap: 20px; }
+  .salas__cabecalho > div { min-width: 0; }
+  .salas__titulo { font-size: 36px; }
+  .salas__grade { grid-template-columns: minmax(0, 1fr); }
+  .salas__ferramentas { flex-direction: column; }
+  .salas__busca { flex: auto; min-height: 52px; }
+  .salas__filtro { min-height: 44px; }
+  .salas__main :is(.salas__botao-primario, .salas__botao-secundario) {
+    height: auto;
+    min-height: 44px;
+    max-width: 100%;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .salas__main :is(.salas__nome, .salas__slug) { white-space: normal; overflow-wrap: anywhere; }
+  .salas__main :is(p, h1, h2, label, .salas__banner-tag) { overflow-wrap: anywhere; }
+  .salas__banner-tag { max-width: calc(100% - 32px); }
+  .salas__vazio { height: auto; min-height: 492px; padding: 24px 16px; }
+  .salas__rodape-card { flex-wrap: wrap; gap: 8px; }
   .salas__abas { @apply flex-wrap; }
   .salas__cartoes { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Miolos dos detalhes e filtro; a listagem conserva o incremento anterior. */
+.salas__identidade { grid-template-columns: 78px minmax(0, 1fr) minmax(0, 1fr); }
+.salas__sobre { grid-template-columns: 190px minmax(0, 1fr); }
+.salas__meta > div { flex-wrap: wrap; }
+.salas__modulo-botao { grid-template-columns: 34px minmax(0, 1fr) 20px; }
+.salas__aula { grid-template-columns: 20px minmax(0, 1fr) auto; }
+.salas__painel,
+.salas__painel-aba,
+.salas__tabpanel,
+.salas__filtro-corpo { min-width: 0; overflow-wrap: anywhere; }
+.salas__painel-cabecalho,
+.salas__mural-cabecalho,
+.salas__aviso-topo,
+.salas__nota-resumo,
+.salas__filtros-alunos,
+.salas__conclusao-linha,
+.salas__filtro-rodape { flex-wrap: wrap; gap: 8px; }
+.salas__cartoes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.salas__codigo { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.salas__form-aviso :is(input, textarea) { width: 100%; max-width: 100%; }
+.salas__tabela-rolagem { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.salas__tabela { min-width: 580px; table-layout: fixed; }
+.salas__tabela :is(th, td) { overflow-wrap: anywhere; }
+.salas__tabela th:first-child { width: 28%; }
+.salas__ranking-completo { display: flex; flex-direction: column; gap: 8px; list-style: none; padding: 0; margin: 16px 0 0; font-size: 12px; }
+.salas__ranking-completo li { display: flex; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
+.salas__ranking-completo span { color: var(--color-violet-pale); }
+.modal__painel :is(.salas__botao-primario, .salas__botao-secundario, .salas__opcao) {
+  min-width: 0;
+  max-width: 100%;
+  height: auto;
+  min-height: 44px;
+  padding-block: 10px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.salas__tabela-rolagem:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .salas__identidade { grid-template-columns: 56px minmax(0, 1fr); gap: 10px; }
+  .salas__modal-icone { width: 56px; height: 56px; border-radius: 15px; font-size: 21px; }
+  .salas__meta { grid-column: 1 / -1; align-items: flex-start; }
+  .salas__sobre { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; }
+  .salas__colunas { grid-template-columns: minmax(0, 1fr); }
+  .salas__aulas { padding-left: 12px; }
+  .salas__aula { grid-template-columns: 20px minmax(0, 1fr); padding-block: 8px; }
+  .salas__aula small { grid-column: 2; }
+  .salas__cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .salas__painel-aba { padding: 12px; }
+  .salas__filtro-topo,
+  .salas__filtro-corpo,
+  .salas__filtro-rodape { padding: 16px; }
+}
+@media (max-height: 450px) {
+  .salas__filtro-corpo { overflow: visible; }
 }

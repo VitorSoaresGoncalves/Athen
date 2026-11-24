@@ -1,0 +1,14 @@
+.page-layout {
+  --sidebar-left-offset: var(--sidebar-left-width);
+  min-width: 0;
+}
+.page-layout__main {
+  min-width: 0;
+  padding-left: var(--sidebar-left-offset);
+}
+.page-layout--no-offset > .page-layout__main { padding-left: 0; }
+.page-layout__container { min-width: 0; }
+
+@media (max-width: 760px) {
+  .page-layout { --sidebar-left-offset: 0px; }
+}
