@@ -19,9 +19,13 @@
 .course-review-card__action:hover:not(:disabled) { background: var(--color-gold-light); }
 .course-review-card button:disabled { opacity: .55; cursor: not-allowed; }
 .course-review-card button:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; }
-@media (min-width: 761px) and (max-width: 1199px) {
+@media (max-width: 1199px) {
   .course-review-card { width: 170px; }
 }
-@media (max-width: 760px) {
-  .course-review-card { right: 12px; bottom: 12px; width: min(340px, calc(100vw - 24px)); max-width: none; }
+@media (max-width: 1000px), (max-height: 600px) {
+  .course-review-card {
+    position: static; width: auto; max-width: none; max-height: none;
+    margin: 12px 16px 20px; overflow: visible;
+  }
+  .course-review-card__body { overflow: visible; }
 }

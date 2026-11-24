@@ -5,6 +5,7 @@ import { LessonModal } from "../components/lesson/LessonModal";
 import { CursoNotebook } from "../components/notebook/CursoNotebook";
 import { PageLayout } from "../components/layout/PageLayout";
 import { SidebarRight } from "../components/sidebar/SidebarRight";
+import { Modal, ModalFechar } from "../components/modal/Modal";
 import { aulaRepository, concluiRepository, cursoRepository, matriculaRepository, moduloRepository, participaRepository, salaRepository, tentativaRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
@@ -62,29 +63,26 @@ function createTheme(module: Pick<Modulo, "color">, index: number): ModuleTheme 
   };
 }
 
-function getDesktopTrailStep() {
-  if (typeof window === "undefined") return 150;
-  if (window.innerWidth >= 1920) return 180;
-  if (window.innerWidth >= 1440) return 165;
-  if (window.innerWidth >= 1280) return 155;
+function getDesktopTrailStep(width: number) {
+  if (width >= 1920) return 180;
+  if (width >= 1440) return 165;
+  if (width >= 1280) return 155;
   return 150;
 }
 
-function getTrailNodeOffset(type: TrailItem["type"]) {
-  if (typeof window === "undefined") return type === "module" ? 40 : 32;
-  if (window.innerWidth >= 1920) return type === "module" ? 50 : 38;
-  if (window.innerWidth >= 1440) return type === "module" ? 44 : 35;
+function getTrailNodeOffset(type: TrailItem["type"], width: number) {
+  if (width >= 1920) return type === "module" ? 50 : 38;
+  if (width >= 1440) return type === "module" ? 44 : 35;
   return type === "module" ? 40 : 32;
 }
 
-function getTrailViewportWidth() {
-  if (typeof window === "undefined") return 960;
-  return Math.max(640, window.innerWidth - 320);
+function getTrailViewportWidth(width: number) {
+  return Math.max(640, width - 320);
 }
 
-function getPosition(index: number) {
-  const step = getDesktopTrailStep();
-  const viewportWidth = getTrailViewportWidth();
+function getPosition(index: number, width: number) {
+  const step = getDesktopTrailStep(width);
+  const viewportWidth = getTrailViewportWidth(width);
 
   return {
     // Metade do espaço útil antes do primeiro nó permite centralizá-lo também.
@@ -196,6 +194,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
     || (sessaoUrl !== undefined && !uuidValido(sessaoUrl)));
 
   const [lousaAberta, setLousaAberta] = useState(false);
+  const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+  const compact = viewport.width <= 1000 || viewport.height <= 600;
   const [courses, setCourses] = useState<Curso[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(cursoUrl);
   const [course, setCourse] = useState<Curso | null>(null);
@@ -387,17 +387,14 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return () => { cancelled = true; };
   }, [courses, selectedCourseId, activeSalaId]);
 
-  // Fecha o seletor de cursos/salas com Esc.
   useEffect(() => {
-    if (!coursePickerOpen) return;
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setCoursePickerOpen(false);
+    function resize() {
+      dragState.current.dragging = false;
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
     }
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [coursePickerOpen]);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
 
   // Junta módulos e aulas numa sequência única para o SVG e os nós.
   const trail = useMemo<TrailItem[]>(() => dashboardModules.flatMap((module) => [
@@ -420,9 +417,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return locked;
   }, [trail, completedLessonIds]);
 
-  const positions = useMemo(() => trail.map((_, index) => getPosition(index)), [trail]);
-  const trailStep = getDesktopTrailStep();
-  const trailViewportWidth = getTrailViewportWidth();
+  const positions = useMemo(() => trail.map((_, index) => getPosition(index, viewport.width)), [trail, viewport.width]);
+  const trailStep = getDesktopTrailStep(viewport.width);
+  const trailViewportWidth = getTrailViewportWidth(viewport.width);
   const trailWidth = trailViewportWidth + Math.max(0, trail.length - 1) * trailStep;
   const activeItem = trail[activeIndex];
   const activeModule = activeItem?.module ?? dashboardModules[0];
@@ -477,18 +474,20 @@ export default function Dashboard({ courseId }: DashboardProps) {
     if (!element) return;
 
     function handleWheel(event: WheelEvent) {
-      if (!element) return;
+      if (!element || event.ctrlKey || compact) return;
       // Gestos horizontais nativos (trackpad) seguem o comportamento do navegador.
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       if (element.scrollWidth - element.clientWidth <= 0) return;
+      const target = Math.max(0, Math.min(element.scrollLeft + event.deltaY, element.scrollWidth - element.clientWidth));
+      if (Math.abs(target - element.scrollLeft) < 1) return;
       event.preventDefault();
-      element.scrollLeft += event.deltaY;
+      element.scrollLeft = target;
     }
 
     element.addEventListener("wheel", handleWheel, { passive: false });
     return () => element.removeEventListener("wheel", handleWheel);
     // Reanexa quando a trilha (re)monta: durante o carregamento o <section> não existe.
-  }, [loading, errorMessage, course, activeModule, trail.length]);
+  }, [loading, errorMessage, course, activeModule, trail.length, compact]);
 
   // Centraliza o nó ativo após a troca de aula ou módulo.
   useEffect(() => {
@@ -502,7 +501,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
     const maxScroll = element.scrollWidth - element.clientWidth;
     element.scrollTo({ left: Math.max(0, Math.min(targetScroll, maxScroll)),
       behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }, [activeIndex, trail.length]);
+  }, [activeIndex, trail.length, viewport]);
 
   function handlePointerDown(clientX: number) {
     const element = trailRef.current;
@@ -651,7 +650,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const courseTrigger = (
     <button
       type="button"
-      className="dashboard-course-trigger fixed left-[calc(var(--sidebar-left-width,230px)+64px)] top-6 z-20 inline-flex items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
+      className="dashboard-course-trigger fixed left-[calc(var(--sidebar-left-offset)+64px)] top-6 z-20 inline-flex items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
       onClick={() => setCoursePickerOpen(true)}
       aria-haspopup="dialog"
       aria-expanded={coursePickerOpen}
@@ -662,19 +661,8 @@ export default function Dashboard({ courseId }: DashboardProps) {
   );
 
   const coursePickerModal = coursePickerOpen && (
-    <div
-      className="fixed inset-0 z-30 flex items-start justify-center bg-[#090512]/70 px-5 pt-[18vh] backdrop-blur-sm"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) setCoursePickerOpen(false);
-      }}
-    >
-      <section
-        className="w-full max-w-2xl rounded-2xl border border-[rgba(193,150,255,0.38)] bg-surface p-5 text-ink shadow-2xl shadow-black/50"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Selecionar curso ou sala"
-      >
+    <Modal className="dashboard-picker" ariaLabel="Selecionar curso ou sala" onFechar={() => setCoursePickerOpen(false)}>
+        <ModalFechar variante="cabecalho" rotulo="Fechar seletor de cursos e salas" onFechar={() => setCoursePickerOpen(false)}>×</ModalFechar>
         <div className="mb-4 grid grid-cols-2 gap-2 border-b border-white/10 pb-4">
           <button
             type="button"
@@ -697,7 +685,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
         </div>
 
             {/* Linhas com a altura do card (156px): com auto-rows-fr e max-h as linhas encolhiam e os cards se sobrepunham. */}
-            <div className="grid max-h-[min(60vh,420px)] grid-cols-3 auto-rows-[156px] gap-3 overflow-y-auto px-1 pb-1 pt-4">
+            <div className="dashboard-picker__list">
           {pickerTab === "courses" ? (
             pickerCourses.length === 0 ? (
               <p className="col-span-3 px-2 py-6 text-center text-sm text-[#cfc2e8]">
@@ -762,7 +750,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   <span className="mt-3 min-w-0">
                     <span className="block truncate text-sm font-bold text-[#f4eeff] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">{sala.name}</span>
                     <span className="mt-1 block truncate text-[11px] text-[#e2d8f2] drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                      <strong className="text-[#f4eeff]">{sala.access_code}</strong>{salaCurso ? ` · ${salaCurso.title}` : ""}
+                       <strong className="text-[#f4eeff]">{sala.access_code}</strong>{salaCurso ? ` · ${salaCurso.title}` : " · Esta sala não tem um curso disponível para você."}
                     </span>
                   </span>
                 </button>
@@ -770,26 +758,26 @@ export default function Dashboard({ courseId }: DashboardProps) {
             })
           )}
         </div>
-      </section>
-    </div>
+    </Modal>
   );
 
   return (
     <PageLayout
       variant="bare"
       className="tela"
-      offset={false}
-      mainClassName={`dashboard-main${showReviewCard ? " dashboard-main--review-card" : ""}`}
-      overlay={
+      mainClassName="dashboard-main"
+    >
+      <div className="dashboard-controls">
+        {courseTrigger}
+        {course && <CursoNotebook course={course} />}
         <SidebarRight
           aberta={lousaAberta}
           onFechar={() => setLousaAberta((aberta) => !aberta)}
           cor={activeTheme.primary}
           cursoId={course?.id}
         />
-      }
-    >
-      {reviewCard}
+      </div>
+      {coursePickerModal}
       {linkRevisaoInvalido && (
         <div className="dashboard-review-error" role="alert">
           Link de revisão inválido: confira o curso individual, a ocorrência e o pedido ou sessão.
@@ -800,8 +788,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
         <div className="dashboard dashboard--state min-w-0">Carregando sua trilha...</div>
       ) : errorMessage || !course || !activeModule ? (
         <div className="dashboard dashboard--state relative min-w-0 flex-col gap-4">
-          {(courses.length > 0 || salas.length > 0) && courseTrigger}
-          {coursePickerModal}
           <p>{errorMessage || (course ? "Este curso ainda não tem módulos. Selecione outro curso." : "Escolha um curso ou uma sala no menu ≡.")}</p>
           <Link className="dashboard__link text-sm text-[var(--amarelo-tangerina)] underline" to="/catalogo">Ver todos os cursos</Link>
         </div>
@@ -809,15 +795,11 @@ export default function Dashboard({ courseId }: DashboardProps) {
         <div className="dashboard" style={{ background: activeTheme.background, color: "#f4eeff" }}>
 
           <header className="dashboard-header relative flex flex-none flex-col items-center px-6 pb-[14px] pt-[26px] text-center">
-            {courseTrigger}
             <h1 className="dashboard-header__title m-[7px_0_0] text-[clamp(26px,4vw,38px)] font-normal tracking-[0.02em] text-[#f4eeff]">{activeItem?.type === "lesson" ? activeItem.aula.title : activeModule.title}</h1>
             {activeSala && <span className="sr-only">Sala: {activeSala.name}</span>}
 
-            {/* Botão do notebook do curso. */}
-            <CursoNotebook course={course} />
           </header>
 
-          {coursePickerModal}
 
           <section
             ref={trailRef}
@@ -882,7 +864,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                     key={item.type === "module" ? item.module.id : item.aula.id}
                     className={`trail-node trail-node--${item.type} ${isActive ? "trail-node--active" : ""} ${locked ? "trail-node--locked" : ""}`}
                     data-trail-index={index}
-                    style={{ left: position.x - getTrailNodeOffset(item.type), top: position.y - getTrailNodeOffset(item.type) }}
+                    style={{ left: position.x - getTrailNodeOffset(item.type, viewport.width), top: position.y - getTrailNodeOffset(item.type, viewport.width) }}
                     onClick={() => handleTrailItemClick(index, item)}
                     aria-label={item.type === "module" ? `Módulo ${item.module.title}` : `Aula ${item.aula.title}${locked ? " (bloqueada)" : completed ? " (concluída)" : ""}`}
                   >
@@ -944,6 +926,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
         </div>
       )}
 
+      {reviewCard}
       {course && openLesson && !temRevisao && (
         <LessonModal
           key={openLesson.aula.id}

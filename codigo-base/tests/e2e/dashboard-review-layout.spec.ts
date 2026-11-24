@@ -11,7 +11,7 @@ async function carouselControls(page: Page) {
 }
 
 for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 900 }, { width: 1440, height: 900 }, { width: 1440, height: 768 }]) {
-  test(`cartão preserva altura e posição da trilha em ${viewport.width}×${viewport.height}`, async ({ page, platform }) => {
+  test(`regressão desktop preserva altura e posição da trilha em ${viewport.width}×${viewport.height}`, async ({ page, platform }, testInfo) => {
     await page.setViewportSize(viewport)
     platform.tables.enrollments.push({ id: 'layout-enrollment', user_id: ids.user, course_id: ids.course, status: 'active', progress: 100 })
     await page.goto(`/dashboard?curso=${ids.course}`)
@@ -32,7 +32,7 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 900
     const cardBox = await card.boundingBox()
     const notebook = await page.locator('[data-toggle-notebook]').boundingBox()
     const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight)
-    await page.screenshot({ path: `../.scratch/issue-47-evidence/rev4-layout-${viewport.width}-${viewport.height}.png`, animations: 'disabled' })
+    await page.screenshot({ path: testInfo.outputPath(`desktop-review-layout-${viewport.width}-${viewport.height}.png`), animations: 'disabled' })
     expect.soft(pageHeight, 'O cartão não pode criar rolagem vertical no desktop').toBeLessThanOrEqual(viewport.height)
     expect.soft(trail!.y).toBeCloseTo(referenceTrail!.y, 0)
     expect.soft(trail!.height).toBeCloseTo(referenceTrail!.height, 0)
@@ -46,7 +46,7 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1280, height: 900
 }
 
 for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
-  test(`histórico longo mantém cartão e navegação separados em ${viewport.width}px`, async ({ page, platform }) => {
+  test(`histórico longo permanece alcançável sem sobreposição em ${viewport.width}px`, async ({ page, platform }, testInfo) => {
     await page.setViewportSize(viewport)
     platform.tables.enrollments.push({ id: 'history-layout', user_id: ids.user, course_id: ids.course, status: 'active', progress: 100 })
     platform.tables.course_review_sessions.push({
@@ -60,9 +60,17 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 
     await page.getByLabel('Navegação entre módulos').scrollIntoViewIfNeeded()
     const carousel = await carouselControls(page)
     const cardBox = await card.boundingBox()
-    expect(carousel!.x + carousel!.width <= cardBox!.x || carousel!.y + carousel!.height <= cardBox!.y).toBe(true)
+    const compact = viewport.width <= 1000 || viewport.height <= 600
+    if (compact) {
+      expect(await card.evaluate(element => getComputedStyle(element).position)).not.toBe('fixed')
+      expect(cardBox!.y).toBeGreaterThanOrEqual(carousel!.y + carousel!.height - 1)
+    } else {
+      expect(carousel!.x + carousel!.width <= cardBox!.x || carousel!.y + carousel!.height <= cardBox!.y).toBe(true)
+      expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height)
+    }
+    await card.scrollIntoViewIfNeeded()
     await expect(card.getByRole('button', { name: 'Revisar curso', exact: true })).toBeInViewport()
-    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height)
-    await page.screenshot({ path: `../.scratch/issue-47-evidence/rev4-layout-history-${viewport.width}.png`, animations: 'disabled' })
+    if (compact) expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeGreaterThan(viewport.height)
+    await page.screenshot({ path: testInfo.outputPath(`review-history-flow-${viewport.width}-${viewport.height}.png`), animations: 'disabled' })
   })
 }

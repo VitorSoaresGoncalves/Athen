@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { anotacoesRepository, notebookRepository } from "../../data/repositories";
 import { ConfirmDialog } from "../dialogbox/ConfirmDialog";
 import { supabase } from "../../lib/supabase";
 import type { Database } from "../../types/database";
+import { clampNotebookRect, type NotebookRect } from "./notebook-geometry";
+import "./CursoNotebook.css";
 
 type Curso = Database["public"]["Tables"]["courses"]["Row"];
 type Notebook = Database["public"]["Tables"]["notebooks"]["Row"];
@@ -40,19 +42,21 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   const [annotation, setAnnotation] = useState<Anotacao | null>(null);
   const [pageTitle, setPageTitle] = useState("");
   const [savedPageTitle, setSavedPageTitle] = useState("");
-  const [editingPageTitle, setEditingPageTitle] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [savedNoteText, setSavedNoteText] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [size, setSize] = useState({ width: 440, height: 420 });
-
-  // Dropdown de seleção de notebook (lista no estilo do projeto, não a nativa).
-  const [dropdownAberto, setDropdownAberto] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<NotebookRect>({ x: 0, y: 0, width: 440, height: 420 });
+  const rectRef = useRef(rect);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const pointerCapture = useRef<{ target: HTMLElement; id: number } | null>(null);
+  const [geometryError, setGeometryError] = useState("");
+  const [adjustments, setAdjustments] = useState(false);
+  const [geometryInput, setGeometryInput] = useState({ x: "", y: "", width: "", height: "" });
 
   // Confirmação pendente (substitui o window.confirm). `tone: "danger"` deixa o
   // botão de confirmar vermelho (usado nos apagar). `tertiaryLabel`/
@@ -127,13 +131,11 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
 
   useEffect(() => {
     if (!open) return;
+    const trigger = triggerRef.current;
 
     function handlePointerMove(event: PointerEvent) {
       if (dragRef.current.active) {
-        setPosition({
-          x: Math.max(8, event.clientX - dragRef.current.offsetX),
-          y: Math.max(8, event.clientY - dragRef.current.offsetY),
-        });
+        applyRect({ ...rectRef.current, x: event.clientX - dragRef.current.offsetX, y: event.clientY - dragRef.current.offsetY });
       }
 
       if (resizeRef.current.active) {
@@ -143,91 +145,102 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         const resizingWest = direction.includes("w");
         const resizingNorth = direction.includes("n");
 
-        setSize({
-          width: Math.max(240, startWidth + (resizingWest ? -deltaX : direction.includes("e") ? deltaX : 0)),
-          height: Math.max(200, startHeight + (resizingNorth ? -deltaY : direction.includes("s") ? deltaY : 0)),
+        applyRect({
+          width: startWidth + (resizingWest ? -deltaX : direction.includes("e") ? deltaX : 0),
+          height: startHeight + (resizingNorth ? -deltaY : direction.includes("s") ? deltaY : 0),
+          x: resizingWest ? startLeft + deltaX : startLeft,
+          y: resizingNorth ? startTop + deltaY : startTop,
         });
-
-        if (resizingWest || resizingNorth) {
-          setPosition({
-            x: resizingWest ? Math.max(8, startLeft + deltaX) : startLeft,
-            y: resizingNorth ? Math.max(8, startTop + deltaY) : startTop,
-          });
-        }
       }
     }
 
     function handlePointerUp() {
       dragRef.current.active = false;
       resizeRef.current.active = false;
+      const capture = pointerCapture.current;
+      if (capture?.target.hasPointerCapture?.(capture.id)) capture.target.releasePointerCapture(capture.id);
+      pointerCapture.current = null;
+    }
+    function recoverViewport() {
+      handlePointerUp();
+      applyRect(rectRef.current);
     }
 
     window.addEventListener("pointermove", handlePointerMove);
     window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    window.addEventListener("resize", recoverViewport);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", recoverViewport);
+    viewport?.addEventListener("scroll", recoverViewport);
+    closeRef.current?.focus();
     return () => {
+      handlePointerUp();
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      window.removeEventListener("resize", recoverViewport);
+      viewport?.removeEventListener("resize", recoverViewport);
+      viewport?.removeEventListener("scroll", recoverViewport);
+      if (trigger?.isConnected) trigger.focus();
     };
   }, [open]);
 
-  // Fecha o dropdown de notebooks ao clicar fora ou apertar Esc.
-  useEffect(() => {
-    if (!dropdownAberto) return;
-
-    function aoClicarFora(event: MouseEvent) {
-      if (!dropdownRef.current?.contains(event.target as Node)) setDropdownAberto(false);
+  useLayoutEffect(() => {
+    const focused = document.activeElement;
+    if (open && focused instanceof HTMLElement && panelRef.current?.contains(focused)) {
+      focused.scrollIntoView?.({ block: "nearest", inline: "nearest" });
     }
-    function aoTeclar(event: KeyboardEvent) {
-      if (event.key === "Escape") setDropdownAberto(false);
-    }
+  }, [rect, open]);
 
-    document.addEventListener("mousedown", aoClicarFora);
-    document.addEventListener("keydown", aoTeclar);
-    return () => {
-      document.removeEventListener("mousedown", aoClicarFora);
-      document.removeEventListener("keydown", aoTeclar);
-    };
-  }, [dropdownAberto]);
+  function applyRect(desired: NotebookRect) {
+    const next = clampNotebookRect(desired, notebookViewport());
+    rectRef.current = next;
+    setRect(next);
+  }
+
+  function centerRect(width: number, height: number) {
+    const area = notebookViewport();
+    const limited = clampNotebookRect({ x: area.left, y: area.top, width, height }, area);
+    applyRect({ ...limited, x: area.left + (area.width - limited.width) / 2, y: area.top + (area.height - limited.height) / 2 });
+  }
 
   function openNotebook() {
-    setPosition({
-      x: Math.max(16, Math.round((window.innerWidth - size.width) / 2)),
-      y: Math.max(80, Math.round((window.innerHeight - size.height) / 2)),
-    });
+    centerRect(rectRef.current.width, rectRef.current.height);
     setOpen(true);
   }
 
   function startDragging(event: React.PointerEvent<HTMLElement>) {
     const clickedElement = event.target as HTMLElement;
-    if (clickedElement.closest("button, input")) return;
+    if (clickedElement.closest("button, input, select, summary")) return;
 
-    const target = event.currentTarget.getBoundingClientRect();
     dragRef.current = {
       active: true,
-      offsetX: event.clientX - target.left,
-      offsetY: event.clientY - target.top,
+      offsetX: event.clientX - rectRef.current.x,
+      offsetY: event.clientY - rectRef.current.y,
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    pointerCapture.current = { target: event.currentTarget, id: event.pointerId };
   }
 
-  function startResizing(event: React.PointerEvent<HTMLButtonElement>, direction: ResizeDirection) {
+  function startResizing(event: React.PointerEvent<HTMLSpanElement>, direction: ResizeDirection) {
     event.stopPropagation();
     resizeRef.current = {
       active: true,
       direction,
       startX: event.clientX,
       startY: event.clientY,
-      startLeft: position.x,
-      startTop: position.y,
-      startWidth: size.width,
-      startHeight: size.height,
+      startLeft: rect.x,
+      startTop: rect.y,
+      startWidth: rect.width,
+      startHeight: rect.height,
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    pointerCapture.current = { target: event.currentTarget, id: event.pointerId };
   }
 
   function setPageState(nextPage: Anotacao | null) {
     setAnnotation(nextPage);
-    setEditingPageTitle(false);
     const nextTitle = nextPage?.title || "";
     const nextText = nextPage?.content ?? "";
     setPageTitle(nextTitle);
@@ -254,29 +267,14 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
     setPageState(nextPage);
   }
 
-  function handlePageTabClick(page: Anotacao) {
-    if (page.id === annotation?.id && editingPageTitle) {
-      setEditingPageTitle(false);
-      return;
-    }
-
-    selectPage(page);
-  }
-
-  function handlePageTabDoubleClick(page: Anotacao) {
-    if (page.id === annotation?.id && !minimumNotebook) {
-      setEditingPageTitle(true);
-    }
-  }
-
   // Carrega as páginas do caderno escolhido e passa a exibi-lo. É a ação crua,
   // sem checar alterações não salvas (quem chama resolve isso antes).
   async function abrirNotebookSelecionado(alvo: Notebook) {
-    setNotebook(alvo);
     setSaving(true);
     setError("");
     try {
       const loadedPages = sortPages(await anotacoesRepository.listarPorNotebook(alvo.id));
+      setNotebook(alvo);
       setPages(loadedPages);
       setPageState(loadedPages[0] ?? null);
     } catch (loadError) {
@@ -289,7 +287,6 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   // Troca o caderno exibido no painel. Protege anotação não salva com o mesmo
   // fluxo de três opções (salvar / descartar / cancelar).
   function trocarNotebook(id: string) {
-    setDropdownAberto(false);
     if (id === notebook?.id) return;
     const alvo = notebooks.find((item) => item.id === id);
     if (!alvo) return;
@@ -300,8 +297,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         message: "Você tem alterações não salvas. Salve ou descarte antes de trocar de notebook.",
         confirmLabel: "Salvar",
         acao: async () => {
-          await saveNotebook();
-          await abrirNotebookSelecionado(alvo);
+          if (await saveNotebook()) await abrirNotebookSelecionado(alvo);
         },
         tertiaryLabel: "Descartar",
         acaoTerciaria: () => void abrirNotebookSelecionado(alvo),
@@ -353,7 +349,6 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       const nextPages = sortPages([...currentPages, createdPage]);
       setPages(nextPages);
       setPageState(createdPage);
-      if (!minimumNotebook) setEditingPageTitle(true);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Não foi possível criar a página.");
     } finally {
@@ -371,7 +366,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         confirmLabel: "Salvar",
         acao: async () => {
           const paginasPosSave = await saveNotebook();
-          await createPage(notebook?.id, paginasPosSave);
+          if (paginasPosSave) await createPage(notebook?.id, paginasPosSave);
         },
         tertiaryLabel: "Descartar",
         acaoTerciaria: () => void createPage(),
@@ -385,7 +380,7 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   // Salva a página atual (o título do notebook é o do curso e não é editado aqui).
   // Retorna a lista de páginas já com o save aplicado, para quem encadeia uma
   // ação logo depois (ex.: "Salvar e criar") não depender do closure.
-  async function saveNotebook(): Promise<Anotacao[]> {
+  async function saveNotebook(): Promise<Anotacao[] | null> {
     if (!notebook || !annotation) return pages;
 
     setSaving(true);
@@ -398,13 +393,12 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       setAnnotation(updatedPage);
       setPageTitle(title);
       setSavedPageTitle(title);
-      setEditingPageTitle(false);
       setNoteText(updatedPage.content ?? "");
       setSavedNoteText(updatedPage.content ?? "");
       return paginasPosSave;
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar o notebook.");
-      return pages;
+      return null;
     } finally {
       setSaving(false);
     }
@@ -487,8 +481,6 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   }
 
   const actionLabel = loading ? "Carregando notebook" : notebook ? "Abrir notebook" : "Criar notebook";
-  const compactNotebook = size.width <= 360 || size.height <= 320;
-  const minimumNotebook = size.width <= 280 || size.height <= 240;
 
   // Lista do dropdown: o caderno atual no topo, os demais em ordem alfabética
   const notebooksNaLista = notebook
@@ -498,9 +490,10 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         data-toggle-notebook="true"
-        className="fixed bottom-6 left-[calc(var(--sidebar-left-width,230px)+64px)] z-20 inline-flex h-[84px] w-[84px] items-center justify-center rounded-[18px] border-2 border-[#8d6cb5]/60 bg-[#182335] text-4xl leading-none text-[#f4eeff] shadow-lg shadow-black/25 transition-transform transition-colors hover:scale-105 hover:border-[#c19cff] hover:bg-[#24314a] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 disabled:cursor-wait disabled:opacity-60"
+        className="course-notebook-trigger fixed bottom-6 left-[calc(var(--sidebar-left-offset)+64px)] z-20 inline-flex h-[84px] w-[84px] items-center justify-center rounded-[18px] border-2 border-[#8d6cb5]/60 bg-[#182335] text-4xl leading-none text-[#f4eeff] shadow-lg shadow-black/25 transition-transform transition-colors hover:scale-105 hover:border-[#c19cff] hover:bg-[#24314a] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 disabled:cursor-wait disabled:opacity-60"
         onClick={notebook ? openNotebook : createNotebook}
         disabled={loading || saving}
         aria-label={actionLabel}
@@ -508,70 +501,64 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
         <span aria-hidden="true">{notebook ? "📖" : "+"}</span>
       </button>
 
-      {error && !open && <p className="absolute right-[108px] top-[76px] z-10 max-w-[280px] rounded-lg bg-[#3a1522] px-3 py-2 text-xs text-red-100">{error}</p>}
+      {error && !open && <p role="alert" className="course-notebook-error">{error}</p>}
 
       {open && notebook && (
         <section
+          ref={panelRef}
           role="dialog"
           aria-modal="false"
           aria-labelledby="course-notebook-title"
-          className="fixed z-40 flex min-w-[240px] flex-col overflow-hidden rounded-[10px] border border-[#d1a85c]/70 bg-[#f7e7b5] text-[#302719] shadow-[8px_12px_30px_rgba(0,0,0,0.4)]"
-          style={{ left: position.x, top: position.y, width: size.width, height: size.height }}
+          className="course-notebook"
+          style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape" || event.defaultPrevented || confirmacao || document.querySelector('[aria-modal="true"]')) return;
+            event.stopPropagation();
+            closeNotebook();
+          }}
         >
           <header
-            className={`flex cursor-grab touch-none items-center border-b border-[#c29b55]/70 bg-[#edcf82] active:cursor-grabbing ${minimumNotebook ? "gap-1 px-1.5 py-1" : compactNotebook ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2"}`}
+            className="course-notebook__header"
             onPointerDown={startDragging}
           >
-            <div ref={dropdownRef} id="course-notebook-title" className="relative min-w-0 flex-1">
-              <button
-                type="button"
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => setDropdownAberto((aberto) => !aberto)}
-                disabled={saving}
-                aria-haspopup="listbox"
-                aria-expanded={dropdownAberto}
-                title="Trocar de notebook"
-                className={`flex w-full items-center gap-1.5 rounded font-bold text-[#302719] outline-none hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-[#9a7432] disabled:cursor-default ${minimumNotebook ? "px-1 py-0.5 text-xs" : compactNotebook ? "px-1.5 py-0.5 text-sm" : "px-2 py-1 text-base"}`}
-              >
-                <span className="min-w-0 flex-1 truncate text-left">{notebook?.title || "Sem título"}</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0 opacity-70"><path d="m6 9 6 6 6-6" /></svg>
-              </button>
-
-              {dropdownAberto && (
-                <ul
-                  role="listbox"
-                  className="absolute left-0 top-full z-50 mt-1 max-h-[200px] w-[220px] max-w-[80vw] overflow-y-auto rounded-lg border border-[#c29b55]/70 bg-[#f7e7b5] py-1 shadow-[6px_8px_22px_rgba(0,0,0,0.35)]"
-                >
-                  {notebooksNaLista.map((item) => {
-                    const ativo = item.id === notebook?.id;
-                    return (
-                      <li key={item.id} role="option" aria-selected={ativo}>
-                        <button
-                          type="button"
-                          onClick={() => trocarNotebook(item.id)}
-                          disabled={saving}
-                          className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition disabled:opacity-60 ${ativo ? "bg-[#80602b] font-bold text-[#fff8dc]" : "text-[#4a3a1e] hover:bg-[#edcf82]"}`}
-                        >
-                          <span className="shrink-0 text-xs opacity-70">{ativo ? "📖" : ""}</span>
-                          <span className="min-w-0 flex-1 truncate">{item.title || "Sem título"}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-            <button type="button" className={`rounded leading-none hover:bg-black/10 ${minimumNotebook ? "px-1 text-base" : compactNotebook ? "px-1.5 text-lg" : "px-2 text-xl"}`} onPointerDown={(event) => event.stopPropagation()} onClick={closeNotebook} aria-label="Fechar notebook">×</button>
+            <span id="course-notebook-title" className="sr-only">Notebook do curso</span>
+            <select aria-label="Selecionar notebook" value={notebook.id} onChange={event => trocarNotebook(event.target.value)} disabled={saving}>
+              {notebooksNaLista.map(item => <option key={item.id} value={item.id}>{item.title || "Sem título"}</option>)}
+            </select>
+            <button ref={closeRef} type="button" onClick={closeNotebook} aria-label="Fechar notebook">×</button>
           </header>
 
-          <div className="flex min-h-0 border-b border-[#c29b55]/45 bg-[#f0d994]">
-            <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto px-2 py-1.5">
+          <div className="course-notebook__body">
+          <div className="course-notebook__adjust">
+            <button type="button" onClick={() => centerRect(440, 420)}>Ajustar à tela</button>
+            <button type="button" aria-expanded={adjustments} aria-controls="course-notebook-geometry" onClick={() => {
+              setGeometryInput({ x: String(rect.x), y: String(rect.y), width: String(rect.width), height: String(rect.height) });
+              setAdjustments(!adjustments);
+            }}>Ajustar janela</button>
+            <form id="course-notebook-geometry" hidden={!adjustments} onSubmit={event => {
+              event.preventDefault();
+              const next = { x: Number(geometryInput.x), y: Number(geometryInput.y), width: Number(geometryInput.width), height: Number(geometryInput.height) };
+              if (Object.values(geometryInput).some(value => !value.trim()) || Object.values(next).some(value => !Number.isFinite(value)) || next.width <= 0 || next.height <= 0) {
+                setGeometryError("Preencha posições e dimensões válidas; largura e altura devem ser positivas.");
+                return;
+              }
+              setGeometryError("");
+              applyRect(next);
+            }}>
+              {([["x", "X"], ["y", "Y"], ["width", "Largura"], ["height", "Altura"]] as const).map(([key, label]) =>
+                <label key={key}>{label}<input type="number" step="any" value={geometryInput[key]} onChange={event => setGeometryInput(current => ({ ...current, [key]: event.target.value }))} /></label>)}
+              <button type="submit">Aplicar</button>
+              {geometryError && <p role="alert">{geometryError}</p>}
+            </form>
+          </div>
+          <div className="course-notebook__pages">
+            <div className="course-notebook__tabs" aria-label="Páginas">
               {sortPages(pages).map((page) => (
                 <button
                   key={page.id}
                   type="button"
-                  onClick={() => handlePageTabClick(page)}
-                  onDoubleClick={() => handlePageTabDoubleClick(page)}
+                  onClick={() => selectPage(page)}
+                  aria-pressed={page.id === annotation?.id}
                   className={`max-w-[150px] shrink-0 truncate rounded px-2 py-1 text-[11px] transition ${page.id === annotation?.id ? "bg-[#80602b] font-bold text-[#fff8dc]" : "text-[#806a3d] hover:bg-[#d9bc70]/60"}`}
                   title={page.title || "Sem título"}
                 >
@@ -582,73 +569,53 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
             <button type="button" className="shrink-0 border-l border-[#c29b55]/45 px-3 text-lg font-bold text-[#80602b] hover:bg-[#d9bc70]/60" onClick={() => novaPagina()} disabled={saving} aria-label="Criar nova página">+</button>
           </div>
 
-          <div className={`flex min-h-0 flex-1 flex-col ${minimumNotebook ? "p-1.5" : compactNotebook ? "p-2" : "p-3"}`}>
+          <div className="course-notebook__editor">
             {annotation ? (
               <>
-                {editingPageTitle && !minimumNotebook && (
                   <input
-                    autoFocus
                     value={pageTitle}
                     onChange={(event) => setPageTitle(event.target.value)}
                     placeholder="Título da página"
-                    onBlur={() => setEditingPageTitle(false)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") event.currentTarget.blur();
                       if (event.key === "Escape") {
-                        setPageTitle(savedPageTitle);
-                        event.currentTarget.blur();
+                        if (pageTitle !== savedPageTitle) {
+                          event.stopPropagation();
+                          setPageTitle(savedPageTitle);
+                        }
                       }
                     }}
                     title="Edite o nome da página"
-                    className={`mb-1 w-full rounded border border-[#d5b96e]/60 bg-[#fff8dc]/55 px-2 py-1 font-bold text-[#806a3d] outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432] ${compactNotebook ? "text-xs" : "text-sm"}`}
                     aria-label="Título da página"
                   />
-                )}
-                {minimumNotebook ? (
-                  <textarea
-                    value={noteText}
-                    onChange={(event) => setNoteText(event.target.value)}
-                    placeholder="Escreva suas anotações aqui..."
-                    className="min-h-0 flex-1 resize-none rounded border border-[#d5b96e]/70 bg-[#fff8dc]/80 p-1.5 text-sm leading-6 outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432]"
-                  />
-                ) : (
-                  <>
-                    <p className={`${compactNotebook ? "mb-1 h-3 text-[10px] leading-3" : "mb-2 h-4 text-xs leading-4"} truncate overflow-hidden text-[#806a3d]`}>{course.title}</p>
+                    <p>{course.title}</p>
                     <textarea
                       value={noteText}
                       onChange={(event) => setNoteText(event.target.value)}
                       placeholder="Escreva suas anotações aqui..."
-                      className={`min-h-0 flex-1 resize-none rounded border border-[#d5b96e]/70 bg-[#fff8dc]/80 text-sm leading-6 outline-none placeholder:text-[#a38b5c] focus:border-[#9a7432] ${compactNotebook ? "p-2" : "p-3"}`}
+                      aria-label="Anotações"
                     />
-                  </>
-                )}
               </>
-            ) : (
+            ) : !error ? (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
                 <p className="font-bold text-[#806a3d]">Nenhuma página ainda</p>
                 <p className="mt-1 text-xs text-[#a38b5c]">Crie uma página para começar suas anotações.</p>
                 <button type="button" className="mt-3 rounded bg-[#80602b] px-3 py-1.5 text-xs font-bold text-[#fff8dc]" onClick={() => novaPagina()} disabled={saving}>Criar página</button>
               </div>
-            )}
+            ) : null}
 
-            {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
-            <footer className={`flex flex-wrap items-center justify-between gap-1 ${compactNotebook ? "mt-2" : "mt-3"}`}>
+            {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+            <footer>
               <div className="flex min-w-0 gap-1">
-                {annotation && <button type="button" className={`rounded text-red-800 hover:bg-red-900/10 ${minimumNotebook ? "px-1 py-1 text-[9px]" : compactNotebook ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-1 text-xs"}`} onClick={() => void deleteCurrentPage()} disabled={saving}>{minimumNotebook ? "Apagar pág." : "Apagar página"}</button>}
-                <button type="button" className={`rounded text-red-800 hover:bg-red-900/10 ${minimumNotebook ? "px-1 py-1 text-[9px]" : compactNotebook ? "px-1.5 py-0.5 text-[11px]" : "px-2 py-1 text-xs"}`} onClick={() => void deleteNotebook()} disabled={saving}>{minimumNotebook ? "Apagar" : "Apagar notebook"}</button>
+                {annotation && <button type="button" onClick={() => void deleteCurrentPage()} disabled={saving}>Apagar página</button>}
+                <button type="button" onClick={() => void deleteNotebook()} disabled={saving}>Apagar notebook</button>
               </div>
-              {annotation && <button type="button" className={`ml-auto rounded bg-[#80602b] font-bold text-[#fff8dc] hover:bg-[#674b22] ${minimumNotebook ? "px-2 py-1 text-[10px]" : compactNotebook ? "px-2.5 py-1 text-[11px]" : "px-4 py-2 text-xs"}`} onClick={() => void saveNotebook()} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</button>}
+              {annotation && <button type="button" className="course-notebook__save" onClick={() => void saveNotebook()} disabled={saving}>{saving ? "Salvando..." : "Salvar"}</button>}
             </footer>
           </div>
-
-          <button type="button" aria-label="Ajustar altura superior" className="absolute inset-x-2 top-0 z-10 h-2 cursor-ns-resize opacity-0" onPointerDown={(event) => startResizing(event, "n")} />
-          <button type="button" aria-label="Ajustar altura inferior" className="absolute inset-x-2 bottom-0 z-10 h-2 cursor-ns-resize opacity-0" onPointerDown={(event) => startResizing(event, "s")} />
-          <button type="button" aria-label="Ajustar largura esquerda" className="absolute inset-y-2 left-0 z-10 w-2 cursor-ew-resize opacity-0" onPointerDown={(event) => startResizing(event, "w")} />
-          <button type="button" aria-label="Ajustar largura direita" className="absolute inset-y-2 right-0 z-10 w-2 cursor-ew-resize opacity-0" onPointerDown={(event) => startResizing(event, "e")} />
-          <button type="button" aria-label="Ajustar tamanho pelo canto superior esquerdo" className="absolute left-0 top-0 z-20 h-3 w-3 cursor-nwse-resize opacity-0" onPointerDown={(event) => startResizing(event, "nw")} />
-          <button type="button" aria-label="Ajustar tamanho pelo canto superior direito" className="absolute right-0 top-0 z-20 h-3 w-3 cursor-nesw-resize opacity-0" onPointerDown={(event) => startResizing(event, "ne")} />
-          <button type="button" aria-label="Ajustar tamanho pelo canto inferior esquerdo" className="absolute bottom-0 left-0 z-20 h-3 w-3 cursor-nesw-resize opacity-0" onPointerDown={(event) => startResizing(event, "sw")} />
-          <button type="button" aria-label="Ajustar tamanho pelo canto inferior direito" className="absolute bottom-0 right-0 z-20 h-3 w-3 cursor-nwse-resize opacity-0" onPointerDown={(event) => startResizing(event, "se")} />
+          </div>
+          {(["n", "s", "e", "w", "ne", "nw", "se", "sw"] as const).map(direction =>
+            <span key={direction} aria-hidden="true" className={`course-notebook__resize course-notebook__resize--${direction}`} onPointerDown={event => startResizing(event, direction)} />)}
         </section>
       )}
 
@@ -675,4 +642,11 @@ export function CursoNotebook({ course }: CourseNotebookProps) {
       />
     </>
   );
+}
+
+function notebookViewport() {
+  const viewport = window.visualViewport;
+  return viewport
+    ? { left: viewport.offsetLeft, top: viewport.offsetTop, width: viewport.width, height: viewport.height }
+    : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
 }
