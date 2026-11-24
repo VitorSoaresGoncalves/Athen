@@ -221,7 +221,7 @@ export default function CriarCurso() {
   return (
     <PageLayout variant="bare">
       <div className="criar-curso">
-        <main className="criar-curso__main">
+        <div className="criar-curso__main">
           <div className="criar-curso__brilho" />
 
           <header className="criar-curso__cabecalho">
@@ -402,7 +402,7 @@ export default function CriarCurso() {
               {salvando ? "Salvando..." : "Publicar"} <Icone nome="arrow" tamanho={17} />
             </button>
           </div>
-        </main>
+        </div>
       </div>
     </PageLayout>
   );
