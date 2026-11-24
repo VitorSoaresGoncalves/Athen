@@ -382,10 +382,10 @@ export default function Amigos() {
     }[relacaoDe(u.id)];
   };
 
-  const abas: { id: Aba; label: string; total: number; destaque?: boolean }[] = [
-    { id: "amigos", label: "Meus amigos", total: amigos.length },
-    { id: "enviados", label: "Pedidos enviados", total: enviados.length },
-    { id: "recebidos", label: "Pedidos recebidos", total: recebidos.length, destaque: recebidos.length > 0 },
+  const abas: { id: Aba; label: string; labelCurto: string; total: number; destaque?: boolean }[] = [
+    { id: "amigos", label: "Meus amigos", labelCurto: "Amigos", total: amigos.length },
+    { id: "enviados", label: "Pedidos enviados", labelCurto: "Enviados", total: enviados.length },
+    { id: "recebidos", label: "Pedidos recebidos", labelCurto: "Recebidos", total: recebidos.length, destaque: recebidos.length > 0 },
   ];
 
   const vazio: Record<Aba, [string, string]> = {
@@ -425,7 +425,7 @@ export default function Amigos() {
             <>
               {/* Seletor + busca na mesma linha */}
               <div className="mt-6 flex flex-col gap-3 min-[1100px]:flex-row min-[1100px]:items-center min-[1100px]:justify-between">
-                <div role="tablist" aria-label="Seções de amigos" className="flex w-full gap-1 overflow-x-auto rounded-md border border-[#a486d5]/20 bg-[#1d1a31] p-1 min-[1100px]:w-auto">
+                <div role="tablist" aria-label="Seções de amigos" className="grid w-full grid-cols-3 gap-1 rounded-md border border-[#a486d5]/20 bg-[#1d1a31] p-1 min-[640px]:flex min-[640px]:overflow-x-auto min-[1100px]:w-auto">
                   {abas.map((item) => {
                     const ativa = !buscando && aba === item.id;
                     return (
@@ -438,11 +438,12 @@ export default function Amigos() {
                           setSearch("");
                           setAba(item.id);
                         }}
-                        className={`flex shrink-0 items-center gap-2 rounded px-3 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a486d5] ${
+                        className={`flex min-w-0 shrink-0 items-center justify-center gap-2 rounded px-2 py-2 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a486d5] min-[640px]:justify-start min-[640px]:px-3 ${
                           ativa ? "bg-[#a486d5] text-[#171628]" : "text-[#b8aacb] hover:bg-[#a486d5]/10 hover:text-[#f4eeff]"
                         }`}
                       >
-                        <span>{item.label}</span>
+                        <span className="truncate min-[640px]:hidden">{item.labelCurto}</span>
+                        <span className="hidden min-[640px]:inline">{item.label}</span>
                         <span className={`rounded-sm px-1.5 py-0.5 text-[11px] ${ativa ? "bg-[#171628]/20 text-[#171628]" : item.destaque ? "bg-[#ffcc00] text-[#171628]" : "bg-[#a486d5]/15 text-[#d8c9f2]"}`}>
                           {item.total}
                         </span>
@@ -505,7 +506,7 @@ export default function Amigos() {
 
                 {/* Meus amigos */}
                 {!buscando && aba === "amigos" && (
-                  <ul className="grid grid-cols-1 gap-2 min-[900px]:grid-cols-2 min-[1280px]:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 min-[640px]:gap-2 min-[900px]:grid-cols-2 min-[1280px]:grid-cols-3">
                     {amigos.map(({ pessoa, perfil }) => {
                       const streak = streakAtual(perfil);
                       const ativa = streak > 0;
@@ -513,13 +514,13 @@ export default function Amigos() {
                       return (
                         <li key={pessoa.id}>
                           <div
-                            className={`flex h-full w-full items-center gap-3 rounded-md border-l-[3px] bg-[#1d1a31] py-2.5 pl-3 pr-3 transition hover:bg-[#28223f] ${ativa ? "border-l-[#ffcc00]" : "border-l-[#4a4260]"}`}
+                            className={`flex h-full w-full items-center gap-2.5 rounded-md border-l-[3px] bg-[#1d1a31] py-2 pl-2.5 pr-2.5 transition hover:bg-[#28223f] min-[640px]:gap-3 min-[640px]:py-2.5 min-[640px]:pl-3 min-[640px]:pr-3 ${ativa ? "border-l-[#ffcc00]" : "border-l-[#4a4260]"}`}
                           >
                             <button
                               type="button"
                               onClick={() => setPerfilAberto(pessoa)}
                               aria-label={`Ver perfil de ${pessoa.nome}`}
-                              className="flex min-w-0 flex-1 items-center gap-3 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a486d5]"
+                              className="flex min-w-0 flex-1 items-center gap-2.5 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a486d5] min-[640px]:gap-3"
                             >
                               <Foto src={pessoa.foto} className="h-12 w-12 shrink-0 rounded-sm text-2xl" />
                               <div className="min-w-0 flex-1">
