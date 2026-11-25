@@ -34,10 +34,27 @@
   border-radius: 10px;
   cursor: pointer;
 }
+/* Avatar do header (celular): mesmo tamanho e borda do botão de notificações. */
+.sidebarL__avatar-wrap { display: flex; }
+.sidebarL__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.sidebarL__avatar[aria-expanded="true"] { border-color: var(--color-violet-mid); }
 @media (max-width: 760px) {
-  .sidebarL { position: relative; width: 100%; height: auto; overflow: visible; border-right: 0; }
+  .sidebarL { position: relative; z-index: auto; width: 100%; height: auto; overflow: visible; border-right: 0; }
   .sidebarL__scroll { flex: none; overflow: visible; }
-  .sidebarL__header { padding: 12px 16px; }
+  .sidebarL__header { position: relative; padding: 12px 16px; }
   .sidebarL__group > nav {
     flex-direction: row;
     overflow-x: auto;
@@ -46,5 +63,20 @@
     scrollbar-color: var(--color-violet-pale) var(--color-surface);
   }
   .sidebarL__group > nav > a { width: auto; flex-shrink: 0; }
-  .sidebarL__account { order: 0; margin-top: 8px; margin-bottom: 0; }
+  /* Dropdown fixo no topo: não é cortado pelo overflow da sidebar expandida (Dashboard).
+     72px = altura do header (12 + 44 + 12) + 4px de folga. */
+  .sidebarL__account {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    z-index: 27;
+    order: 0;
+    margin: 0;
+    width: min(260px, calc(100vw - 32px));
+  }
+}
+/* 320px: logo + 3 botões não cabem com o texto "athen". */
+@media (max-width: 360px) {
+  .sidebarL__header-actions { gap: 8px; }
+  .sidebarL__branch-text { display: none; }
 }
