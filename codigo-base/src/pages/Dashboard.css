@@ -149,7 +149,7 @@
 }
 /* A trilha preenche a área disponível; controles são camadas sobre o fundo. */
 .tela { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
-.tela .dashboard-main { position: relative; flex: 1; min-height: 0; }
+.tela .dashboard-main { position: relative; flex: 1; min-height: 0; container: dashboard / size; }
 .tela .dashboard { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); min-height: 0; overflow: hidden; }
 .dashboard-controls { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); z-index: 20; pointer-events: none; }
 .dashboard-controls > * { pointer-events: auto; }
@@ -163,13 +163,24 @@
 .dashboard-controls > .course-notebook-trigger { top: 144px; bottom: auto; font-size: 28px; }
 .dashboard-controls .course-review-entry__trigger {
   position: relative; display: inline-flex; width: 52px; height: 52px; min-height: 52px; align-items: center; justify-content: center;
-  padding: 0; border: 1px solid rgba(193,150,255,0.34); border-radius: 12px;
-  color: #ffcc00; background: rgba(87,46,151,0.22); cursor: pointer;
+  padding: 0; border: 1px solid color-mix(in srgb, var(--color-violet-pale) 34%, transparent); border-radius: 12px;
+  color: var(--color-gold); background: color-mix(in srgb, var(--color-violet) 22%, transparent); cursor: pointer;
 }
-.dashboard-controls .course-review-entry__trigger:hover { border-color: #A486D5; background: rgba(87,46,151,0.42); }
-.dashboard-controls .course-review-entry__trigger:focus-visible { outline: 2px solid #A486D5; outline-offset: 2px; }
+.dashboard-controls .course-review-entry__trigger:hover { border-color: var(--color-violet-mid); background: color-mix(in srgb, var(--color-violet) 42%, transparent); }
+.dashboard-controls .course-review-entry__trigger:focus-visible { outline: 2px solid var(--color-violet-mid); outline-offset: 2px; }
 .course-review-entry__icon { width: 24px; height: 24px; }
 .dashboard-controls .course-review-entry__bonus { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; font-size: 13px; }
+@media (max-width: 760px) {
+  .dashboard-controls {
+    /* Três alvos de 52px; repartir a sobra adapta a pilha à navegação aberta. */
+    --shortcut-inset: clamp(0px, calc((100% - 156px) / 4), 16px);
+    --shortcut-gap: clamp(0px, calc((100% - 156px) / 4), 12px);
+  }
+  .dashboard-controls > .dashboard-course-trigger { top: var(--shortcut-inset); }
+  .dashboard-controls > .course-review-entry { top: calc(var(--shortcut-inset) + 52px + var(--shortcut-gap)); }
+  .dashboard-controls > .course-notebook-trigger { top: calc(var(--shortcut-inset) + 104px + var(--shortcut-gap) + var(--shortcut-gap)); }
+  .dashboard-controls > .dashboard-course-trigger + .course-notebook-trigger { top: calc(var(--shortcut-inset) + 52px + var(--shortcut-gap)); }
+}
 @media (min-width: 761px) {
   .dashboard-controls > .dashboard-course-trigger,
   .dashboard-controls > .course-notebook-trigger,
@@ -188,6 +199,18 @@
 .dashboard-controls .sidebarR__content[aria-hidden="true"] { display: none; }
 .dashboard-header { position: absolute; top: 12px; left: 80px; right: 112px; z-index: 4; padding: 0; pointer-events: none; }
 .dashboard-header__title { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  @container dashboard (max-height: 211px) and (min-width: 400px) {
+    /* Em paisagem curta, uma linha evita também cobrir as setas do carrossel. */
+    .dashboard-controls > .dashboard-course-trigger,
+    .dashboard-controls > .course-review-entry,
+    .dashboard-controls > .course-notebook-trigger { top: 16px; }
+    .dashboard-controls > .course-review-entry { left: 80px; }
+    .dashboard-controls > .course-notebook-trigger { left: 144px; }
+    .dashboard-controls > .dashboard-course-trigger + .course-notebook-trigger { top: 16px; left: 80px; }
+    .dashboard-header { left: 212px; }
+  }
+}
 .tela .trail-scroll { position: absolute; inset: 0; display: flex; align-items: center; min-width: 0; }
 .tela .trail { flex-shrink: 0; margin: 0; }
 .dashboard-footer { position: absolute; bottom: 0; left: 0; right: 0; z-index: 5; min-width: 0; padding: 8px 12px 16px; pointer-events: none; }
