@@ -59,7 +59,8 @@ async function expectVerticalOrder(page: Page) {
     }
   })
   expect(order.documentWidth).toBeLessThanOrEqual(order.viewportWidth + 1)
-  expect(order.triggerPosition).not.toBe('fixed')
+  expect(order.triggerPosition).toBe('absolute')
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(order.viewportHeight + 1)
   expect(order.trailTop).toBeDefined()
   expect(order.footerTop).toBeGreaterThan(order.trailTop!)
   if (order.cardTop !== undefined) {
@@ -68,7 +69,7 @@ async function expectVerticalOrder(page: Page) {
   }
 }
 
-test('contexto individual em largura e altura compactas mantém trilha, progresso, carrossel e cartão no fluxo', async ({ page, platform }) => {
+test('contexto individual em largura e altura compactas mantém trilha na viewport com controles sobrepostos', async ({ page, platform }) => {
   seedIndividual(platform)
   for (const size of [{ width: 390, height: 844 }, { width: 568, height: 320 }, { width: 1000, height: 900 }, { width: 1001, height: 600 }]) {
     await openDashboard(page, size)
@@ -77,7 +78,7 @@ test('contexto individual em largura e altura compactas mantém trilha, progress
     await expect(page.locator('.module-carousel')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Módulo anterior' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Próximo módulo' })).toBeVisible()
-    await expect(page.locator('.course-review-card')).toHaveCount(1)
+    await expect(page.locator('.course-review-card')).toHaveCount(0)
   }
 
   const nodes = page.locator('.trail-node')
@@ -145,7 +146,7 @@ test('modo sala e sem curso não exibem cartão nem ação de revisão; controle
   await expect(page.locator('.course-review-card')).toHaveCount(0)
 })
 
-test('limites 999/1000/1001px e 599/600/601px alternam composição sem resetar seleção', async ({ page, platform }) => {
+test('limites 999/1000/1001px e 599/600/601px preservam composição sobreposta sem resetar seleção', async ({ page, platform }) => {
   seedIndividual(platform)
   await openDashboard(page, { width: 1000, height: 900 })
   const active = page.locator('[data-trail-index].trail-node--active')
@@ -161,17 +162,12 @@ test('limites 999/1000/1001px e 599/600/601px alternam composição sem resetar 
     await page.setViewportSize({ width: size.width, height: size.height })
     const positions = await page.evaluate(() => ({
       courseTrigger: getComputedStyle(document.querySelector('.dashboard-course-trigger')!).position,
-      reviewCard: getComputedStyle(document.querySelector('.course-review-card')!).position,
+      scrollHeight: document.documentElement.scrollHeight,
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
     }))
-    if (size.compact) {
-      expect(positions.courseTrigger).not.toBe('fixed')
-      expect(positions.reviewCard).not.toBe('fixed')
-    } else {
-      expect(positions.courseTrigger).toBe('fixed')
-      expect(positions.reviewCard).toBe('fixed')
-    }
+    expect(positions.courseTrigger).toBe('absolute')
+    expect(positions.scrollHeight).toBeLessThanOrEqual(size.height + 1)
     expect(positions.scrollWidth).toBeLessThanOrEqual(positions.clientWidth + 1)
     await expect(active).toHaveAttribute('data-trail-index', selected!)
   }

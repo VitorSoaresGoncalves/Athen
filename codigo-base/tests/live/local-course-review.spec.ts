@@ -170,6 +170,7 @@ test(`revisão real ${delivered ? 'por aviso entregue e lido' : bonus ? 'bonific
     }
 
     await page.goto(`/dashboard?curso=${ids.course}`)
+    await page.locator('.course-review-entry__trigger').click()
     await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
     if (delivered) {
       await page.goto('/notificacoes')
@@ -214,11 +215,13 @@ test(`revisão real ${delivered ? 'por aviso entregue e lido' : bonus ? 'bonific
     await expect(page.getByText('Bônus de revisão recebido!')).toHaveCount(bonus ? 1 : 0)
     await expect(page.getByText(bonus ? '+10' : '+0', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Voltar à trilha' }).click()
+    await page.locator('.course-review-entry__trigger').click()
 
     const card = page.getByRole('complementary', { name: 'Revisão do curso', exact: true })
     await expect(card.getByText(`Última revisão · ${bonus ? 'Com bônus' : 'Prática normal'}`)).toBeVisible()
     await expect(card).toContainText(`1/1 acertos · +${bonus ? 10 : 0} XP`)
     await page.reload()
+    await page.locator('.course-review-entry__trigger').click()
     await expect(card).toContainText(`1/1 acertos · +${bonus ? 10 : 0} XP`)
     await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toHaveCount(1)
 
@@ -258,6 +261,7 @@ test(`revisão real ${delivered ? 'por aviso entregue e lido' : bonus ? 'bonific
       await db.query('select * from public.tick_course_reviews()')
       expect((await db.query("select id from public.notifications where recipient_id=$1 and type='revisao_curso'", [userId])).rowCount).toBe(0)
       await page.goto(`/dashboard?curso=${ids.course}`)
+    await page.locator('.course-review-entry__trigger').click()
       await expect(card).toContainText('1/1 acertos · +10 XP')
     }
     if (bonus && !delivered) {

@@ -80,14 +80,14 @@ function getTrailViewportWidth(width: number) {
   return Math.max(640, width - 320);
 }
 
-function getPosition(index: number, width: number) {
+function getPosition(index: number, width: number, height: number) {
   const step = getDesktopTrailStep(width);
   const viewportWidth = getTrailViewportWidth(width);
 
   return {
     // Metade do espaço útil antes do primeiro nó permite centralizá-lo também.
     x: viewportWidth / 2 + index * step,
-    y: 160 + 92 * Math.sin(index * 0.72),
+    y: Math.max(72, height * (height < 400 ? 0.36 : 0.43)) + Math.min(92, Math.max(12, (height - 280) / 2)) * Math.sin(index * 0.72),
   };
 }
 
@@ -195,7 +195,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
 
   const [lousaAberta, setLousaAberta] = useState(false);
   const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
-  const compact = viewport.width <= 1000 || viewport.height <= 600;
+  const [trailHeight, setTrailHeight] = useState(window.innerHeight);
   const [courses, setCourses] = useState<Curso[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string | undefined>(cursoUrl);
   const [course, setCourse] = useState<Curso | null>(null);
@@ -417,7 +417,15 @@ export default function Dashboard({ courseId }: DashboardProps) {
     return locked;
   }, [trail, completedLessonIds]);
 
-  const positions = useMemo(() => trail.map((_, index) => getPosition(index, viewport.width)), [trail, viewport.width]);
+  useEffect(() => {
+    const element = trailRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => setTrailHeight(entry.contentRect.height));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [loading, errorMessage, course?.id]);
+
+  const positions = useMemo(() => trail.map((_, index) => getPosition(index, viewport.width, trailHeight)), [trail, viewport.width, trailHeight]);
   const trailStep = getDesktopTrailStep(viewport.width);
   const trailViewportWidth = getTrailViewportWidth(viewport.width);
   const trailWidth = trailViewportWidth + Math.max(0, trail.length - 1) * trailStep;
@@ -474,7 +482,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
     if (!element) return;
 
     function handleWheel(event: WheelEvent) {
-      if (!element || event.ctrlKey || compact) return;
+      if (!element || event.ctrlKey) return;
       // Gestos horizontais nativos (trackpad) seguem o comportamento do navegador.
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
       if (element.scrollWidth - element.clientWidth <= 0) return;
@@ -487,7 +495,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
     element.addEventListener("wheel", handleWheel, { passive: false });
     return () => element.removeEventListener("wheel", handleWheel);
     // Reanexa quando a trilha (re)monta: durante o carregamento o <section> não existe.
-  }, [loading, errorMessage, course, activeModule, trail.length, compact]);
+  }, [loading, errorMessage, course, activeModule, trail.length]);
 
   // Centraliza o nó ativo após a troca de aula ou módulo.
   useEffect(() => {
@@ -632,7 +640,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
   }
 
   const showReviewCard = !loading && !errorMessage && course?.id === selectedCourseId && !activeSalaId && !salaUrl;
-  const reviewCard = showReviewCard && course && (
+  const courseLessons = dashboardModules.flatMap(module => module.aulas);
+  const courseCompleted = courseLessons.length > 0 && courseLessons.every(lesson => completedLessonIds.has(lesson.id));
+  const reviewCard = showReviewCard && course && courseCompleted && (
     <CourseReviewCard key={course.id} courseId={course.id} courseTitle={course.title}
       refreshKey={reviewRefresh} triggerRef={reviewTriggerRef}
       onReview={(occurrenceId) => abrirRevisao(course.id, occurrenceId)} />
@@ -650,7 +660,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
   const courseTrigger = (
     <button
       type="button"
-      className="dashboard-course-trigger fixed left-[calc(var(--sidebar-left-offset)+64px)] top-6 z-20 inline-flex items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
+      className="dashboard-course-trigger z-20 inline-flex items-center gap-2 rounded-lg border border-[rgba(193,150,255,0.34)] bg-[rgba(87,46,151,0.22)] px-3 py-1.5 text-left text-[#ffcc00] transition-colors hover:border-[#A486D5] hover:bg-[rgba(87,46,151,0.42)] focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60"
       onClick={() => setCoursePickerOpen(true)}
       aria-haspopup="dialog"
       aria-expanded={coursePickerOpen}
@@ -684,7 +694,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
           </button>
         </div>
 
-            {/* Linhas com a altura do card (156px): com auto-rows-fr e max-h as linhas encolhiam e os cards se sobrepunham. */}
+            {/* Altura uniforme definida no CSS; a lista conserva rolagem própria. */}
             <div className="dashboard-picker__list">
           {pickerTab === "courses" ? (
             pickerCourses.length === 0 ? (
@@ -699,7 +709,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                 <button
                   key={availableCourse.id}
                   type="button"
-                  className={`group relative flex h-[156px] w-full flex-col justify-between overflow-hidden rounded-xl p-3 text-left transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${isSelected ? "z-10 scale-[1.04] brightness-110 shadow-[0_8px_22px_rgba(0,0,0,0.42)]" : "shadow-[0_3px_8px_rgba(0,0,0,0.2)] hover:z-10 hover:scale-[1.04] hover:shadow-none"}`}
+                  className={`group relative flex h-[156px] w-full flex-col justify-between overflow-hidden rounded-xl p-3 text-left transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 ${isSelected ? "z-10 brightness-110 shadow-[0_8px_22px_rgba(0,0,0,0.42)]" : "shadow-[0_3px_8px_rgba(0,0,0,0.2)] hover:z-10 hover:shadow-none"}`}
                   style={{ background: `linear-gradient(145deg, ${hexToRgba(cardColor, isSelected ? 0.88 : 0.72)} 0%, #171027 65%, #120c22 100%)` }}
                   onClick={() => handleCourseChange(availableCourse.id)}
                   aria-pressed={isSelected}
@@ -735,7 +745,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
                   key={sala.id}
                   disabled={!salaCurso}
                   title={salaCurso ? undefined : "Esta sala não tem um curso disponível para você."}
-                  className={`flex h-[156px] w-full cursor-pointer flex-col justify-between overflow-hidden rounded-xl p-3 text-left transition-transform focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 disabled:cursor-not-allowed disabled:opacity-45 ${isSalaAtiva ? "z-10 scale-[1.04] brightness-110 shadow-[0_8px_22px_rgba(0,0,0,0.42)]" : "shadow-[0_3px_8px_rgba(0,0,0,0.2)] enabled:hover:z-10 enabled:hover:scale-[1.04] enabled:hover:shadow-none"}`}
+                  className={`flex h-[156px] w-full cursor-pointer flex-col justify-between overflow-hidden rounded-xl p-3 text-left transition-transform focus:outline-none focus:ring-2 focus:ring-[#A486D5]/60 disabled:cursor-not-allowed disabled:opacity-45 ${isSalaAtiva ? "z-10 brightness-110 shadow-[0_8px_22px_rgba(0,0,0,0.42)]" : "shadow-[0_3px_8px_rgba(0,0,0,0.2)] enabled:hover:z-10 enabled:hover:shadow-none"}`}
                   style={{ background: `linear-gradient(145deg, ${hexToRgba(cardColor, isSalaAtiva ? 0.88 : 0.65)} 0%, #171027 65%, #120c22 100%)` }}
                   onClick={() => handleSalaClick(sala)}
                   aria-pressed={isSalaAtiva}
@@ -813,9 +823,9 @@ export default function Dashboard({ courseId }: DashboardProps) {
             onTouchMove={(event) => handlePointerMove(event.touches[0].pageX)}
             onTouchEnd={() => { dragState.current.dragging = false; }}
           >
-            <div className="trail relative h-[320px] max-w-none" style={{ width: trailWidth }}>
+            <div className="trail relative max-w-none" style={{ width: trailWidth, height: trailHeight }}>
               <div className="trail__glow pointer-events-none absolute inset-0 transition-[background] duration-700" style={{ background: `radial-gradient(ellipse 50% 60% at 50% 50%, ${hexToRgba(activeTheme.primary, 0.12)} 0%, transparent 70%)` }} />
-              <svg className="trail__path pointer-events-none absolute left-0 top-0 overflow-visible" width={trailWidth} height="320" aria-hidden="true">
+              <svg className="trail__path pointer-events-none absolute left-0 top-0 overflow-visible" width={trailWidth} height={trailHeight} aria-hidden="true">
                 <path d={createSmoothPath(positions)} fill="none" stroke={activeTheme.muted} strokeWidth="5" strokeDasharray="10 8" strokeLinecap="round" />
                 {Array.from({ length: pathEndIndex }).map((_, index) => (
                   <g key={`completed-segment-${index}`}>
@@ -895,6 +905,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <span className="progress-separator text-base font-black" style={{ color: activeTheme.muted }}>|</span>
               <strong className="progress-percent text-xl tracking-[0.08em]" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
             </div>
+            {reviewCard}
             <div className="module-carousel mt-4 flex items-center justify-center gap-0.5" aria-label="Navegação entre módulos">
               <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
               <div className="module-carousel__viewport w-[min(100%,330px)] overflow-hidden">
@@ -926,7 +937,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
         </div>
       )}
 
-      {reviewCard}
       {course && openLesson && !temRevisao && (
         <LessonModal
           key={openLesson.aula.id}
