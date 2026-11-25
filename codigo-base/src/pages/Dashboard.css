@@ -149,10 +149,6 @@
 }
 /* A trilha preenche a área disponível; controles são camadas sobre o fundo. */
 .tela { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
-.tela > .sidebarL { flex-shrink: 0; max-height: 100dvh; }
-@media (max-width: 760px) {
-  .tela > .sidebarL[data-mobile-expanded="true"] { overflow-y: auto; }
-}
 .tela .dashboard-main { position: relative; flex: 1; min-height: 0; }
 .tela .dashboard { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); min-height: 0; overflow: hidden; }
 .dashboard-controls { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); z-index: 20; pointer-events: none; }

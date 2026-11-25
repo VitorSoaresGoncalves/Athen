@@ -16,6 +16,7 @@ const NOTEBOOK_ROUTE = '/caderno';
 const NOTIFICACOES_ROUTE = '/notificacoes';
 const CONFIG_ROUTE = '/configuracoes';
 const CATALOGO_ROUTE = '/catalogo';
+const MOBILE_QUERY = '(max-width: 760px)'; // precisa ser igual ao @media de SidebarLeft.css e PageLayout.css
 
 /** Evento disparado pelo Profile depois de salvar, para a sidebar recarregar o perfil. */
 export const PROFILE_UPDATED_EVENT = 'athen:profile-updated';
@@ -206,7 +207,7 @@ function MailIcon({ className = 'h-5 w-5' }: { className?: string }) {
 export function SidebarLeft() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [estreito, setEstreito] = useState(() => window.matchMedia('(max-width: 760px)').matches);
+    const [estreito, setEstreito] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
     const [expandido, setExpandido] = useState(false);
     const asideRef = useRef<HTMLElement>(null);
     const grupoRef = useRef<HTMLDivElement>(null);
@@ -236,12 +237,13 @@ export function SidebarLeft() {
     }
 
     useEffect(() => {
-        const media = window.matchMedia('(max-width: 760px)');
+        const media = window.matchMedia(MOBILE_QUERY);
         function mudar(event: MediaQueryListEvent) {
             const foco = document.activeElement;
-            if (event.matches && grupoRef.current?.contains(foco)) focoPendente.current = 'toggle';
-            if (!event.matches && foco === toggleRef.current) focoPendente.current = 'destino';
-            if (!event.matches && foco !== contaRef.current && perfilRef.current?.contains(foco)) focoPendente.current = 'conta';
+            if (perfilRef.current?.contains(foco)) focoPendente.current = 'conta';
+            else if (event.matches && grupoRef.current?.contains(foco)) focoPendente.current = 'toggle';
+            else if (!event.matches && foco === toggleRef.current) focoPendente.current = 'destino';
+
             setEstreito(event.matches);
             setExpandido(false);
             setMenuAberto(false);
@@ -276,6 +278,7 @@ export function SidebarLeft() {
         function aoClicarFora(evento: MouseEvent) {
             if (!(evento.target instanceof Node)) return;
             if (perfilRef.current?.contains(evento.target)) return;
+            if (toggleRef.current?.contains(evento.target)) return;
             setMenuAberto(false);
         }
         document.addEventListener("mousedown", aoClicarFora);
@@ -305,6 +308,58 @@ export function SidebarLeft() {
         }
     }
 
+    // Conteúdo do avatar, usado pelo card (desktop) e pelo botão do header (celular).
+    const avatarInterno = userSrc.carregando
+        ? <span aria-hidden="true" className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-violet-mid/40 border-t-violet-pale" />
+        : picture
+            ? <img src={picture} alt="Foto de perfil" className="h-full w-full object-cover" />
+            : <span className="flex h-full w-full items-center justify-center text-[22px]">🙈</span>;
+
+    // Menu de conta, igual nos dois modos. No celular o card some, então nome e streak ficam no topo.
+    const menuConta = (
+        <div
+            id={contaId}
+            role="group"
+            aria-label="Opções de conta"
+            hidden={!menuAberto}
+            className="sidebarL__account overflow-hidden rounded-[12px] border border-line bg-surface shadow-xl shadow-black/40"
+        >
+            {estreito && (
+                <div className="flex items-center gap-3 border-b border-line px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                        <span className="block truncate text-[14px] font-bold leading-tight text-ink">
+                            {perfil?.display_name ?? 'Estudante'}
+                        </span>
+                        <span className="block truncate text-[12px] leading-tight text-violet-pale">
+                            {perfil?.username ? `@${perfil.username}` : ''}
+                        </span>
+                    </div>
+                    <span
+                        className={`inline-flex shrink-0 items-center gap-1 text-[13px] font-bold ${temStreakAtiva ? 'text-gold' : 'text-muted'}`}
+                        title={temStreakAtiva ? `Streak de ${streakValor} dia(s)` : 'Sem streak ativa'}
+                        aria-label={temStreakAtiva ? `Streak ativa de ${streakValor} dias` : 'Sem streak ativa'}
+                    >
+                        <span aria-hidden="true" className={temStreakAtiva ? '' : 'grayscale opacity-60'}>🔥</span>
+                        {streakValor}
+                    </span>
+                </div>
+            )}
+            <button type="button" onClick={verPerfil}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40">
+                <span aria-hidden="true">👤</span>Ver perfil
+            </button>
+            <button type="button" onClick={abrirConfiguracoes}
+                className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40">
+                <span aria-hidden="true">⚙️</span>Configuração
+            </button>
+            <button type="button" onClick={() => void sairDaConta()}
+                className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-[#e8909e] transition-colors hover:bg-[#c2455a]/20">
+                <span aria-hidden="true">↩</span>Sair da conta
+            </button>
+        </div>
+    );
+
+    
     return (
         // corpo inteiro da sidebar — fundo e bordas seguem os tokens da plataforma
         <aside ref={asideRef}
@@ -345,7 +400,7 @@ export function SidebarLeft() {
                     aria-label="Ir para o Dashboard"
                 >
                     <img src="/Athen.png" alt="" aria-hidden="true" className="h-10 w-10 shrink-0 rounded-[10px] object-cover" />
-                    <span className="font-display text-[28px] lowercase leading-none tracking-[2px] text-gold">athen</span>
+                    <span className="sidebarL__branch-text font-display text-[28px] lowercase leading-none tracking-[2px] text-gold">athen</span>
                 </Link>
 
                 <div className="sidebarL__header-actions">
@@ -370,6 +425,24 @@ export function SidebarLeft() {
                         </span>
                     )}
                 </NavLink>
+                
+                {estreito && (
+                    <div ref={perfilRef} className="sidebarL__avatar-wrap">
+                        <button
+                            ref={contaRef}
+                            type="button"
+                            className="sidebarL__avatar"
+                            aria-controls={contaId}
+                            aria-expanded={menuAberto}
+                            aria-label="Abrir opções de conta"
+                            onClick={() => setMenuAberto((aberto) => !aberto)}
+                        >
+                            {avatarInterno}
+                        </button>
+                        {menuConta}
+                    </div>
+                )}
+
                 {estreito && <button
                     ref={toggleRef}
                     type="button"
@@ -377,7 +450,7 @@ export function SidebarLeft() {
                     aria-label={expandido ? 'Recolher navegação' : 'Abrir navegação'}
                     aria-expanded={expandido}
                     aria-controls={grupoId}
-                    onClick={() => expandido ? recolher() : setExpandido(true)}
+                    onClick={() => setExpandido((aberto) => !aberto)}
                 ><span aria-hidden="true">{expandido ? '✕' : '☰'}</span></button>}
                 </div>
             </section>
@@ -418,85 +491,59 @@ export function SidebarLeft() {
 
             {/* Botão de perfil no rodapé: avatar, nome/usuário e streak na mesma
                 linha. Clicar abre um menu com "Ver perfil" e "Sair da conta". */}
-            <div ref={perfilRef} className="sidebarL__profile relative mx-3 mb-4 mt-auto">
-                <button
-                    ref={contaRef}
-                    type="button"
-                    onClick={() => setMenuAberto((aberto) => !aberto)}
-                    aria-controls={contaId}
-                    aria-expanded={menuAberto}
-                    aria-label="Abrir opções de conta"
-                    className="flex w-full flex-col overflow-hidden rounded-[16px] border border-line bg-surface text-left outline-none transition-colors hover:border-violet-mid focus-visible:ring-2 focus-visible:ring-gold"
-                >
-                    {/* Banner no topo do botão */}
-                    <div className="h-[52px] w-full shrink-0">
-                        {banner
-                            ? <img src={banner} alt="" aria-hidden="true" className="h-full w-full object-cover" />
-                            : <div className="h-full w-full bg-gradient-to-r from-violet via-violet-mid/60 to-violet" />
-                        }
-                    </div>
-
-                    {/* Linha: avatar + nomes + streak (mesmas posições de antes) */}
-                    <div className="flex w-full items-center gap-3 px-3 py-2.5">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-line bg-[#1a0f35]">
-                            {userSrc.carregando
-                                ? <span aria-hidden="true" className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-violet-mid/40 border-t-violet-pale" />
-                                : picture
-                                    ? <img src={picture} alt="Foto de perfil" className="h-full w-full object-cover" />
-                                    : <span className="flex h-full w-full items-center justify-center text-[22px]">🙈</span>
+            {!estreito && (
+                <div ref={perfilRef} className="sidebarL__profile relative mx-3 mb-4 mt-auto">
+                    <button
+                        ref={contaRef}
+                        type="button"
+                        onClick={() => setMenuAberto((aberto) => !aberto)}
+                        aria-controls={contaId}
+                        aria-expanded={menuAberto}
+                        aria-label="Abrir opções de conta"
+                        className="flex w-full flex-col overflow-hidden rounded-[16px] border border-line bg-surface text-left outline-none transition-colors hover:border-violet-mid focus-visible:ring-2 focus-visible:ring-gold"
+                    >
+                        <div className="h-[52px] w-full shrink-0">
+                            {banner
+                                ? <img src={banner} alt="" aria-hidden="true" className="h-full w-full object-cover" />
+                                : <div className="h-full w-full bg-gradient-to-r from-violet via-violet-mid/60 to-violet" />
                             }
                         </div>
-
-                        {/* Nome e usuário */}
-                        <div className="min-w-0 flex-1">
-                            {userSrc.carregando ? (
-                                <span className="block h-[15px] w-2/3 animate-pulse rounded bg-violet-mid/30" />
-                            ) : (
-                                <>
-                                    <span className="block truncate text-[15px] font-bold leading-tight text-ink">
-                                        {perfil?.display_name ?? "Estudante"}
-                                    </span>
-                                    <span className="block truncate text-[12px] leading-tight text-violet-pale">
-                                        {perfil?.username ? `@${perfil.username}` : ""}
-                                    </span>
-                                </>
+                        
+                        <div className="flex w-full items-center gap-3 px-3 py-2.5">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-line bg-[#1a0f35]">
+                                {avatarInterno}
+                            </div>
+                        
+                            <div className="min-w-0 flex-1">
+                                {userSrc.carregando ? (
+                                    <span className="block h-[15px] w-2/3 animate-pulse rounded bg-violet-mid/30" />
+                                ) : (
+                                    <>
+                                        <span className="block truncate text-[15px] font-bold leading-tight text-ink">
+                                            {perfil?.display_name ?? "Estudante"}
+                                        </span>
+                                        <span className="block truncate text-[12px] leading-tight text-violet-pale">
+                                            {perfil?.username ? `@${perfil.username}` : ""}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                            
+                            {!userSrc.carregando && (
+                                <span
+                                    className={`inline-flex shrink-0 items-center gap-1 text-[13px] font-bold ${temStreakAtiva ? "text-gold" : "text-muted"}`}
+                                    title={temStreakAtiva ? `Streak de ${streakValor} dia(s)` : "Sem streak ativa"}
+                                    aria-label={temStreakAtiva ? `Streak ativa de ${streakValor} dias` : "Sem streak ativa"}
+                                >
+                                    <span aria-hidden="true" className={temStreakAtiva ? "" : "grayscale opacity-60"}>🔥</span>
+                                    {streakValor}
+                                </span>
                             )}
                         </div>
-
-                        {/* Streak à direita dos nomes */}
-                        {!userSrc.carregando && (
-                            <span
-                                className={`inline-flex shrink-0 items-center gap-1 text-[13px] font-bold ${temStreakAtiva ? "text-gold" : "text-muted"}`}
-                                title={temStreakAtiva ? `Streak de ${streakValor} dia(s)` : "Sem streak ativa"}
-                                aria-label={temStreakAtiva ? `Streak ativa de ${streakValor} dias` : "Sem streak ativa"}
-                            >
-                                <span aria-hidden="true" className={temStreakAtiva ? "" : "grayscale opacity-60"}>🔥</span>
-                                {streakValor}
-                            </span>
-                        )}
-                    </div>
-                </button>
-                <div
-                    id={contaId}
-                    role="group"
-                    aria-label="Opções de conta"
-                    hidden={!menuAberto}
-                    className="sidebarL__account overflow-hidden rounded-[12px] border border-line bg-surface shadow-xl shadow-black/40"
-                >
-                    <button type="button" onClick={verPerfil}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40">
-                        <span aria-hidden="true">👤</span>Ver perfil
                     </button>
-                    <button type="button" onClick={abrirConfiguracoes}
-                        className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-ink transition-colors hover:bg-violet/40">
-                        <span aria-hidden="true">⚙️</span>Configuração
-                    </button>
-                    <button type="button" onClick={() => void sairDaConta()}
-                        className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-left text-[14px] text-[#e8909e] transition-colors hover:bg-[#c2455a]/20">
-                        <span aria-hidden="true">↩</span>Sair da conta
-                    </button>
+                    {menuConta}
                 </div>
-            </div>
+            )}
             </div>
             </div>
         </aside>

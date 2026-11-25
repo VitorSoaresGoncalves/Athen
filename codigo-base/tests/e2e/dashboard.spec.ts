@@ -114,7 +114,7 @@ async function verifyDashboardNavigationAtShortHeight(
   await account.focus()
   await page.keyboard.press('Escape')
   await expect(nav).toBeHidden()
-  await expect(page.getByRole('button', { name: 'Abrir opções de conta', exact: true })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Abrir opções de conta', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Abrir navegação', exact: true })).toBeFocused()
 }
 
