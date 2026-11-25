@@ -73,6 +73,12 @@ body {
   background: var(--bg);
 }
 
+/* Impede rolagem horizontal causada por decorações que vazam da viewport. */
+html,
+body {
+  overflow-x: hidden;
+}
+
 /* O #root agora não impõe text-align: center ou larguras fixas que vazam para o CRUD */
 #root {
   min-height: 100svh;
