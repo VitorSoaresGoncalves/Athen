@@ -23,17 +23,50 @@ function mutatingRequests(platform: Awaited<ReturnType<typeof import('./support/
     .map(call => `${call.method} ${call.path} ${JSON.stringify(call.body)}`)
 }
 
+for (const viewport of [{ width: 390, height: 844 }, { width: 568, height: 320 }]) {
+  test(`conta e navegação abrem independentemente em ${viewport.width}×${viewport.height}`, async ({ page, platform }, testInfo) => {
+    await page.setViewportSize(viewport)
+    for (const route of ['/salas', '/dashboard']) {
+      await page.goto(route)
+      const account = page.getByRole('button', { name: 'Abrir opções de conta', exact: true })
+      const toggle = page.locator('.sidebarL__toggle')
+      await account.click()
+      await toggle.click()
+      await expect(account).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(page.getByRole('button', { name: 'Sair da conta', exact: true })).toBeInViewport()
+      await page.screenshot({ path: testInfo.outputPath(`${route.slice(1)}-conta-e-navegacao.png`), animations: 'disabled' })
+
+      await toggle.click()
+      await expect(account).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await account.click()
+      await toggle.click()
+      await account.click()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await page.keyboard.press('Escape')
+      await expect(account).toHaveAttribute('aria-expanded', 'false')
+      await expect(account).toBeFocused()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await page.keyboard.press('Escape')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(toggle).toBeFocused()
+    }
+    expect(platform.unexpected).toEqual([])
+  })
+}
+
 test('casca móvel inicia recolhida e disclosure abre, fecha e devolve foco', async ({ page, platform }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/salas')
 
-  const toggle = page.locator('.sidebarL button[aria-controls]').first()
+  const toggle = page.locator('.sidebarL__toggle')
   const nav = page.getByRole('navigation', { name: 'Navegação principal', exact: true })
   await expect(toggle).toBeVisible()
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
   await expect(toggle).toHaveAttribute('aria-controls', /.+/)
   await expect(nav).toBeHidden()
-  await expect(page.getByRole('button', { name: 'Abrir opções de conta', exact: true })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Abrir opções de conta', exact: true })).toBeVisible()
   await expect(page.getByRole('main')).toHaveCount(1)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
   await page.screenshot({ path: testInfo.outputPath('salas-mobile-recolhida.png'), animations: 'disabled' })
@@ -159,6 +192,7 @@ test('Shift+Tab sai do primeiro destino para o disclosure e o foco no grupo não
   await expect(first).toBeFocused()
   await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Shift+Tab')
   await expect(page.getByRole('link', { name: 'Notificações', exact: true })).toBeFocused()
   expect(platform.unexpected).toEqual([])
 })
@@ -167,7 +201,7 @@ test('Escape fecha primeiro opções da conta e depois a navegação; Escape no 
   await page.setViewportSize({ width: 360, height: 800 })
   await page.goto('/catalogo')
 
-  const toggle = page.locator('.sidebarL button[aria-controls]').first()
+  const toggle = page.locator('.sidebarL__toggle')
   await toggle.click()
   const accountTrigger = page.getByRole('button', { name: 'Abrir opções de conta', exact: true })
   await accountTrigger.click()
@@ -197,7 +231,7 @@ test('casca permanece recolhida ao cruzar o breakpoint e migra o foco para contr
   await page.setViewportSize({ width: 760, height: 844 })
   await page.goto('/salas')
 
-  const toggle = page.locator('.sidebarL button[aria-controls]').first()
+  const toggle = page.locator('.sidebarL__toggle')
   await toggle.click()
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await page.setViewportSize({ width: 761, height: 844 })
@@ -241,7 +275,7 @@ test('as 12 rotas mantêm disclosure e reserva correta ao abrir e recolher na ma
     await page.setViewportSize({ width, height: 844 })
     for (const route of privateRoutes) {
       await page.goto(route)
-      const toggle = page.locator('.sidebarL button[aria-controls]').first()
+      const toggle = page.locator('.sidebarL__toggle')
       const nav = page.getByRole('navigation', { name: 'Navegação principal', exact: true })
       const sidebar = page.locator('.sidebarL')
       const main = page.locator('.page-layout__main')
@@ -264,7 +298,7 @@ test('as 12 rotas mantêm disclosure e reserva correta ao abrir e recolher na ma
       await toggle.click()
       await expect(toggle, context).toHaveAttribute('aria-expanded', 'false')
       await expect(nav, context).toBeHidden()
-      await expect(page.getByRole('button', { name: 'Abrir opções de conta', exact: true }), context).toBeHidden()
+      await expect(page.getByRole('button', { name: 'Abrir opções de conta', exact: true }), context).toBeVisible()
       expect(await main.evaluate(element => getComputedStyle(element).paddingLeft), context).toBe('0px')
     }
   }

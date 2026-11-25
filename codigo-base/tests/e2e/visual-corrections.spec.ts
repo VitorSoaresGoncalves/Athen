@@ -30,9 +30,12 @@ test('dashboard ocupa viewport com controles sobrepostos e seletor sem escala', 
     expect(activeNode!.y + activeNode!.height).toBeLessThanOrEqual(footer!.y)
     if (viewport.width <= 760) {
       const bell = await page.getByRole('link', { name: /Notificações/ }).boundingBox()
+      const avatar = await page.getByRole('button', { name: 'Abrir opções de conta' }).boundingBox()
       const toggle = await page.getByRole('button', { name: 'Abrir navegação' }).boundingBox()
-      expect(toggle!.x - bell!.x - bell!.width).toBeGreaterThanOrEqual(8)
-      expect(toggle!.x - bell!.x - bell!.width).toBeLessThanOrEqual(16)
+      for (const gap of [avatar!.x - bell!.x - bell!.width, toggle!.x - avatar!.x - avatar!.width]) {
+        expect(gap).toBeGreaterThanOrEqual(8)
+        expect(gap).toBeLessThanOrEqual(16)
+      }
     }
     await page.locator('.dashboard-course-trigger').click()
     const cards = page.locator('.dashboard-picker__list > button')

@@ -38,7 +38,7 @@ it('começa recolhida e expõe navegação e conta somente após abrir', async (
   const toggle = screen.getByRole('button', { name: 'Abrir navegação' })
   expect(toggle).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Abrir opções de conta' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Abrir opções de conta' })).toBeVisible()
   toggle.focus()
   fireEvent.click(toggle)
   expect(toggle).toHaveAccessibleName('Recolher navegação')
@@ -89,6 +89,34 @@ it('Escape e clique fora no main não recolhem navegação nem roubam foco', asy
   await screen.findByText('Estudante')
 })
 
+it('mantém conta e navegação independentes ao clicar nos dois controles', async () => {
+  const user = userEvent.setup()
+  example()
+  const toggle = screen.getByRole('button', { name: 'Abrir navegação' })
+  const account = screen.getByRole('button', { name: 'Abrir opções de conta' })
+  const content = screen.getByRole('button', { name: 'Conteúdo' })
+
+  await user.click(account)
+  await user.click(toggle)
+  expect(account).toHaveAttribute('aria-expanded', 'true')
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('group', { name: 'Opções de conta' })).toBeVisible()
+
+  await user.click(toggle)
+  expect(account).toHaveAttribute('aria-expanded', 'true')
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await user.click(account)
+  await user.click(toggle)
+  await user.click(account)
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(account).toHaveAttribute('aria-expanded', 'true')
+
+  await user.click(content)
+  expect(account).toHaveAttribute('aria-expanded', 'false')
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(content).toHaveFocus()
+})
+
 it('limpa estado ao cruzar breakpoint e transfere apenas foco que seria ocultado', async () => {
   example()
   const toggle = screen.getByRole('button', { name: 'Abrir navegação' })
@@ -134,7 +162,7 @@ it('ao limpar a conta no desktop recupera foco de opção que ficará oculta', a
   fireEvent.click(account)
   screen.getByRole('button', { name: 'Ver perfil' }).focus()
   resize(false)
-  expect(account).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Abrir opções de conta' })).toHaveFocus()
   expect(screen.queryByRole('group', { name: 'Opções de conta' })).not.toBeInTheDocument()
   await screen.findByText('Estudante')
 })
