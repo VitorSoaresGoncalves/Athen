@@ -1,5 +1,21 @@
 # Testes e validações
 
+## Correções visuais de responsividade — 24/11/2026
+
+**Gate de publicação do PR:** após os commits de código `ca3c5b0`, `50a1551` e `cdb113a`, passaram novamente lint, typecheck, 52 Vitest, test:check, build e os 160 E2E Chromium (zero falhas, skips ou retries). Essa rodada inclui o alinhamento desktop final de 40px. Evidências visuais versionadas: [Dashboard mobile 390×844](evidencias-responsividade/dashboard-mobile-390.png), [Dashboard desktop 1440×900](evidencias-responsividade/dashboard-desktop-1440.png) e [revisão em paisagem 568×320](evidencias-responsividade/revisao-paisagem-568.png). São capturas de Chromium com dados HTTP simulados, não de dispositivos físicos ou de banco real.
+
+**Alinhamento desktop posterior:** seletor e notebook passam a compartilhar recuo esquerdo de 40px após a sidebar, ponto médio dos 16px e 64px anteriores. Posições verticais e mobile preservados. Build com tipos, test:check e os 19 E2E de `dashboard.spec.ts`/`visual-corrections.spec.ts` passaram. Esta rodada focal é posterior à suíte completa de 160 casos abaixo; o JSON do runner guarda a execução mais recente.
+
+**Ajuste desktop posterior:** sidebar/reserva ampliadas para 260px, com links/perfil acompanhando a largura e notificação mantendo o recuo direito; notebook de 84px restaurado ao canto inferior esquerdo acima de 760px (64px após a sidebar e 1,5rem da base). Até 760px permanece abaixo do seletor. Build com tipos, lint, 52 Vitest, test:check e os 160 E2E Chromium passaram novamente, sem falhas ou retries. Os testes conferem o espaço entre marca/notificação e a borda direita em 768/1023/1024/1025/1440px, além da posição do notebook nas fronteiras 760/761px e em 1024/1440px. Captura de 1440px inspecionada; alterações ainda locais nessa rodada.
+
+Na branch `issue/53-responsividade`, passaram lint, typecheck, **52 testes Vitest**, test:check, build e **160 E2E Chromium** na execução final. O build conserva o aviso de bundle acima de 500 kB. A suíte usa HTTP simulado; SQL/live, dispositivos físicos, teclado virtual e outros navegadores não foram executados nesta alteração.
+
+O preview foi iniciado separadamente em `127.0.0.1:4173`, com build apontando para o endpoint fictício das fixtures. O runner usou a configuração local `.scratch/issue-53/visual-playwright.config.ts`, derivada da configuração versionada, mantendo os testes/projeto Chromium e retirando apenas a inicialização automática do servidor. Isso contornou o encerramento do webServer que ficou pendente no Windows nas primeiras execuções. Resultado final: `.scratch/issue-53/visual-results.json`, **160 aprovados, zero falhas**, exit 0. O servidor temporário foi encerrado após os ensaios.
+
+`visual-corrections.spec.ts` verifica ausência de scroll vertical, notebook abaixo do seletor no mobile e alinhado a 40px após a sidebar no desktop, TopDown à direita sem interceptação de cliques, cards iguais, notificações junto ao toggle e categorias de Ligas sem feedback de interação. Também verifica que matrícula com progresso 100% não substitui conclusões próprias para mostrar Revisar; após a conclusão, o botão abre o cartão e indica bônus ativo, sem iniciar sessão por simples abertura. As suítes de revisão preservam casos de erro, histórico, troca de curso, expiração, foco, recibos e ausência de revisão em salas.
+
+Foram inspecionadas capturas do Dashboard em 320/390/1440px e paisagem 568×320, além do cartão em 390×844 e 568×320. `dashboard-review-layout.spec.ts` exige a ação inteira dentro do diálogo, corpo rolável em altura curta, retorno de foco e geometria da trilha/carrossel preservada ao abrir/fechar. As capturas finais ficam em `codigo-base/test-results/`. Evidências anteriores neste documento pertencem aos respectivos snapshots.
+
 Referência dos comandos versionados neste checkout. Execute-os em `codigo-base/`. O [mapa detalhado dos testes](mapa-dos-testes.md) explica as suítes anteriores, sua utilidade, páginas cobertas, diagramas e limites. As fontes executáveis são [package.json](../codigo-base/package.json) e [ci.yml](../.github/workflows/ci.yml); a revisão de curso tem os critérios adicionais abaixo.
 
 ## Preparação

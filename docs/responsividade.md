@@ -4,6 +4,10 @@ Referência de implementação e próximos incrementos, preparada em 23/11/2026 
 
 **Implementação não equivale a homologação.** A análise preserva os achados históricos R1–R8. O primeiro incremento abaixo altera a casca e a listagem/adição de Salas; o restante deste guia orienta os recortes ainda pendentes. Evidências executadas e limites ficam em [Testes](testes.md), sem declarar a issue inteira resolvida.
 
+## Correções visuais posteriores — 24/11/2026
+
+A composição atual substitui o fluxo vertical compacto do incremento 2: trilha e fundo ocupam a área disponível sem scroll vertical do documento; seletor/notebook ficam empilhados à esquerda até 760px; acima disso o notebook volta ao canto inferior esquerdo; notebook e seletor ficam alinhados a 40px após a sidebar, ponto médio dos recuos anteriores de 16/64px. TopDown permanece no canto superior direito. No ajuste desktop posterior, a sidebar foi ampliada de 230px para 260px pelo token compartilhado, preservando o recuo direito da notificação e ampliando links/perfil. A altura da trilha acompanha a área real com ResizeObserver. O seletor usa cards iguais de 180px, sem escala, com textos limitados a duas linhas por campo. O botão Revisar aparece acima do carrossel somente após todas as aulas atuais estarem concluídas no contexto individual; abre o cartão em Modal e mostra ! acessível quando há bônus ativo. A autorização final permanece no servidor. Notificações e toggle ficam agrupados com 12px de espaço. Categorias de Ligas não têm feedback de hover/clique. As evidências anteriores abaixo pertencem aos respectivos snapshots; não validam automaticamente esta correção.
+
 ## Incremento 1 implementado — casca e Salas
 
 - `index.css` define `--sidebar-left-width: 230px`, largura física desktop independente da fonte raiz. `PageLayout.css` define `--sidebar-left-offset`: a mesma largura no desktop e `0px` até **760px inclusive**. O main reserva esse offset uma vez; `offset={false}` transfere apenas a reserva ao chamador. `bare`, `contained`, estilos extras e overlays continuam suportados, sem criar containing block para os fixos.
