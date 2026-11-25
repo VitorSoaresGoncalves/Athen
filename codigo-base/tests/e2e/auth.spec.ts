@@ -25,6 +25,19 @@ test('login inválido mantém o formulário e permite tentar novamente', async (
   await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeEnabled()
 })
 
+test('entrar com Google redireciona ao provedor com retorno para o dashboard', async ({ page }) => {
+  await installPlatform(page, false)
+  let autorizacao = ''
+  await page.route('**/auth/v1/authorize**', route => {
+    autorizacao = route.request().url()
+    return route.fulfill({ status: 200, contentType: 'text/html', body: '<p>Google</p>' })
+  })
+  await page.goto('/login-page')
+  await page.getByRole('button', { name: 'Entrar com Google', exact: true }).click()
+  await expect.poll(() => autorizacao).toContain('provider=google')
+  expect(decodeURIComponent(autorizacao)).toContain('/dashboard')
+})
+
 test('cadastro envia papel e nome de usuário e oferece retorno ao login', async ({ page }) => {
   const backend = await installPlatform(page, false)
   await page.goto('/register-page')

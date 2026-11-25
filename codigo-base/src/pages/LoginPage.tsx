@@ -11,6 +11,7 @@ export function LoginPage() {
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,6 +37,30 @@ export function LoginPage() {
 
     setLoading(false);
     navigate("/dashboard");
+  };
+
+  // Inicia o login com Google: o Supabase redireciona o navegador ao Google e, depois
+  // da autorização, de volta ao /dashboard, já com a sessão criada. O listener
+  // onAuthStateChange do ProtectedRoute reconhece essa sessão automaticamente.
+  const handleGoogleLogin = async () => {
+    if (!supabaseConfigured) {
+      setMessage("Supabase não configurado.");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setMessage("Redirecionando para o Google...");
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+
+    // Em caso de sucesso o navegador sai da página; só chegamos aqui se houve erro.
+    if (error) {
+      setMessage(`Falha ao entrar com Google: ${error.message}`);
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -93,12 +118,28 @@ export function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || googleLoading}
             className="w-full cursor-pointer rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-[#211029] transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
         </form>
+
+        <div className="my-5 flex items-center gap-3 text-xs text-[#8f829f]" role="separator">
+          <span className="h-px flex-1 bg-[#a486d5]/25" />
+          ou
+          <span className="h-px flex-1 bg-[#a486d5]/25" />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void handleGoogleLogin()}
+          disabled={loading || googleLoading}
+          className="flex w-full min-w-0 cursor-pointer items-center justify-center gap-2.5 rounded-lg border border-[#a486d5]/40 bg-[#171628] px-4 py-2.5 text-sm font-bold text-[#f4eeff] transition hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <img src="/google.svg" alt="" width={18} height={18} className="size-[18px] shrink-0" aria-hidden="true" />
+          Entrar com Google
+        </button>
 
         <p className="mt-6 text-center text-sm text-[#b8aacb]">
           Não tem conta?{" "}
