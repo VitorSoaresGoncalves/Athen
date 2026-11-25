@@ -158,18 +158,29 @@
 .dashboard-controls { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); z-index: 20; pointer-events: none; }
 .dashboard-controls > * { pointer-events: auto; }
 .dashboard-controls > .dashboard-course-trigger,
-.dashboard-controls > .course-notebook-trigger {
+.dashboard-controls > .course-notebook-trigger,
+.dashboard-controls > .course-review-entry {
   position: absolute; left: 16px; width: 52px; height: 52px; margin: 0;
 }
 .dashboard-controls > .dashboard-course-trigger { top: 16px; }
-.dashboard-controls > .course-notebook-trigger { top: 80px; bottom: auto; font-size: 28px; }
+.dashboard-controls > .course-review-entry { top: 80px; bottom: auto; z-index: 20; }
+.dashboard-controls > .course-notebook-trigger { top: 144px; bottom: auto; font-size: 28px; }
+.dashboard-controls .course-review-entry__trigger {
+  position: relative; display: inline-flex; width: 52px; height: 52px; min-height: 52px; align-items: center; justify-content: center;
+  padding: 0; border: 1px solid rgba(193,150,255,0.34); border-radius: 12px;
+  color: #ffcc00; background: rgba(87,46,151,0.22); cursor: pointer;
+}
+.dashboard-controls .course-review-entry__trigger:hover { border-color: #A486D5; background: rgba(87,46,151,0.42); }
+.dashboard-controls .course-review-entry__trigger:focus-visible { outline: 2px solid #A486D5; outline-offset: 2px; }
+.course-review-entry__icon { width: 24px; height: 24px; }
+.dashboard-controls .course-review-entry__bonus { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; font-size: 13px; }
 @media (min-width: 761px) {
   .dashboard-controls > .dashboard-course-trigger,
-  .dashboard-controls > .course-notebook-trigger { left: 40px; }
-  .dashboard-controls > .course-notebook-trigger {
-    top: auto; bottom: 1.5rem;
-    width: 84px; height: 84px; font-size: 2.25rem;
-  }
+  .dashboard-controls > .course-notebook-trigger,
+  .dashboard-controls > .course-review-entry { left: 40px; }
+  .dashboard-controls > .course-notebook-trigger { top: auto; bottom: 1.5rem; font-size: 2.25rem; }
+  .dashboard-controls > .course-review-entry { top: 80px; }
+  .dashboard-controls > .course-notebook-trigger { width: 84px; height: 84px; }
 }
 .dashboard-controls > .sidebarR {
   position: absolute; top: 16px; right: 16px; width: min(300px, calc(100% - 32px));

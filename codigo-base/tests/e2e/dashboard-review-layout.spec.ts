@@ -17,7 +17,20 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 568, height: 320 }
     const trail = await page.getByLabel('Trilha de aprendizagem').boundingBox()
     const carousel = await page.getByLabel('Navegação entre módulos').boundingBox()
     const triggerBox = await trigger.boundingBox()
+    const courseTriggerBox = await page.locator('.dashboard-course-trigger').boundingBox()
+    const notebookBox = await page.locator('.course-notebook-trigger').boundingBox()
+    await expect(trigger.locator('.course-review-entry__icon')).toBeVisible()
     expect(triggerBox!.y + triggerBox!.height).toBeLessThanOrEqual(carousel!.y)
+    if (viewport.width <= 760) {
+      expect(triggerBox!.y).toBeGreaterThan(courseTriggerBox!.y + courseTriggerBox!.height)
+      expect(notebookBox!.y - triggerBox!.y - triggerBox!.height).toBe(12)
+      expect(triggerBox!.x).toBe(courseTriggerBox!.x)
+      expect(notebookBox!.x).toBe(courseTriggerBox!.x)
+    } else {
+      expect(triggerBox!.y).toBeGreaterThan(courseTriggerBox!.y)
+      expect(triggerBox!.x).toBe(courseTriggerBox!.x)
+      expect(notebookBox!.y).toBeGreaterThan(triggerBox!.y)
+    }
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height)
     await trigger.click()
     const dialog = page.getByRole('dialog', { name: 'Revisão do curso', exact: true })
