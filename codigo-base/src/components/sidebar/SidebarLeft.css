@@ -15,6 +15,7 @@
   overflow-y: auto;
 }
 .sidebarL__header { flex-shrink: 0; }
+.sidebarL__header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .sidebarL__group { display: flex; flex: 1 0 auto; flex-direction: column; min-width: 0; }
 .sidebarL__group[hidden] { display: none; }
 .sidebarL__profile { display: flex; flex-direction: column; }

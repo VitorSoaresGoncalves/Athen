@@ -206,7 +206,7 @@ test('casca permanece recolhida ao cruzar o breakpoint e migra o foco para contr
   await expect(page.getByRole('link', { name: 'Salas', exact: true })).toBeFocused()
 
   const desktopSidebarWidth = await page.locator('.sidebarL').evaluate(element => element.getBoundingClientRect().width)
-  expect(desktopSidebarWidth).toBe(230)
+  expect(desktopSidebarWidth).toBe(260)
 
   await page.setViewportSize({ width: 760, height: 844 })
   const mobileToggle = page.getByRole('button', { name: 'Abrir navegação', exact: true })
@@ -285,13 +285,20 @@ test('falhas de perfil e contagem de notificações não removem destinos nem bl
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
 })
 
-test('desktop mantém sidebar de 230px e não mostra o controle móvel', async ({ page, platform }) => {
+test('desktop mantém sidebar de 260px e notificação afastada do nome sem perder recuo direito', async ({ page, platform }) => {
   for (const width of [768, 1023, 1024, 1025, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/salas')
     await expect(page.getByRole('button', { name: 'Abrir navegação', exact: true })).toHaveCount(0)
-    expect(await page.locator('.sidebarL').evaluate(element => element.getBoundingClientRect().width)).toBeCloseTo(230, 0)
-    expect(await page.locator('.page-layout__main').evaluate(element => getComputedStyle(element).paddingLeft)).toBe('230px')
+    expect(await page.locator('.sidebarL').evaluate(element => element.getBoundingClientRect().width)).toBeCloseTo(260, 0)
+    expect(await page.locator('.page-layout__main').evaluate(element => getComputedStyle(element).paddingLeft)).toBe('260px')
+    const sidebar = await page.locator('.sidebarL').boundingBox()
+    const brand = await page.getByRole('link', { name: 'Ir para o Dashboard' }).boundingBox()
+    const mail = await page.getByRole('link', { name: /Notificações/ }).boundingBox()
+    expect(mail!.x - brand!.x - brand!.width).toBeGreaterThanOrEqual(24)
+    expect(sidebar!.x + sidebar!.width - mail!.x - mail!.width).toBeGreaterThanOrEqual(16)
+    expect(sidebar!.x + sidebar!.width - mail!.x - mail!.width).toBeLessThanOrEqual(20)
+    expect((await page.getByRole('link', { name: 'Salas', exact: true }).boundingBox())!.width).toBeGreaterThan(220)
   }
   expect(platform.unexpected).toEqual([])
 })
@@ -313,9 +320,9 @@ test('fronteiras preservam reserva da casca nos consumidores dashboard, catálog
         await expect(toggle, context).toHaveCount(0)
       }
       const sidebarWidth = await page.locator('.sidebarL').evaluate(element => element.getBoundingClientRect().width)
-      expect(sidebarWidth, context).toBe(mobile ? width : 230)
+      expect(sidebarWidth, context).toBe(mobile ? width : 260)
       const padding = await page.locator('.page-layout__main').evaluate(element => getComputedStyle(element).paddingLeft)
-      expect(padding, context).toBe(mobile ? '0px' : '230px')
+      expect(padding, context).toBe(mobile ? '0px' : '260px')
     }
   }
   expect(platform.unexpected).toEqual([])

@@ -348,6 +348,7 @@ export function SidebarLeft() {
                     <span className="font-display text-[28px] lowercase leading-none tracking-[2px] text-gold">athen</span>
                 </Link>
 
+                <div className="sidebarL__header-actions">
                 <NavLink
                     to={NOTIFICACOES_ROUTE}
                     onClick={recolher}
@@ -378,6 +379,7 @@ export function SidebarLeft() {
                     aria-controls={grupoId}
                     onClick={() => expandido ? recolher() : setExpandido(true)}
                 ><span aria-hidden="true">{expandido ? '✕' : '☰'}</span></button>}
+                </div>
             </section>
 
             <div id={grupoId} ref={grupoRef} className="sidebarL__group" hidden={estreito && !expandido}>
