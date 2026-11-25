@@ -278,6 +278,7 @@ export function SidebarLeft() {
         function aoClicarFora(evento: MouseEvent) {
             if (!(evento.target instanceof Node)) return;
             if (perfilRef.current?.contains(evento.target)) return;
+            if (toggleRef.current?.contains(evento.target)) return;
             setMenuAberto(false);
         }
         document.addEventListener("mousedown", aoClicarFora);
@@ -449,7 +450,7 @@ export function SidebarLeft() {
                     aria-label={expandido ? 'Recolher navegação' : 'Abrir navegação'}
                     aria-expanded={expandido}
                     aria-controls={grupoId}
-                    onClick={() => expandido ? recolher() : setExpandido(true)}
+                    onClick={() => setExpandido((aberto) => !aberto)}
                 ><span aria-hidden="true">{expandido ? '✕' : '☰'}</span></button>}
                 </div>
             </section>

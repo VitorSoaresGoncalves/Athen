@@ -23,6 +23,39 @@ function mutatingRequests(platform: Awaited<ReturnType<typeof import('./support/
     .map(call => `${call.method} ${call.path} ${JSON.stringify(call.body)}`)
 }
 
+for (const viewport of [{ width: 390, height: 844 }, { width: 568, height: 320 }]) {
+  test(`conta e navegação abrem independentemente em ${viewport.width}×${viewport.height}`, async ({ page, platform }, testInfo) => {
+    await page.setViewportSize(viewport)
+    for (const route of ['/salas', '/dashboard']) {
+      await page.goto(route)
+      const account = page.getByRole('button', { name: 'Abrir opções de conta', exact: true })
+      const toggle = page.locator('.sidebarL__toggle')
+      await account.click()
+      await toggle.click()
+      await expect(account).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(page.getByRole('button', { name: 'Sair da conta', exact: true })).toBeInViewport()
+      await page.screenshot({ path: testInfo.outputPath(`${route.slice(1)}-conta-e-navegacao.png`), animations: 'disabled' })
+
+      await toggle.click()
+      await expect(account).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await account.click()
+      await toggle.click()
+      await account.click()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await page.keyboard.press('Escape')
+      await expect(account).toHaveAttribute('aria-expanded', 'false')
+      await expect(account).toBeFocused()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await page.keyboard.press('Escape')
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(toggle).toBeFocused()
+    }
+    expect(platform.unexpected).toEqual([])
+  })
+}
+
 test('casca móvel inicia recolhida e disclosure abre, fecha e devolve foco', async ({ page, platform }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/salas')
