@@ -1,0 +1,39 @@
+.course-notebook {
+  position: fixed; z-index: 25; display: flex; flex-direction: column;
+  box-sizing: border-box; min-width: 0; overflow: hidden;
+  border: 1px solid #d1a85c; border-radius: 10px; background: #f7e7b5;
+  color: #302719; box-shadow: 8px 12px 30px #0006; font: 14px/1.5 var(--font-body);
+}
+.course-notebook :is(button, input, select, textarea) { font: inherit; color: inherit; min-width: 0; }
+.course-notebook button { cursor: pointer; border: 1px solid #c29b5577; border-radius: 6px; background: #edcf82; padding: 6px 10px; }
+.course-notebook button:disabled { opacity: .55; cursor: default; }
+.course-notebook :is(button, input, select, textarea):focus-visible { outline: 2px solid #80602b; outline-offset: -2px; }
+.course-notebook__header { display: flex; flex-shrink: 0; gap: 8px; flex-wrap: wrap; padding: 6px 10px; background: #edcf82; cursor: grab; touch-action: none; }
+.course-notebook__header select { flex: 1; width: 0; }
+.course-notebook__header button { min-width: 44px; min-height: 36px; }
+.course-notebook__body { min-height: 0; overflow-y: auto; padding: 10px; }
+.course-notebook__adjust { display: flex; flex-wrap: wrap; gap: 6px; }
+.course-notebook__adjust form { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.course-notebook__adjust form[hidden] { display: none; }
+.course-notebook__adjust label { flex: 1 1 90px; min-width: 0; }
+.course-notebook__adjust input { width: 100%; }
+.course-notebook__pages { display: flex; min-width: 0; margin-top: 8px; }
+.course-notebook__tabs { display: flex; flex: 1; min-width: 0; overflow-x: auto; gap: 4px; }
+.course-notebook__tabs button { flex-shrink: 0; }
+.course-notebook__editor { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; }
+.course-notebook__editor input, .course-notebook__editor textarea { width: 100%; background: #fff8dccc; border: 1px solid #d5b96e; padding: 8px; border-radius: 6px; }
+.course-notebook__editor textarea { min-height: 120px; resize: none; overflow: auto; }
+.course-notebook p { margin: 0; overflow-wrap: anywhere; }
+.course-notebook footer, .course-notebook footer > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.course-notebook button.course-notebook__save { background: #80602b; color: #fff8dc; margin-left: auto; }
+.course-notebook-error { max-width: 280px; color: #fecaca; overflow-wrap: anywhere; }
+.course-notebook__resize { position: absolute; touch-action: none; }
+.course-notebook__resize--n, .course-notebook__resize--s { left: 8px; right: 8px; height: 4px; cursor: ns-resize; }
+.course-notebook__resize--n { top: 0; } .course-notebook__resize--s { bottom: 0; }
+.course-notebook__resize--e, .course-notebook__resize--w { top: 8px; bottom: 8px; width: 4px; cursor: ew-resize; }
+.course-notebook__resize--e { right: 0; } .course-notebook__resize--w { left: 0; }
+.course-notebook__resize--ne, .course-notebook__resize--nw, .course-notebook__resize--se, .course-notebook__resize--sw { width: 8px; height: 8px; }
+.course-notebook__resize--ne { top: 0; right: 0; cursor: nesw-resize; }
+.course-notebook__resize--nw { top: 0; left: 0; cursor: nwse-resize; }
+.course-notebook__resize--se { bottom: 0; right: 0; cursor: nwse-resize; }
+.course-notebook__resize--sw { bottom: 0; left: 0; cursor: nesw-resize; }

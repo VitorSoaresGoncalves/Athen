@@ -886,7 +886,7 @@ export default function Catalogo() {
   return (
     <PageLayout variant="bare" className="catalogo-layout">
       <div className="catalogo">
-        <main className="catalogo__main">
+        <div className="catalogo__main">
           <div className="catalogo__brilho" />
 
           <header className="catalogo__cabecalho">
@@ -905,6 +905,7 @@ export default function Catalogo() {
             <label className="catalogo__busca">
               <Icone nome="search" tamanho={21} />
               <input
+                aria-label="Buscar cursos"
                 type="search"
                 placeholder="Buscar por nome ou assunto..."
                 value={busca}
@@ -978,7 +979,7 @@ export default function Catalogo() {
               {itensFiltrados.map((item) => <CartaoCurso key={item.curso.id} item={item} onAbrir={setCursoAberto} />)}
             </section>
           )}
-        </main>
+        </div>
       </div>
 
       {cursoAberto && (

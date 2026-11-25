@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PageLayout } from "../components/layout/PageLayout";
+import { Modal } from "../components/modal/Modal";
 import { amizadeRepository, medalhaRepository, medalhaUsuarioRepository, usuarioRepository } from "../data/repositories";
 import { supabase } from "../lib/supabase";
 import type { Database } from "../types/database";
+import "./Amigos.css";
 import "./Amigos.css";
 
 type Perfil = Database["public"]["Tables"]["profiles"]["Row"];
@@ -113,7 +115,7 @@ function MedalhaIcone({ medalha, tamanho = "sm", focavel = false }: { medalha: M
 // Foto e nome abrem o perfil; os botões variam conforme a relação.
 function LinhaUsuario({ usuario, detalhe, destaque = false, onAbrir, children }: { usuario: Pessoa; detalhe: string; destaque?: boolean; onAbrir: () => void; children: ReactNode }) {
   return (
-    <li className={`flex items-center gap-3 rounded-md border-l-[3px] bg-[#1d1a31] py-2.5 pl-3 pr-3 ${destaque ? "border-l-[#ffcc00]" : "border-l-[#4a4260]"}`}>
+    <li className={`amigos-page__row flex items-center gap-3 rounded-md border-l-[3px] bg-[#1d1a31] py-2.5 pl-3 pr-3 ${destaque ? "border-l-[#ffcc00]" : "border-l-[#4a4260]"}`}>
       <button type="button" onClick={onAbrir} aria-label={`Ver perfil de ${usuario.nome}`} className="group flex min-w-0 flex-1 items-center gap-3 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a486d5]">
         <Foto src={usuario.foto} className="h-12 w-12 shrink-0 rounded-sm text-2xl" />
         <span className="min-w-0 flex-1">
@@ -395,12 +397,12 @@ export default function Amigos() {
   };
 
   return (
-    <PageLayout variant="bare" className="amigos-layout">
-      <div className="min-h-svh bg-[#140a2b] font-body text-[#f4eeff]">
-        <main className="relative isolate min-h-svh">
+    <PageLayout variant="bare">
+      <div className="amigos-page min-h-svh bg-[#140a2b] font-body text-[#f4eeff]">
+        <div className="relative isolate min-h-svh">
           <div className="pointer-events-none fixed -right-[120px] -top-[200px] -z-10 h-[560px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(120,63,220,0.2),rgba(20,10,43,0)_68%)]" />
 
-          <div className="mx-auto max-w-[1320px] px-[20px] pb-[48px] pt-[28px] min-[760px]:px-[56px] min-[760px]:pt-[42px]">
+          <div className="amigos-page__content mx-auto max-w-[1320px] px-[56px] pb-[48px] pt-[42px]">
             <header className="mb-[32px]">
             <p className="mb-[10px] text-[10px] font-bold uppercase tracking-[1.4px] text-[#c9b8e8]/50">PLATAFORMA / <span className="text-[#ffcc00]">AMIGOS</span></p>
             <h1 className="font-display text-[36px] leading-[1.05] tracking-[-0.8px] text-[#f4eeff] min-[760px]:text-[46px]">Amigos</h1>
@@ -514,7 +516,7 @@ export default function Amigos() {
                       return (
                         <li key={pessoa.id}>
                           <div
-                            className={`flex h-full w-full items-center gap-2.5 rounded-md border-l-[3px] bg-[#1d1a31] py-2 pl-2.5 pr-2.5 transition hover:bg-[#28223f] min-[640px]:gap-3 min-[640px]:py-2.5 min-[640px]:pl-3 min-[640px]:pr-3 ${ativa ? "border-l-[#ffcc00]" : "border-l-[#4a4260]"}`}
+                            className={`amigos-page__row flex h-full w-full items-center gap-3 rounded-md border-l-[3px] bg-[#1d1a31] py-2.5 pl-3 pr-3 transition hover:bg-[#28223f] ${ativa ? "border-l-[#ffcc00]" : "border-l-[#4a4260]"}`}
                           >
                             <button
                               type="button"
@@ -571,14 +573,10 @@ export default function Amigos() {
           )}
         </div>
 
+        </div>
         {/* Perfil. Itens de amigo só aparecem para amigos. */}
         {perfilAberto && (
-          <div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-[#080711]/75 px-5 py-6 backdrop-blur-sm"
-            role="presentation"
-            onMouseDown={(event) => event.target === event.currentTarget && fecharPerfil()}
-          >
-            <section className="w-full max-w-[500px] rounded-xl border border-[#a486d5]/35 bg-[#211d37] shadow-2xl shadow-black/50" role="dialog" aria-modal="true" aria-labelledby="friend-profile-title">
+          <Modal className="amigos-profile" camada="acima" rotuladoPor="friend-profile-title" onFechar={fecharPerfil}>
               <div
                 className="relative h-20 overflow-hidden rounded-t-xl bg-cover bg-center"
                 style={detalheAberto?.perfil?.banner_url ? { backgroundImage: `url(${detalheAberto.perfil.banner_url})` } : { backgroundImage: "linear-gradient(135deg, #54318c, #2a2342)" }}
@@ -675,10 +673,8 @@ export default function Amigos() {
                   </>
                 )}
               </div>
-            </section>
-          </div>
+          </Modal>
         )}
-        </main>
       </div>
     </PageLayout>
   );

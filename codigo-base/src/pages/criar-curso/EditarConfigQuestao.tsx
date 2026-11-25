@@ -30,7 +30,7 @@ export function EditorConfigQuestao({ tipo, config, onChange, desabilitado = fal
       <div className="criar-curso__config">
         <p className="criar-curso__config-dica">Associe cada item da esquerda ao da direita.</p>
         {pares.map((par, i) => (
-          <div className="criar-curso__config-linha" key={i}>
+          <div className="criar-curso__config-linha criar-curso__config-linha--pares" key={i}>
             <input
               className="criar-curso__input"
               placeholder="Esquerda"

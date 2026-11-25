@@ -1,13 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { SidebarLeft } from "../sidebar/SidebarLeft";
-
-/**
- * Largura da SidebarLeft (componente fixo). O conteúdo precisa compensar esse
- * espaço à esquerda. Mantido num único lugar para todas as páginas usarem o
- * mesmo valor, em vez de repetir "pl-[230px]" / "ml-[230px]" / "margin-left:
- * 230px" espalhados por cada página e cada CSS.
- */
-export const SIDEBAR_LEFT_WIDTH = 230;
+import "./PageLayout.css";
 
 type PageLayoutProps = {
   /** Conteúdo da página (já estilizado pela própria página). */
@@ -30,12 +23,8 @@ type PageLayoutProps = {
   /** Estilo inline extra opcional para o <main> (ex.: fundo dinâmico). */
   mainStyle?: CSSProperties;
   /**
-   * Por padrão (true) o layout reserva {@link SIDEBAR_LEFT_WIDTH}px à esquerda.
-   * Passe false quando a própria página precisar controlar esse deslocamento
-   * pelo CSS — por exemplo, páginas com comportamento responsivo próprio da
-   * sidebar (ConfigPage transforma a sidebar em barra superior no mobile). A
-   * sidebar continua sendo renderizada pelo layout; só o offset fica com a
-   * página.
+    * Por padrão reserva --sidebar-left-offset, definido pelo CSS da casca.
+    * False transfere apenas a reserva lateral ao chamador, não a navegação.
    */
   offset?: boolean;
   /**
@@ -50,7 +39,7 @@ type PageLayoutProps = {
  * Casca padrão das páginas internas da plataforma.
  *
  * Centraliza a estrutura que antes cada página reimplementava de um jeito
- * diferente: a SidebarLeft fixa, o deslocamento de {@link SIDEBAR_LEFT_WIDTH}px
+ * diferente: a SidebarLeft e o deslocamento pelo token --sidebar-left-offset
  * à esquerda e o <main> ocupando a altura toda da tela. Assim todas as páginas
  * compartilham o mesmo esqueleto, independentemente de usarem CSS próprio
  * ("bare") ou classes utilitárias do Tailwind ("contained") no conteúdo.
@@ -74,17 +63,17 @@ export function PageLayout({
     : `relative min-h-svh bg-canvas font-body text-ink ${className ?? ""}`.trim();
 
   return (
-    <div className={rootClassName}>
+    <div className={`page-layout${offset ? "" : " page-layout--no-offset"} ${rootClassName}`}>
       <SidebarLeft />
 
       <main
-        className={`${bare ? "min-h-svh" : "flex min-h-svh flex-col"} ${mainClassName ?? ""}`.trim()}
-        style={{ paddingLeft: offset ? SIDEBAR_LEFT_WIDTH : undefined, ...mainStyle }}
+        className={`page-layout__main ${bare ? "min-h-svh" : "flex min-h-svh flex-col"} ${mainClassName ?? ""}`.trim()}
+        style={mainStyle}
       >
         {bare ? (
           children
         ) : (
-          <div className="mx-auto w-full max-w-[1320px] px-6 pb-12 pt-8 min-[1440px]:px-10">{children}</div>
+          <div className="page-layout__container mx-auto w-full max-w-[1320px] px-6 pb-12 pt-8 min-[1440px]:px-10">{children}</div>
         )}
       </main>
 

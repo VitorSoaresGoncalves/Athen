@@ -9,7 +9,7 @@
 
 /* ---------- Base ---------- */
 .criar-curso {
-  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  @apply flex min-h-svh w-full bg-canvas font-body text-ink;
   line-height: normal;
 }
 .criar-curso,
@@ -25,6 +25,8 @@
 .criar-curso__main {
   @apply relative isolate mx-auto min-h-svh w-full max-w-[920px] px-[56px] pt-[42px] pb-[64px];
 }
+.criar-curso :is(main, div, section, label, input, select, textarea) { min-width: 0; }
+.criar-curso :is(h1, h2, p, strong, small, label, button) { overflow-wrap: anywhere; }
 .criar-curso__brilho {
   @apply pointer-events-none fixed top-[-200px] right-[-120px] h-[560px] w-[700px];
   z-index: -1;
@@ -46,13 +48,13 @@
 .criar-curso__cartao {
   @apply mb-[18px] rounded-[16px] border border-line bg-surface p-[22px];
 }
-.criar-curso__cartao-cabecalho { @apply mb-[14px] flex items-center justify-between; }
+.criar-curso__cartao-cabecalho { @apply mb-[14px] flex flex-wrap items-center justify-between gap-[8px]; }
 .criar-curso__cartao-titulo { @apply font-display text-[20px] text-ink; }
 
 .criar-curso__modulo { @apply bg-surface; }
 
 /* ---------- Campos ---------- */
-.criar-curso__grade-campos { @apply grid gap-[14px]; }
+.criar-curso__grade-campos { @apply grid grid-cols-[minmax(0,1fr)] gap-[14px]; }
 .criar-curso__campo { @apply flex flex-col gap-[6px]; }
 .criar-curso__rotulo-campo { @apply text-[12px] tracking-[0.4px] text-violet-pale; font-weight: 600; }
 .criar-curso__dica { @apply text-[11px] text-muted; }
@@ -97,7 +99,7 @@
   border: 1px dashed color-mix(in srgb, var(--color-violet-mid) 32%, transparent);
   background: rgba(255, 255, 255, 0.02);
 }
-.criar-curso__aula-cabecalho { @apply flex items-center justify-between; }
+.criar-curso__aula-cabecalho { @apply flex flex-wrap items-center justify-between gap-[8px]; }
 .criar-curso__aula-titulo-rotulo { @apply text-[14px] text-ink; font-weight: 600; }
 
 /* ---------- Questões ---------- */
@@ -106,14 +108,15 @@
   background: rgba(46, 27, 76, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-.criar-curso__questao-cabecalho { @apply flex items-center gap-[10px]; }
+.criar-curso__questao-cabecalho { @apply flex flex-wrap items-center gap-[10px]; }
 .criar-curso__questao-rotulo { @apply text-[13px] text-ink; font-weight: 600; }
 .criar-curso__xp { @apply mr-auto text-[12px] text-gold; font-weight: 700; }
 
 /* ---------- Editor de config da questão ---------- */
 .criar-curso__config { @apply mt-[2px] flex flex-col gap-[8px]; }
 .criar-curso__config-dica { @apply text-[12px] leading-[1.5] text-muted; }
-.criar-curso__config-linha { @apply flex items-center gap-[8px]; }
+.criar-curso__config-linha { @apply flex flex-wrap items-center gap-[8px]; }
+.criar-curso__config-linha > .criar-curso__input:not(.criar-curso__input--numero) { flex: 1 1 140px; }
 .criar-curso__config-seta { @apply text-[15px] text-violet-pale; }
 .criar-curso__config-rodape { @apply flex flex-wrap items-center gap-[12px]; }
 .criar-curso__soma { @apply text-[13px] text-muted; }
@@ -125,7 +128,7 @@
 
 /* ---------- Botões ---------- */
 .criar-curso__botao-primario {
-  @apply inline-flex h-[48px] cursor-pointer items-center justify-center gap-[9px] bg-gold px-[22px] text-[13px] text-violet;
+  @apply inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-[9px] bg-gold px-[22px] py-[10px] text-[13px] text-violet;
   font-weight: 700;
   border: 0;
   border-radius: 12px;
@@ -140,7 +143,7 @@
 .criar-curso__botao-primario:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
 
 .criar-curso__botao-secundario {
-  @apply inline-flex h-[48px] cursor-pointer items-center justify-center gap-[8px] rounded-[12px] border border-line bg-surface px-[18px] text-[13px] text-violet-pale;
+  @apply inline-flex min-h-[48px] cursor-pointer items-center justify-center gap-[8px] rounded-[12px] border border-line bg-surface px-[18px] py-[10px] text-[13px] text-violet-pale;
   font-weight: 600;
   transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
 }
@@ -181,6 +184,9 @@
 .criar-curso__remover-mini:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .criar-curso__add-modulo { @apply mt-[4px]; }
+.criar-curso button { max-width: 100%; }
+.criar-curso button svg { flex-shrink: 0; }
+.criar-curso button:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
 
 /* ---------- Erro e ações ---------- */
 .criar-curso__erro {
@@ -192,9 +198,20 @@
 .criar-curso__acoes { @apply mt-[24px] flex flex-wrap justify-end gap-[12px]; }
 
 /* ---------- Responsivo ---------- */
+@media (max-width: 1000px) {
+  /* Pares precisam de campos legíveis também com a sidebar lateral em 768px. */
+  .criar-curso__config-linha--pares { flex-direction: column; align-items: stretch; }
+  .criar-curso__config-linha--pares > .criar-curso__input { flex: none; }
+  .criar-curso__config-linha--pares > .criar-curso__config-seta { align-self: center; transform: rotate(90deg); }
+  .criar-curso__config-linha--pares > button { align-self: flex-end; }
+}
 @media (max-width: 760px) {
   .criar-curso__main { @apply px-[20px] pt-[28px]; }
   .criar-curso__titulo { @apply text-[36px]; }
+  .criar-curso__cartao { padding: 14px; }
+  .criar-curso__aula { padding: 12px; }
+  .criar-curso__questao { padding: 10px; }
+  .criar-curso__input, .criar-curso__select, .criar-curso__area { padding-inline: 10px; }
   .criar-curso__acoes { @apply flex-col; }
   .criar-curso__acoes > button { @apply w-full; }
 }
