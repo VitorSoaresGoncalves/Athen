@@ -55,14 +55,9 @@
   @apply relative flex flex-col items-center gap-[10px] bg-[rgba(49,31,82,0.42)] px-[8px] pt-[20px] pb-[14px];
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
 }
-.ligas__liga:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  background-color: rgba(62, 40, 102, 0.6);
-  transform: none;
-}
-/* Duas classes para vencer o :hover quando a liga está selecionada. */
+/* Destaque informativo da categoria atual, sem interação. */
 .ligas__liga.ligas__liga--ativa {
   @apply bg-gold/[0.08];
   border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
