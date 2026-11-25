@@ -15,6 +15,8 @@ Use este índice para escolher a referência da tarefa. As referências técnica
 | Responsabilidades e navegação no código | [Arquitetura](arquitetura.md) | Entradas, rotas, consultas e migrações referenciadas |
 | Tecnologias e configuração | [Tecnologias](tecnologias-utilizadas.md) | Manifesto, lockfile e configurações da aplicação |
 | Paleta, tipografia e layout | [Estilo](estilo-padrao.md) | Regras visuais e tokens de `src/index.css` |
+| Diagnóstico desktop/mobile da issue 53 | [Análise de responsividade](analise-responsividade-issue-53.md) | Auditoria datada das rotas, fontes, medições locais e propostas; não representa correções implementadas |
+| Implementar responsividade de forma consistente | [Guia de responsividade](responsividade.md) | Diretrizes para implementação e validação futura, baseadas na issue 53 e em fontes web primárias; não atestam correções aplicadas |
 | Modelo de dados e regras persistidas | [Banco de dados](banco-de-dados/documentacao-bd.md) | SQL numerado e tipos gerados |
 | Comandos e alcance das verificações | [Testes](testes.md) | Scripts, configurações e testes existentes |
 | Casos por página, jornadas, banco e CI | [Mapa dos testes](mapa-dos-testes.md) | Testes executáveis, diagramas, decisões sobre utilidade e limites de cobertura |

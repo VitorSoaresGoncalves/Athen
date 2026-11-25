@@ -37,6 +37,11 @@
 
 .modal__painel {
   @apply relative flex flex-col overflow-hidden bg-[#1b0f35];
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
+  overflow-wrap: anywhere;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 20px;
   box-shadow:
@@ -48,15 +53,18 @@
 .modal__painel--detalhe {
   width: min(1040px, calc(100vw - 64px));
   height: min(844px, calc(100vh - 56px));
+  height: min(844px, calc(100dvh - 56px));
 }
 /* Painel estreito (filtros). */
 .modal__painel--estreito {
   width: min(460px, calc(100vw - 64px));
   max-height: calc(100vh - 56px);
+  max-height: calc(100dvh - 56px);
 }
 
 .modal__rolagem {
   @apply min-h-0 flex-1 overflow-y-auto;
+  min-width: 0;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-violet-mid) 45%, transparent) transparent;
 }
@@ -89,6 +97,7 @@
   background: rgba(26, 8, 31, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 20px;
+  max-width: calc(100% - 110px);
 }
 .modal__forma {
   @apply absolute;
@@ -128,23 +137,34 @@
 .modal__fechar--cabecalho:hover { background-color: rgba(255, 255, 255, 0.1); }
 
 /* ---------- Corpo e rodapé ---------- */
-.modal__corpo { @apply px-[32px] pb-[28px]; }
+.modal__corpo { @apply px-[32px] pb-[28px]; min-width: 0; }
+.modal__corpo :where(div, section, aside, span, strong, p, input, textarea) { min-width: 0; }
 
 .modal__rodape {
   @apply flex min-h-[74px] flex-none items-center justify-between px-[32px];
   background: rgba(19, 10, 39, 0.96);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 -10px 30px rgba(8, 3, 20, 0.18);
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-block: 12px;
 }
 .modal__rodape > p { @apply flex items-center gap-[8px] text-[10px] text-violet-pale/70; }
 .modal__rodape > p svg { @apply text-gold; }
 .modal__rodape > p strong { @apply text-violet-pale; font-weight: 600; }
-.modal__acoes { @apply flex gap-[10px]; }
+.modal__acoes { @apply flex gap-[10px]; flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.modal__rodape > p { min-width: 0; flex-wrap: wrap; }
+.modal__rodape svg { flex-shrink: 0; }
+.modal__acoes > button { min-width: 0; max-width: 100%; height: auto; min-height: 44px; padding-block: 10px; white-space: normal; }
+.modal__painel :is(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
 
 /* ---------- Animações ---------- */
 @keyframes modal-aparecer { from { opacity: 0; } }
 @keyframes modal-entrada {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  from { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .modal__camada *,
@@ -162,8 +182,25 @@
   .modal__corpo { @apply px-[16px] pb-[18px]; }
   .modal__rodape { @apply flex-wrap gap-[10px] px-[16px] py-[12px]; }
   .modal__acoes { @apply ml-auto; }
+  .modal__painel {
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+  .modal__painel--estreito { width: min(460px, calc(100vw - 20px)); }
+  .modal__painel--detalhe { height: calc(100vh - 20px); height: calc(100dvh - 20px); }
 }
 @media (max-height: 800px) {
-  .modal__painel--detalhe { height: calc(100vh - 32px); }
   .modal__banner { @apply h-[124px]; }
+}
+/* Se as ações ocuparem a altura disponível, rola a composição, não só o corpo.
+   Não usar transform/contain: os painéis podem hospedar sobreposições fixas. */
+@media (max-height: 450px) {
+  .modal__camada { padding: 10px; }
+  .modal__painel {
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+  }
+  .modal__painel > * { flex-shrink: 0; }
+  .modal__rolagem { flex: none; overflow: visible; }
 }

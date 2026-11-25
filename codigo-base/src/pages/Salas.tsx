@@ -565,7 +565,7 @@ export default function Salas() {
   return (
     <PageLayout variant="bare">
     <div className="salas">
-      <main className="salas__main">
+      <div className="salas__main">
         <div className="salas__brilho" />
 
         <header className="salas__cabecalho">
@@ -674,7 +674,7 @@ export default function Salas() {
             ))}
           </section>
         )}
-      </main>
+      </div>
 
       {filtroAberto && (
         <FiltroModal

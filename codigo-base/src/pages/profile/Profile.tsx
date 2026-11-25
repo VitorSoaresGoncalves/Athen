@@ -241,7 +241,7 @@ function MedalIcon({ medal, className = "size-5" }: { medal: Medalha; className?
 
 function SectionTitle({ eyebrow, title, action }: { eyebrow: string; title: string; action?: ReactNode }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4">
+    <div className="profile-page__section-title mb-5 flex items-end justify-between gap-4">
       <div>
         <div className="font-ui text-xs font-bold tracking-[0.18em] text-gold">{eyebrow}</div>
         <div className="mt-1 font-display text-2xl text-ink md:text-3xl">{title}</div>
@@ -632,7 +632,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
 
   return (
     <PageShell withSidebar={withSidebar}>
-      <div className="min-w-0 flex-1 bg-canvas pb-20 font-body text-ink">
+      <div className="profile-page min-w-0 flex-1 bg-canvas pb-20 font-body text-ink">
         <section className="border-b border-line">
           <form onSubmit={(event) => void handleSave(event)}>
             {/* Banner */}
@@ -653,7 +653,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
               <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-canvas/70 to-transparent" />
 
               {editing && (
-                <div className="absolute right-4 top-4 flex gap-2">
+                <div className="profile-page__banner-actions absolute right-4 top-4 flex gap-2">
                   <input
                     ref={bannerInputRef}
                     type="file"
@@ -686,8 +686,8 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
               )}
             </div>
 
-            <div className="relative mx-auto max-w-6xl px-[24px] pb-9 md:px-[56px] md:pb-12">
-              <div className="-mt-16 flex flex-col gap-6 md:-mt-20 md:flex-row md:items-end">
+            <div className="profile-page__container relative mx-auto max-w-6xl px-[24px] pb-9 md:px-[56px] md:pb-12">
+              <div className="profile-page__identity -mt-16 flex flex-col gap-6 md:-mt-20 md:flex-row md:items-end">
                 {/* Foto */}
                 <div className="relative w-fit shrink-0">
                   <div className="rounded-[2rem] bg-gradient-to-br from-gold via-gold-light to-violet-mid p-1">
@@ -887,7 +887,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
           </form>
         </section>
 
-        <div className="mx-auto max-w-6xl px-[24px] pt-8 md:px-[56px] md:pt-10">
+        <div className="profile-page__container mx-auto max-w-6xl px-[24px] pt-8 md:px-[56px] md:pt-10">
           {errorMessage && (
             <p className="mb-6 rounded-2xl border border-red-300/30 bg-red-300/10 px-4 py-3 font-ui text-sm text-red-200">
               {errorMessage}
@@ -895,7 +895,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
           )}
 
           {/* Números principais: XP/nível, streak, aulas/cursos, amigos */}
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="profile-page__stats grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="overflow-hidden rounded-3xl border border-gold/25 bg-gradient-to-br from-gold/15 to-surface p-5">
               <div className="mb-6 flex items-start justify-between">
                 <div className="grid size-11 place-items-center rounded-2xl bg-gold text-violet">
@@ -979,7 +979,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
               </p>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="profile-page__medals grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {medals.map((medal) => {
                 const pinned = featuredCodes.includes(medal.code) && medal.unlocked;
                 const selectable = editing && medal.unlocked;
@@ -1076,7 +1076,7 @@ export default function Profile({ onOpenCourse }: ProfileProps) {
                   : "Você ainda não concluiu nenhum curso."}
               </p>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="profile-page__courses grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {visibleCourses.map(({ course, total, done, percent }, index) => {
                   const color = FALLBACK_COLORS[index % FALLBACK_COLORS.length];
                   const remaining = Math.max(0, total - done);

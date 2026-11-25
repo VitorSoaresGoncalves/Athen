@@ -1,5 +1,24 @@
 @reference "../../index.css";
 
-/* Os tokens de design (cores e fontes) e o reset base agora ficam centralizados
-   em src/index.css. Esta página usa esses tokens compartilhados; mantemos aqui
-   só o que é específico do perfil, caso precise no futuro. */
+/* Reflow local: largura útil já desconta a SidebarLeft da casca. */
+.profile-page :is(div, section, article, label, input, textarea, button) { min-width: 0; }
+.profile-page :is(p, h1, h2, strong, small, span, label, .font-display) { overflow-wrap: anywhere; }
+.profile-page :is(input, textarea) { width: 100%; max-width: 100%; }
+.profile-page button { max-width: 100%; }
+.profile-page button svg, .profile-page a svg { flex-shrink: 0; }
+.profile-page .h-11 { height: auto; min-height: 44px; }
+.profile-page .inline-flex, .profile-page__section-title { flex-wrap: wrap; }
+.profile-page .truncate { white-space: normal; overflow: visible; text-overflow: clip; }
+.profile-page button:focus-visible, .profile-page a:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.profile-page__banner-actions { flex-wrap: wrap; max-width: calc(100% - 32px); }
+.profile-page__banner-actions button { min-height: 36px; height: auto; }
+.profile-page article .absolute.left-4 { max-width: calc(100% - 32px); }
+.profile-page__identity > .flex { flex-wrap: wrap; }
+@media (max-width: 1200px) {
+  .profile-page__stats, .profile-page__medals { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+  .profile-page__courses { grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+}
+@media (max-width: 1000px) {
+  .profile-page__container { padding-left: 20px; padding-right: 20px; }
+  .profile-page__identity { flex-direction: column; align-items: stretch; }
+}

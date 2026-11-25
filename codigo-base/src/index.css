@@ -26,6 +26,7 @@
 }
 
 :root {
+  --sidebar-left-width: 260px;
   /* Variáveis de cor e fonte mantidas intactas */
   --amarelo-tangerina: #ffcc00;
   --amarelo-claro: #ffde5c;

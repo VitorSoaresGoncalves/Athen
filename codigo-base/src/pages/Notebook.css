@@ -1,0 +1,45 @@
+/* Estante/editor da rota /caderno; não altera a janela CursoNotebook. */
+.notebook-page,
+.notebook-page :is(div, section, aside, header, label, input, textarea, button) { min-width: 0; }
+.notebook-page :is(p, h1, h2, strong, small, span, button) { overflow-wrap: anywhere; }
+.notebook-page :is(input, textarea) { max-width: 100%; }
+.notebook-page button { max-width: 100%; height: auto; }
+.notebook-page button:not(.notebook-page__card) { min-height: 40px; }
+.notebook-page button:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; }
+.notebook-page__card:focus-visible,
+.notebook-page__editor > section button:focus-visible { outline-color: #80602b; }
+
+.notebook-page__shelf-header { flex-wrap: wrap; }
+.notebook-page__shelf-header > div { flex: 1 1 260px; }
+.notebook-page__shelf-header > button { min-height: 48px; padding-block: 10px; }
+.notebook-page__shelf-header svg { flex-shrink: 0; }
+
+.notebook-page__editor > aside { border-radius: 12px 12px 0 0; }
+.notebook-page__editor > section { border-radius: 0 0 12px 12px; }
+.notebook-page__editor > aside button > span:first-child { flex-shrink: 0; }
+.notebook-page__editor > aside .truncate { white-space: normal; overflow: visible; text-overflow: clip; }
+.notebook-page__editor > section > header,
+.notebook-page__editor > section > header > div { flex-wrap: wrap; }
+.notebook-page__editor > section > header > div { flex: 1 1 180px; }
+.notebook-page__editor > section > header input { flex: 1 1 160px; }
+.notebook-page__editor > section > header > span { flex-shrink: 0; }
+.notebook-page__editor div:has(> input[placeholder="Nome da página"]) {
+  flex-direction: row; flex-wrap: wrap;
+}
+.notebook-page__editor input[placeholder="Nome da página"] { flex: 1 1 180px; }
+.notebook-page__editor textarea + div { flex-wrap: wrap; gap: 12px; }
+
+/* Rolagem intencional apenas das páginas; o documento continua rolando na vertical. */
+.notebook-page__pages { flex-shrink: 0; max-width: 100%; scrollbar-width: thin; }
+.notebook-page__pages > button { max-width: 240px; white-space: normal; }
+.notebook-page__pages > button:focus-visible { outline-offset: -2px; }
+@media (min-width: 1000px) {
+  .notebook-page__editor > aside { border-radius: 12px 0 0 12px; }
+  .notebook-page__editor > section { border-radius: 0 12px 12px 0; }
+}
+@media (max-width: 760px) {
+  .notebook-page__editor > aside { padding: 14px; }
+  .notebook-page__editor > section > header { padding: 12px; gap: 8px; }
+  .notebook-page__editor > section > div:has(> textarea) { padding: 14px; }
+  .notebook-page__editor textarea { padding: 12px; }
+}

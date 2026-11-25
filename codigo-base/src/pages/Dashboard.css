@@ -110,38 +110,95 @@
 .dashboard-toast { animation: dashboard-toast-in 0.2s ease both; }
 @keyframes dashboard-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-.dashboard-main { padding-left: var(--sidebar-left-width, 230px); background: #140a2b; color: #f4eeff; }
-.dashboard-review-error { padding: 18px; color: #fecaca; background: #32172d; }
+.dashboard-main { background: #140a2b; color: #f4eeff; }
+.dashboard-review-error { position: absolute; top: 76px; left: calc(var(--sidebar-left-offset) + 16px); right: 16px; z-index: 26; max-height: calc(100% - 92px); overflow-y: auto; padding: 18px; color: #fecaca; background: #32172d; }
 .dashboard-review-error button { margin: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-gold-pale); border-radius: 12px; background: var(--color-gold); color: var(--color-violet); cursor: pointer; }
 .dashboard-review-error button:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; }
 @media (max-width: 760px) {
-  .tela > .sidebarL { position: relative; width: 100%; height: auto; }
-  .tela > .sidebarL > nav { flex-direction: row; overflow-x: auto; white-space: nowrap; }
-  .tela > .sidebarL > nav > a { width: auto; flex-shrink: 0; }
   .tela > .sidebarL::after { display: none; }
-  .dashboard-main { padding-left: 0; }
-  .dashboard-course-trigger { position: absolute; left: 12px; top: 12px; }
-  .dashboard-header__title { padding: 0 24px; }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .tela .trail-node, .tela .trail__path path, .tela .module-carousel *, .tela .dashboard-toast {
     animation: none !important; transition: none !important;
   }
 }
 
-/* Desktop keeps the original full-height trail. Small screens reserve a panel. */
+.dashboard-controls { min-width: 0; }
+.modal__painel.dashboard-picker {
+  width: min(756px, calc(100vw - 32px)); height: auto;
+  max-height: calc(100dvh - 16px); padding: 16px; overflow-y: auto;
+}
+.dashboard-picker > .modal__fechar { flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
+.dashboard-picker > div { flex-shrink: 0; }
+.dashboard-picker__list {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 180px;
+  gap: 12px; padding: 8px; max-height: min(60dvh, 420px); overflow-y: auto;
+}
+.dashboard-picker .dashboard-picker__list > button {
+  height: 100%; min-height: 0; min-width: 0; overflow: hidden; transform: none;
+}
+.dashboard-picker__list .truncate { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow: hidden; overflow-wrap: anywhere; }
+.dashboard-picker__list > p { grid-column: 1 / -1; overflow-wrap: anywhere; }
+@media (max-width: 1000px) {
+  .dashboard-picker__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 760px) {
-  .tela:has(.course-review-card) {
-    display: grid; grid-template-rows: auto minmax(0, 1fr);
-    height: 100dvh; min-height: 0; padding-bottom: 312px; overflow: hidden;
+  .dashboard-picker__list { grid-template-columns: minmax(0, 1fr); }
+}
+/* A trilha preenche a área disponível; controles são camadas sobre o fundo. */
+.tela { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
+.tela > .sidebarL { flex-shrink: 0; max-height: 100dvh; }
+@media (max-width: 760px) {
+  .tela > .sidebarL[data-mobile-expanded="true"] { overflow-y: auto; }
+}
+.tela .dashboard-main { position: relative; flex: 1; min-height: 0; }
+.tela .dashboard { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); min-height: 0; overflow: hidden; }
+.dashboard-controls { position: absolute; inset: 0 0 0 var(--sidebar-left-offset); z-index: 20; pointer-events: none; }
+.dashboard-controls > * { pointer-events: auto; }
+.dashboard-controls > .dashboard-course-trigger,
+.dashboard-controls > .course-notebook-trigger {
+  position: absolute; left: 16px; width: 52px; height: 52px; margin: 0;
+}
+.dashboard-controls > .dashboard-course-trigger { top: 16px; }
+.dashboard-controls > .course-notebook-trigger { top: 80px; bottom: auto; font-size: 28px; }
+@media (min-width: 761px) {
+  .dashboard-controls > .dashboard-course-trigger,
+  .dashboard-controls > .course-notebook-trigger { left: 40px; }
+  .dashboard-controls > .course-notebook-trigger {
+    top: auto; bottom: 1.5rem;
+    width: 84px; height: 84px; font-size: 2.25rem;
   }
-  .tela:has(.course-review-card) > .sidebarL { min-width: 0; }
-  .dashboard-main--review-card { min-width: 0; min-height: 0; padding-bottom: 0; overflow-x: hidden; overflow-y: auto; }
-  .dashboard-main--review-card .dashboard { min-height: 100%; }
-  .dashboard-main--review-card .dashboard-footer { min-width: 0; padding-right: 12px; padding-left: 12px; }
-  .dashboard-main--review-card .module-carousel__viewport { min-width: 0; width: auto; flex: 1 1 0; }
-  .dashboard-main--review-card .dashboard-header > button[aria-label="Criar notebook"],
-  .dashboard-main--review-card .dashboard-header > button[aria-label="Abrir notebook"] {
-    position: static; align-self: flex-start; width: 52px; height: 52px; margin-top: 12px;
-  }
+}
+.dashboard-controls > .sidebarR {
+  position: absolute; top: 16px; right: 16px; width: min(300px, calc(100% - 32px));
+  align-items: flex-end; transform: none; pointer-events: none;
+}
+.dashboard-controls .sidebarR > * { pointer-events: auto; }
+.dashboard-controls .sidebarR__toggle { order: -1; min-height: 44px; border-radius: 12px; }
+.dashboard-controls .sidebarR__content { max-height: calc(100dvh - 160px); overflow-y: auto; border-radius: 12px; }
+.dashboard-controls .sidebarR__content[aria-hidden="true"] { display: none; }
+.dashboard-header { position: absolute; top: 12px; left: 80px; right: 112px; z-index: 4; padding: 0; pointer-events: none; }
+.dashboard-header__title { overflow-wrap: anywhere; }
+.tela .trail-scroll { position: absolute; inset: 0; display: flex; align-items: center; min-width: 0; }
+.tela .trail { flex-shrink: 0; margin: 0; }
+.dashboard-footer { position: absolute; bottom: 0; left: 0; right: 0; z-index: 5; min-width: 0; padding: 8px 12px 16px; pointer-events: none; }
+.dashboard-footer > * { pointer-events: auto; }
+.progress-row, .progress-blocks { flex-wrap: wrap; justify-content: center; }
+.dashboard-toast { bottom: 180px; left: 50%; max-width: calc(100% - 32px); overflow-wrap: anywhere; }
+@media (max-width: 1000px) {
+  .dashboard-header { top: 16px; }
+  .dashboard-header__title { font-size: 22px; }
+  .module-carousel__viewport { min-width: 0; width: auto; flex: 1 1 0; }
+  .module-carousel__name { font-size: 12px; }
+}
+@media (max-height: 500px) {
+  .dashboard-header__title { font-size: 18px; }
+  .dashboard-footer { padding-bottom: 4px; }
+  .module-carousel { margin-top: 4px; }
+  .progress-block { width: 8px; height: 8px; }
+  .progress-percent { font-size: 14px; }
+  .module-carousel__name { margin-bottom: 2px; font-size: 11px; }
+  .module-carousel__button { height: 32px; }
 }

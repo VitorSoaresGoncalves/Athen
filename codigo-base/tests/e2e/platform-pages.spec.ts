@@ -68,7 +68,7 @@ test('salas permite entrar por código e apresenta a sala retornada', async ({ p
   platform.on('join_room', ({ body }) => {
     expect(body).toEqual({ p_access_code: 'LOGICA' })
     platform.tables.rooms.push({ id: 'room-demo', name: 'Turma de lógica', educator_id: ids.educator, access_code: 'LOGICA', course_id: ids.course, pac_visibility: 'all', created_at: '2026-11-01T12:00:00Z' })
-    platform.tables.room_members.push({ room_id: 'room-demo', user_id: ids.user, status: 'active', xp: 0, joined_at: '2026-11-01T12:00:00Z' })
+    platform.tables.room_members.push({ room_id: 'room-demo', user_id: ids.user, status: 'active', xp_internal: 0, joined_at: '2026-11-01T12:00:00Z' })
     return { data: 'room-demo' }
   })
   await page.goto('/salas')

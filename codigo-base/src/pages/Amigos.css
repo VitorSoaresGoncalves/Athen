@@ -1,0 +1,23 @@
+.amigos-page :is(div, section, li, label, input, button),
+.amigos-profile :is(div, section, button) { min-width: 0; }
+.amigos-page :is(p, h1, h2, h3, strong, small, span, button),
+.amigos-profile :is(p, h2, h3, strong, small, span, button) { overflow-wrap: anywhere; }
+.amigos-page input { max-width: 100%; }
+.amigos-page button, .amigos-profile button { max-width: 100%; min-height: 36px; }
+.amigos-page button:focus-visible, .amigos-profile button:focus-visible { outline: 2px solid var(--color-gold); outline-offset: -2px; }
+.amigos-page__row { flex-wrap: wrap; }
+.amigos-page__row > button:first-child { flex: 1 1 160px; }
+.amigos-page__row > div:last-child { max-width: 100%; }
+.amigos-page [role="tablist"] { scrollbar-width: thin; }
+.modal__painel.amigos-profile {
+  width: min(500px, calc(100vw - 32px)); height: auto;
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
+  overflow-y: auto; background: #211d37;
+}
+.amigos-profile > div:first-child { flex-shrink: 0; }
+.amigos-profile .flex.shrink-0 { flex-wrap: wrap; }
+.amigos-profile [role="tooltip"], .amigos-page [role="tooltip"] { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .amigos-page__content { padding: 28px 20px 48px; }
+  .amigos-page h1 { font-size: 36px; }
+}

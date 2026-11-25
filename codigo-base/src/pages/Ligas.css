@@ -9,7 +9,7 @@
 
 /* ---------- Base ---------- */
 .ligas {
-  @apply flex min-h-svh w-full overflow-hidden font-body text-[#f4eeff];
+  @apply flex min-h-svh w-full min-w-0 font-body text-[#f4eeff];
   background: #140a2b;
   line-height: normal;
 }
@@ -55,14 +55,9 @@
   @apply relative flex flex-col items-center gap-[10px] bg-[rgba(49,31,82,0.42)] px-[8px] pt-[20px] pb-[14px];
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
 }
-.ligas__liga:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-  background-color: rgba(62, 40, 102, 0.6);
-  transform: none;
-}
-/* Duas classes para vencer o :hover quando a liga está selecionada. */
+/* Destaque informativo da categoria atual, sem interação. */
 .ligas__liga.ligas__liga--ativa {
   @apply bg-gold/[0.08];
   border-color: color-mix(in srgb, var(--color-gold) 60%, transparent);
@@ -229,6 +224,14 @@
 .ligas__resumo .ligas__progresso-texto + .ligas__progresso-texto { margin-top: 8px; }
 .ligas__linha-nome { overflow-wrap: anywhere; flex-wrap: wrap; }
 
+.ligas__main { overflow-wrap: anywhere; }
+.ligas__brilho { right: 0; max-width: 100%; }
+.ligas__main :is(.ligas__painel, .ligas__cabecalho > div, .ligas__numeros > div, .ligas__liga) { min-width: 0; }
+.ligas__progresso-topo,
+.ligas__resumo-liga { flex-wrap: wrap; gap: 8px; }
+.ligas__linha { grid-template-columns: 44px 36px minmax(0, 1fr) minmax(0, 88px) auto; }
+.ligas__linha > * { min-width: 0; }
+
 /* ---------- Responsivo ---------- */
 @media (max-width: 1100px) {
   .ligas__seletor { @apply grid-cols-4; }
@@ -241,15 +244,12 @@
 }
 
 @media (max-width: 760px) {
-  .ligas-layout > .sidebarL { position: relative; width: 100%; height: auto; }
-  .ligas-layout > .sidebarL > nav { flex-direction: row; overflow-x: auto; white-space: nowrap; }
-  .ligas-layout > .sidebarL > nav > a { width: auto; flex-shrink: 0; }
-  .ligas-layout > main { padding-left: 0 !important; }
   .ligas__main { padding: 28px 20px; }
   .ligas__titulo { font-size: 36px; }
   .ligas__seletor { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ligas__painel { padding: 16px; }
   .ligas__painel-cabecalho { flex-wrap: wrap; gap: 12px; }
+  .ligas__numeros { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

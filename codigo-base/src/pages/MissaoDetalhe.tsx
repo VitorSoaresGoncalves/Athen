@@ -70,7 +70,7 @@ export default function MissaoDetalhe() {
   return (
     <PageLayout variant="bare">
       <div className="missoes">
-        <main className="missoes__main">
+        <div className="missoes__main">
           <div className="missoes__brilho" />
 
           <header className="missoes__cabecalho">
@@ -135,7 +135,7 @@ export default function MissaoDetalhe() {
               )}
             </section>
           )}
-        </main>
+        </div>
       </div>
     </PageLayout>
   );
