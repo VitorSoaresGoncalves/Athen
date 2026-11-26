@@ -1,5 +1,13 @@
 # Testes e validações
 
+## Correção dos atalhos do Dashboard — PR #72
+
+Os dois novos casos de `dashboard-review-layout.spec.ts` reproduziram o recorte do notebook em 568×320 com navegação expandida: a borda inferior chegava a 341px, tanto com curso concluído quanto em andamento. A correção adapta os intervalos da pilha à altura útil e, em paisagem curta, usa uma linha de atalhos para preservar também as setas do carrossel. Sem revisão, notebook ocupa o segundo lugar.
+
+As regressões exigem botões inteiros e separados, hit testing dos atalhos e das duas setas, espaço reservado para o título, seletor e notebook inteiros no viewport, abertura/fechamento e retorno de foco, além da volta ao retrato. Os seis casos anteriores de revisão mantêm os critérios de geometria e foco em 390×844, 568×320 e desktop. Capturas inspecionadas em 568×320: [com revisão](evidencias-responsividade/dashboard-atalhos-paisagem-com-revisao.png) e [sem revisão](evidencias-responsividade/dashboard-atalhos-paisagem-sem-revisao.png). Também foram inspecionados os diálogos de revisão em 390×844 e 1440×900. HTTP simulado não comprova SQL/RLS nem dispositivos físicos.
+
+**Gate local em 25/11/2026:** branch `issue/53-botao-revisao-celular`, atualizada com `develop` contendo o PR #71. Lint, typecheck, **53 Vitest**, test:check, build e **164 E2E Chromium** passaram, com saída zero e sem retries. O E2E usou a configuração local `.scratch/pr-72-correction/playwright.config.ts`, derivada da versionada e preservando testes/projeto/workers; apenas build/preview e encerramento do servidor foram gerenciados externamente para evitar a pendência do webServer no Windows. O preview temporário foi encerrado. Revisões independentes de padrões e escopo encerraram os bloqueadores. O aviso de bundle acima de 500 kB permanece; SQL/live não foram repetidos localmente nesta correção de apresentação. CI do novo commit e aprovação remota são posteriores a esse registro.
+
 ## Correções visuais de responsividade — 24/11/2026
 
 **Gate de publicação do PR:** após os commits de código `ca3c5b0`, `50a1551` e `cdb113a`, passaram novamente lint, typecheck, 52 Vitest, test:check, build e os 160 E2E Chromium (zero falhas, skips ou retries). Essa rodada inclui o alinhamento desktop final de 40px. Evidências visuais versionadas: [Dashboard mobile 390×844](evidencias-responsividade/dashboard-mobile-390.png), [Dashboard desktop 1440×900](evidencias-responsividade/dashboard-desktop-1440.png) e [revisão em paisagem 568×320](evidencias-responsividade/revisao-paisagem-568.png). São capturas de Chromium com dados HTTP simulados, não de dispositivos físicos ou de banco real.

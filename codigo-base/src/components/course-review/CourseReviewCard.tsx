@@ -87,7 +87,13 @@ export function CourseReviewCard({ courseId, courseTitle, refreshKey, triggerRef
     <div className="course-review-entry">
       <button ref={triggerRef} className="course-review-entry__trigger" type="button" aria-haspopup="dialog"
         aria-expanded={open} onClick={() => setOpen(true)}>
-        Revisar{bonus && !entryError && <span className="course-review-entry__bonus" role="img" aria-label="Bônus de XP de revisão ativo">!</span>}
+        <span className="sr-only">Revisar</span>
+        <svg className="course-review-entry__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 4.5H6.5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V6.5a2 2 0 0 0-2-2H15" />
+          <rect x="9" y="2.5" width="6" height="4" rx="1" />
+          <path d="m8 13 2 2 5-5" />
+        </svg>
+        {bonus && !entryError && <span className="course-review-entry__bonus" role="img" aria-label="Bônus de XP de revisão ativo">!</span>}
       </button>
       {open && createPortal(<Modal ariaLabel="Revisão do curso" largura="estreito" className="course-review-dialog" onFechar={() => setOpen(false)}>
       <ModalFechar variante="cabecalho" rotulo="Fechar cartão de revisão" onFechar={() => setOpen(false)}>×</ModalFechar>

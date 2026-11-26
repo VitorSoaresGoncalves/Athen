@@ -779,6 +779,7 @@ export default function Dashboard({ courseId }: DashboardProps) {
     >
       <div className="dashboard-controls">
         {courseTrigger}
+        {reviewCard}
         {course && <CursoNotebook course={course} />}
         <SidebarRight
           aberta={lousaAberta}
@@ -905,7 +906,6 @@ export default function Dashboard({ courseId }: DashboardProps) {
               <span className="progress-separator text-base font-black" style={{ color: activeTheme.muted }}>|</span>
               <strong className="progress-percent text-xl tracking-[0.08em]" style={{ color: activeTheme.primary }}>{progressPercent}%</strong>
             </div>
-            {reviewCard}
             <div className="module-carousel mt-4 flex items-center justify-center gap-0.5" aria-label="Navegação entre módulos">
               <button className="module-carousel__arrow" type="button" onClick={() => moveCarousel(-1)} aria-label="Módulo anterior">‹</button>
               <div className="module-carousel__viewport w-[min(100%,330px)] overflow-hidden">
