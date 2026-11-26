@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Navigate } from 'react-router-dom'
 import { supabase, supabaseConfigured } from '../lib/supabase'
+import AcessoNegado from '../error-pages/AcessDeny'
 
 type SupaConnectProps = {
   onSessionChange?: (session: Session | null) => void
@@ -136,6 +137,9 @@ export function SupaConnect({ onSessionChange }: SupaConnectProps) {
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [checking, setChecking] = useState(true)
+  // Diferencia o visitante que nunca entrou (mostra a página de erro) de quem
+  // encerrou a sessão com a página aberta (volta ao início, como antes).
+  const [teveSessao, setTeveSessao] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -144,6 +148,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
       const { data } = await supabase.auth.getSession()
       if (!mounted) return
       setSession(data.session)
+      if (data.session) setTeveSessao(true)
       setChecking(false)
     }
 
@@ -152,6 +157,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!mounted) return
       setSession(nextSession)
+      if (nextSession) setTeveSessao(true)
       setChecking(false)
     })
 
@@ -162,7 +168,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }, [])
 
   if (checking) return <p>Verificando sessão...</p>
-  if (!session) return <Navigate to="/" replace />
+  if (!session) return teveSessao ? <Navigate to="/" replace /> : <AcessoNegado semLogin />
 
   return <>{children}</>
 }
