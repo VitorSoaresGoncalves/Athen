@@ -159,6 +159,13 @@ export function SalaModalAluno({ sala, usuarioId, aulaAberta, onFechar, onAbrirA
                   {jogadores.length > 0
                     ? <RankingPodium players={jogadores} compact width="compact" ariaLabel="Top 5 da sala" />
                     : <p className="salas__vazio-painel">Ainda não há alunos no ranking.</p>}
+                  {jogadores.length > 0 && (
+                    <ol className="salas__ranking-completo" aria-label="Nomes e resultados do ranking">
+                      {jogadores.map((jogador) => (
+                        <li key={jogador.position}><strong>{jogador.position} · {jogador.name}</strong>{jogador.detail && <span>{jogador.detail}</span>}</li>
+                      ))}
+                    </ol>
+                  )}
                 </div>
 
                 <div className="salas__mural-cabecalho">

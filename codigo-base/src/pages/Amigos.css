@@ -1,0 +1,14 @@
+@reference "../index.css";
+
+.modal__painel.amigos-profile {
+  width: min(500px, calc(100vw - 32px)); height: auto;
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px);
+  overflow-y: auto; background: #211d37;
+}
+.amigos-profile :is(div, section, button) { min-width: 0; }
+.amigos-profile :is(p, h2, h3, strong, small, span, button) { overflow-wrap: anywhere; }
+.amigos-profile button { max-width: 100%; min-height: 36px; }
+.amigos-profile button:focus-visible { outline: 2px solid var(--color-gold); outline-offset: -2px; }
+.amigos-profile > div:first-child { flex-shrink: 0; }
+.amigos-profile .flex.shrink-0 { flex-wrap: wrap; }
+.amigos-profile [role="tooltip"] { white-space: normal; overflow-wrap: anywhere; }

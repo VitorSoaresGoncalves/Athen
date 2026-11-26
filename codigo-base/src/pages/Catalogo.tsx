@@ -672,21 +672,22 @@ function Carrossel({ titulo, descricao, itens, onAbrir }: CarrosselProps) {
 // ---------------------------------------------------------------------------
 type FiltrosProps = {
   categorias: string[];
-  categoria: string;
+  /** Categorias marcadas; um curso aparece se tiver qualquer uma delas. Vazio = sem filtro. */
+  selecionadas: string[];
   verTodos: boolean;
   // Com "Meus cursos" ativo a exibição é sempre em grade; a opção some do painel.
   mostrarExibicao: boolean;
-  onCategoria: (categoria: string) => void;
+  onAlternarCategoria: (categoria: string) => void;
   onVerTodos: (valor: boolean) => void;
   onLimpar: () => void;
 };
 
-function PainelFiltros({ categorias, categoria, verTodos, mostrarExibicao, onCategoria, onVerTodos, onLimpar }: FiltrosProps) {
+function PainelFiltros({ categorias, selecionadas, verTodos, mostrarExibicao, onAlternarCategoria, onVerTodos, onLimpar }: FiltrosProps) {
   const [aberto, setAberto] = useState(false);
   const raizRef = useRef<HTMLDivElement>(null);
   const gatilhoRef = useRef<HTMLButtonElement>(null);
   const idPainel = useId();
-  const ativos = (categoria ? 1 : 0) + (mostrarExibicao && verTodos ? 1 : 0);
+  const ativos = selecionadas.length + (mostrarExibicao && verTodos ? 1 : 0);
 
   useEffect(() => {
     if (!aberto) return;
@@ -733,14 +734,14 @@ function PainelFiltros({ categorias, categoria, verTodos, mostrarExibicao, onCat
           <div className="catalogo__filtros-grupo">
             <p className="catalogo__rotulo">CATEGORIA</p>
             <div className="catalogo__chips" role="group" aria-label="Filtrar por categoria">
-              <button type="button" className={`catalogo__chip${categoria === "" ? " catalogo__chip--ativo" : ""}`} aria-pressed={categoria === ""} onClick={() => onCategoria("")}>
-                Todas as categorias
-              </button>
-              {categorias.map((cat) => (
-                <button type="button" key={cat} className={`catalogo__chip${categoria === cat ? " catalogo__chip--ativo" : ""}`} aria-pressed={categoria === cat} onClick={() => onCategoria(cat)}>
-                  {cat}
-                </button>
-              ))}
+              {categorias.map((cat) => {
+                const ativa = selecionadas.includes(cat);
+                return (
+                  <button type="button" key={cat} className={`catalogo__chip${ativa ? " catalogo__chip--ativo" : ""}`} aria-pressed={ativa} onClick={() => onAlternarCategoria(cat)}>
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
             {categorias.length === 0 && <p className="catalogo__filtros-vazio">Nenhuma categoria disponível.</p>}
           </div>
@@ -769,7 +770,7 @@ export default function Catalogo() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
-  const [categoria, setCategoria] = useState("");
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<string[]>([]);
   const [somenteMatriculados, setSomenteMatriculados] = useState(false);
   const [modo, setModo] = useState<ModoExibicao>("carrosseis");
   const [cursoAberto, setCursoAberto] = useState<CursoComMeta | null>(null);
@@ -845,10 +846,10 @@ export default function Catalogo() {
     () => itens.filter(
       ({ curso, matriculado }) =>
         (!termo || normalizar(curso.title).includes(termo) || normalizar(curso.category ?? "").includes(termo))
-        && (!categoria || curso.category === categoria)
+        && (categoriasSelecionadas.length === 0 || (curso.category !== null && categoriasSelecionadas.includes(curso.category)))
         && (!somenteMatriculados || matriculado),
     ),
-    [itens, termo, categoria, somenteMatriculados],
+    [itens, termo, categoriasSelecionadas, somenteMatriculados],
   );
 
   // Regras dos carrosséis calculadas no servidor (migração 0047); aqui só ordenamos
@@ -874,19 +875,27 @@ export default function Catalogo() {
       .slice(0, LIMITE_CARROSSEL),
     [itensFiltrados],
   );
-  const semDestaques = recomendados.length === 0 && emAlta.length === 0 && melhorAvaliados.length === 0;
+  // Todos os cursos (já filtrados por busca/categoria), em ordem alfabética e sem
+  // limite. É o último carrossel e garante que o filtro sempre mostre resultados,
+  // mesmo quando nenhum curso da categoria entra nos carrosséis de destaque.
+  const todosCursos = useMemo(
+    () => [...itensFiltrados].sort((a, b) => a.curso.title.localeCompare(b.curso.title, "pt-BR")),
+    [itensFiltrados],
+  );
 
   // "Meus cursos" força a exibição em grade, sem carrosséis.
   const modoEfetivo: ModoExibicao = somenteMatriculados ? "todos" : modo;
+  const alternarCategoria = (cat: string) =>
+    setCategoriasSelecionadas((atuais) => (atuais.includes(cat) ? atuais.filter((c) => c !== cat) : [...atuais, cat]));
   const limparFiltros = () => {
-    setCategoria("");
+    setCategoriasSelecionadas([]);
     setModo("carrosseis");
   };
 
   return (
     <PageLayout variant="bare" className="catalogo-layout">
       <div className="catalogo">
-        <main className="catalogo__main">
+        <div className="catalogo__main">
           <div className="catalogo__brilho" />
 
           <header className="catalogo__cabecalho">
@@ -905,6 +914,7 @@ export default function Catalogo() {
             <label className="catalogo__busca">
               <Icone nome="search" tamanho={21} />
               <input
+                aria-label="Buscar cursos"
                 type="search"
                 placeholder="Buscar por nome ou assunto..."
                 value={busca}
@@ -914,10 +924,10 @@ export default function Catalogo() {
 
             <PainelFiltros
               categorias={categorias}
-              categoria={categoria}
+              selecionadas={categoriasSelecionadas}
               verTodos={modo === "todos"}
               mostrarExibicao={!somenteMatriculados}
-              onCategoria={setCategoria}
+              onAlternarCategoria={alternarCategoria}
               onVerTodos={(valor) => setModo(valor ? "todos" : "carrosseis")}
               onLimpar={limparFiltros}
             />
@@ -933,11 +943,13 @@ export default function Catalogo() {
             </button>
           </section>
 
-          {categoria && (
+          {categoriasSelecionadas.length > 0 && (
             <div className="catalogo__ativos" aria-label="Filtros aplicados">
-              <button type="button" className="catalogo__chip-ativo" aria-label={`Remover filtro de categoria ${categoria}`} onClick={() => setCategoria("")}>
-                {categoria} <Icone nome="close" tamanho={13} />
-              </button>
+              {categoriasSelecionadas.map((cat) => (
+                <button type="button" key={cat} className="catalogo__chip-ativo" aria-label={`Remover filtro de categoria ${cat}`} onClick={() => alternarCategoria(cat)}>
+                  {cat} <Icone nome="close" tamanho={13} />
+                </button>
+              ))}
             </div>
           )}
 
@@ -953,32 +965,29 @@ export default function Catalogo() {
             <p className="catalogo__estado">Nenhum curso publicado ainda.</p>
           ) : itensFiltrados.length === 0 ? (
             <p className="catalogo__estado">
-              {somenteMatriculados && !busca && !categoria
+              {somenteMatriculados && !busca && categoriasSelecionadas.length === 0
                 ? "Você ainda não está matriculado em nenhum curso."
                 : "Nenhum curso encontrado para a busca."}
             </p>
           ) : modoEfetivo === "carrosseis" ? (
-            semDestaques ? (
-              <p className="catalogo__estado">Ainda não há destaques para exibir. Use "Ver todos os cursos" nos filtros para ver o catálogo completo.</p>
-            ) : (
-              <div className="catalogo__secoes">
-                {recomendados.length > 0 && (
-                  <Carrossel titulo="Recomendados para você" descricao="Com base nas categorias e assuntos dos cursos em que você já se matriculou." itens={recomendados} onAbrir={setCursoAberto} />
-                )}
-                {emAlta.length > 0 && (
-                  <Carrossel titulo="Cursos em alta" descricao="Os que mais receberam matrículas nos últimos 7 dias." itens={emAlta} onAbrir={setCursoAberto} />
-                )}
-                {melhorAvaliados.length > 0 && (
-                  <Carrossel titulo="Melhor avaliados" descricao="As melhores notas dos estudantes, considerando também a quantidade de avaliações." itens={melhorAvaliados} onAbrir={setCursoAberto} />
-                )}
-              </div>
-            )
+            <div className="catalogo__secoes">
+              {recomendados.length > 0 && (
+                <Carrossel titulo="Recomendados para você" descricao="Com base nas categorias e assuntos dos cursos em que você já se matriculou." itens={recomendados} onAbrir={setCursoAberto} />
+              )}
+              {emAlta.length > 0 && (
+                <Carrossel titulo="Cursos em alta" descricao="Os que mais receberam matrículas nos últimos 7 dias." itens={emAlta} onAbrir={setCursoAberto} />
+              )}
+              {melhorAvaliados.length > 0 && (
+                <Carrossel titulo="Melhor avaliados" descricao="As melhores notas dos estudantes, considerando também a quantidade de avaliações." itens={melhorAvaliados} onAbrir={setCursoAberto} />
+              )}
+              <Carrossel titulo="Todos os cursos" descricao="Todos os cursos publicados no catálogo." itens={todosCursos} onAbrir={setCursoAberto} />
+            </div>
           ) : (
             <section className="catalogo__grade">
               {itensFiltrados.map((item) => <CartaoCurso key={item.curso.id} item={item} onAbrir={setCursoAberto} />)}
             </section>
           )}
-        </main>
+        </div>
       </div>
 
       {cursoAberto && (

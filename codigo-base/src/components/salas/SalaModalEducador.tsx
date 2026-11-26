@@ -19,10 +19,8 @@ import { useSalaModal } from "./useSalaModal";
 // Layout em abas: identidade e código de acesso ficam fixos no topo; 
 // o resto é dividido em Visão geral, Alunos, Conteúdo, Ranking e Mural.
 //
-// Este componente é a CASCA: monta as abas e realoca o
-// que já existe (código de acesso, ranking e mural). As métricas de Visão
-// geral/Alunos/Conteúdo entram em seguida, preenchidas pela RPC `room_stats`
-// (trabalho de backend, ainda não existe) — por isso aparecem como placeholder.
+// As métricas de Visão geral/Alunos/Conteúdo vêm das quatro RPCs de
+// estatísticas usadas por useEstatisticasSala; ranking e mural usam useSalaModal.
 // A trilha de aprendizagem saiu do educador: ele não é membro e não faz aulas
 // aqui; o lugar dela na aba Conteúdo é a estatística de conclusão.
 // ---------------------------------------------------------------------------
@@ -206,6 +204,7 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
               </div>
 
 
+              <div className="salas__tabela-rolagem" role="region" aria-label="Estatísticas dos alunos" tabIndex={0}>
               <table className="salas__tabela">
                 <thead>
                   <tr>
@@ -229,6 +228,7 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
                   ))}
                 </tbody>
               </table>
+              </div>
           
             </>
           )}
@@ -306,6 +306,13 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
           {jogadores.length > 0
             ? <RankingPodium players={jogadores} compact width="compact" ariaLabel="Top 5 da sala" />
             : <p className="salas__vazio-painel">Ainda não há alunos no ranking.</p>}
+          {jogadores.length > 0 && (
+            <ol className="salas__ranking-completo" aria-label="Nomes e resultados do ranking">
+              {jogadores.map((jogador) => (
+                <li key={jogador.position}><strong>{jogador.position} · {jogador.name}</strong>{jogador.detail && <span>{jogador.detail}</span>}</li>
+              ))}
+            </ol>
+          )}
         </div>
       ),
     },
@@ -338,8 +345,8 @@ export function SalaModalEducador({ sala, usuarioId, aulaAberta, onFechar, onAtu
 
           <form className="salas__form-aviso" onSubmit={(evento) => void publicarAviso(evento)}>
             <p className="salas__rotulo">NOVO AVISO</p>
-            <input required maxLength={120} placeholder="Título do aviso" value={tituloAviso} onChange={(e) => setTituloAviso(e.target.value)} />
-            <textarea rows={3} maxLength={500} placeholder="Mensagem (opcional)" value={textoAviso} onChange={(e) => setTextoAviso(e.target.value)} />
+            <input aria-label="Título do aviso" required maxLength={120} placeholder="Título do aviso" value={tituloAviso} onChange={(e) => setTituloAviso(e.target.value)} />
+            <textarea aria-label="Mensagem (opcional)" rows={3} maxLength={500} placeholder="Mensagem (opcional)" value={textoAviso} onChange={(e) => setTextoAviso(e.target.value)} />
             <button className="salas__botao-primario salas__botao-pequeno" type="submit" disabled={ocupado || !tituloAviso.trim()}>
               Publicar aviso
             </button>

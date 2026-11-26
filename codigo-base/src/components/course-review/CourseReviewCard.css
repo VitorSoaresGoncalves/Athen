@@ -1,12 +1,20 @@
 .course-review-card {
   display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto;
-  position: fixed; right: 20px; bottom: 20px; z-index: 15;
-  width: clamp(210px, calc(50vw - 456px), 280px); max-width: calc(100vw - 32px); max-height: 280px; overflow: hidden;
+  min-height: 0; width: 100%; overflow: hidden;
   padding: 16px; border: 1px solid var(--color-violet-mid); border-radius: 16px;
   background: var(--color-surface); color: var(--color-ink);
   box-shadow: 0 8px 30px #05041266; font: 14px/1.5 var(--font-body);
 }
 .course-review-card__body { min-height: 0; overflow-y: auto; }
+.course-review-entry { align-self: center; margin-bottom: 8px; }
+.course-review-entry__trigger { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 18px; border: 1px solid var(--color-gold-pale); border-radius: 12px; color: var(--color-violet); background: var(--color-gold); font-weight: 700; cursor: pointer; }
+.course-review-entry__trigger:hover { background: var(--color-gold-light); }
+.course-review-entry__trigger:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 2px; }
+.course-review-entry__bonus { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--color-violet); color: var(--color-gold); font-weight: 900; }
+.modal__painel.course-review-dialog { padding: 16px; height: auto; }
+.course-review-dialog > .modal__fechar { align-self: flex-end; flex-shrink: 0; }
+.course-review-dialog .course-review-card { position: static; flex-shrink: 0; width: 100%; max-width: none; max-height: calc(100dvh - 100px); min-height: 0; margin: 0; overflow: hidden; box-shadow: none; }
+.course-review-dialog .course-review-card__body { overflow-y: auto; }
 .course-review-card__heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .course-review-card h2 { margin: 0; font-size: 19px; }
 .course-review-card p { margin: 6px 0; overflow-wrap: anywhere; }
@@ -19,9 +27,3 @@
 .course-review-card__action:hover:not(:disabled) { background: var(--color-gold-light); }
 .course-review-card button:disabled { opacity: .55; cursor: not-allowed; }
 .course-review-card button:focus-visible { outline: 3px solid var(--color-ink); outline-offset: 3px; }
-@media (min-width: 761px) and (max-width: 1199px) {
-  .course-review-card { width: 170px; }
-}
-@media (max-width: 760px) {
-  .course-review-card { right: 12px; bottom: 12px; width: min(340px, calc(100vw - 24px)); max-width: none; }
-}

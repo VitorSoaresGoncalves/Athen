@@ -45,7 +45,7 @@ test('cadastro, matrícula e conclusão persistem no Supabase local real', async
   await page.getByRole('link', { name: 'Missões', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Concluídas', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Abrir opções de conta', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Sair da conta' }).click()
+  await page.getByRole('button', { name: 'Sair da conta', exact: true }).click()
   await page.goto('/dashboard')
   await expect(page).toHaveURL('/')
 })

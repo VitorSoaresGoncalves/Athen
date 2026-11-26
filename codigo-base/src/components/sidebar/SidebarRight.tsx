@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useTopDownDados } from "./top-down-dados";
 import { hexToRgba } from "./topDownColor";
+import "./SidebarRight.css";
 
 
-const rebarba = 28;
 
 type SidebarRightProps = {
     aberta: boolean;
@@ -60,6 +60,8 @@ function Bloco({ cor, titulo, children }: BlocoProps) {
 
 export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProps) {
     const painelRef = useRef<HTMLDivElement>(null);
+    const toggleRef = useRef<HTMLButtonElement>(null);
+    const contentId = useId();
     const { ranking, missoes, carregando, erroRanking, erroMissoes } = useTopDownDados(cursoId);
     const temAmigos = ranking.some((amigo) => !amigo.is_self);
     
@@ -82,22 +84,18 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
 
     return (
         // janela inteira da sidebar
-        <div ref={painelRef} className="
-            fixed
-            top-0
-            right-[24px]
-            z-20
-            w-[300px]
-            flex
-            flex-col
-            items-center
-            transition-transform
-            duration-320ms
-            ease-in-out"
-        style={{transform: aberta ? "translateY(0)" : `translateY(calc(-100% + ${rebarba}px))`}}
+        <div ref={painelRef} className="sidebarR"
+          data-open={aberta}
+          onKeyDown={event => {
+            if (event.key !== "Escape" || !aberta || document.querySelector('[aria-modal="true"]')) return;
+            event.stopPropagation();
+            onFechar();
+            toggleRef.current?.focus();
+          }}
         >
             {/* caixa da top down*/}
-            <aside className="
+            <aside id={contentId} aria-label="Ranking e missões" aria-hidden={!aberta} inert={!aberta} className="
+                sidebarR__content
                 relative
                 box-border
                 max-h-[80vh]
@@ -219,12 +217,14 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
 
             {/* rebarba da janela TopDown */}
             <button
+              ref={toggleRef}
               type="button"
               onClick={onFechar}
               aria-expanded={aberta}
+              aria-controls={contentId}
               aria-label={aberta ? "Recolher painel" : "Abrir painel"}
               className="
-                group
+                 sidebarR__toggle group
                 w-[88px]
                 flex
                 flex-none
@@ -239,7 +239,6 @@ export function SidebarRight({ aberta, onFechar, cor, cursoId}: SidebarRightProp
                 transition-[border-color,box-shadow]
                 duration-700"
               style={{ 
-                height: rebarba,
                 borderColor: "#2d323a",
                 boxShadow: `0 5px 18px #000000, inset 0 0px 20px ${hexToRgba(cor, 0.00)}`, 
               }}

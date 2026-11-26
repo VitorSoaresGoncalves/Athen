@@ -84,6 +84,7 @@ const finishedReview = (overrides: Record<string, unknown> = {}) => ({
 })
 
 function prepareCourse(platform: PlatformFixture) {
+  platform.tables.completions.push({ user_id: ids.user, lesson_id: ids.lesson, context: 'course', completed_at: new Date().toISOString() })
   platform.tables.enrollments.push({
     id: 'review-enrollment',
     user_id: ids.user,
@@ -121,13 +122,9 @@ test('prática normal mostra a introdução sem criar sessão até o clique e us
   })
 
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
-  const cardBounds = await page.getByRole('complementary', { name: 'Revisão do curso', exact: true }).boundingBox()
-  const carouselBounds = await carouselControls(page)
-  expect(carouselBounds!.x + carouselBounds!.width <= cardBounds!.x
-    || carouselBounds!.y + carouselBounds!.height <= cardBounds!.y
-    || carouselBounds!.x >= cardBounds!.x + cardBounds!.width
-    || carouselBounds!.y >= cardBounds!.y + cardBounds!.height).toBe(true)
+  await expect(page.getByRole('dialog', { name: 'Revisão do curso', exact: true })).toBeVisible()
   await page.screenshot({ path: '../.scratch/issue-47-evidence/review-card-desktop.png', animations: 'disabled' })
   await page.getByRole('button', { name: 'Revisar curso', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`revisao=normal`))
@@ -146,6 +143,7 @@ test('prática normal mostra a introdução sem criar sessão até o clique e us
   await expect(page).toHaveURL(new RegExp(`sessao=${sessionId}`))
   await page.getByRole('button', { name: 'Fechar revisão' }).click()
   await expect(page).toHaveURL('/dashboard')
+  await page.locator('.course-review-entry__trigger').click()
   await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
   expect(platform.calls.filter(call => call.path === 'start_course_review')).toHaveLength(1)
   expect(platform.calls.some(call => ['attempts', 'answers', 'finalize_attempt'].includes(call.path))).toBe(false)
@@ -158,6 +156,7 @@ test('cartão sem aviso entrega bônus pelo único botão estável de revisão',
   platform.on('start_course_review', () => ({ data: [session('bonus')] }))
 
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   const card = page.getByRole('complementary', { name: 'Revisão do curso', exact: true })
   await expect(card.getByText(/Bônus disponível · \+10 XP · Meta: 70%/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toHaveCount(1)
@@ -231,6 +230,7 @@ test('curso sem questões é estado vazio e erro de dependência permanece recup
   prepareCourse(platform)
   configureReview(platform, { status: status({ can_review: false, reason: 'REVIEW_EMPTY', question_count: 0, sample_count: 0, module_counts: [] }) })
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeDisabled()
   await expect(page.getByText('Este curso não tem questões para revisão')).toBeVisible()
   expect(platform.calls.some(call => call.path === 'start_course_review')).toBe(false)
@@ -333,14 +333,11 @@ test('resultado premiado vem do servidor; teclado, foco, fechamento e viewport m
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(page).toHaveURL(new RegExp(`curso=${ids.course}$`))
+  await page.locator('.course-review-entry__trigger').click()
   await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
   await page.getByLabel('Navegação entre módulos').scrollIntoViewIfNeeded()
-  const cardBounds = await page.getByRole('complementary', { name: 'Revisão do curso', exact: true }).boundingBox()
+  await expect(page.getByRole('dialog', { name: 'Revisão do curso', exact: true })).toBeVisible()
   const carouselBounds = await carouselControls(page)
-  expect(carouselBounds!.x + carouselBounds!.width <= cardBounds!.x
-    || carouselBounds!.y + carouselBounds!.height <= cardBounds!.y
-    || carouselBounds!.x >= cardBounds!.x + cardBounds!.width
-    || carouselBounds!.y >= cardBounds!.y + cardBounds!.height).toBe(true)
   expect(carouselBounds!.x).toBeGreaterThanOrEqual(0)
   expect(carouselBounds!.x + carouselBounds!.width).toBeLessThanOrEqual(390)
   await page.screenshot({ path: '../.scratch/issue-47-evidence/review-card-mobile.png', animations: 'disabled' })
@@ -352,7 +349,8 @@ test('resultado premiado vem do servidor; teclado, foco, fechamento e viewport m
   await expect(page.getByRole('dialog')).toHaveCSS('animation-name', 'none')
   await page.screenshot({ path: '../.scratch/issue-47-evidence/review-intro-mobile.png', animations: 'disabled' })
   await page.getByRole('button', { name: 'Fechar revisão' }).click()
-  await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeFocused()
+  await expect(page.locator('.course-review-entry__trigger')).toBeFocused()
+  await page.locator('.course-review-entry__trigger').click()
   await page.getByRole('button', { name: 'Revisar curso', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.locator('.lesson-modal__fundo').click({ position: { x: 2, y: 2 } })
@@ -370,11 +368,13 @@ test('última revisão é persistida, filtra dono e curso e ignora sessões inac
     finishedReview({ finished_at: null, correct_count: null }),
   )
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   const card = page.getByRole('complementary', { name: 'Revisão do curso', exact: true })
   await expect(card).toContainText('75%')
   await expect(card).toContainText('3/4 acertos · +0 XP')
   await expect(card).toContainText('Meta atingida')
   await page.reload()
+  await page.locator('.course-review-entry__trigger').click()
   await expect(card).toContainText('3/4 acertos · +0 XP')
   const call = platform.calls.find(call => call.path === 'course_review_sessions')
   expect(call?.query.get('user_id')).toBe(`eq.${ids.user}`)
@@ -395,6 +395,7 @@ test('histórico inválido exibe erro recuperável em vez de mostrar fatos alhei
   configureReview(platform)
   platform.on('course_review_sessions', () => ({ data: [finishedReview({ user_id: ids.friend })] }))
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   const card = page.getByRole('complementary', { name: 'Revisão do curso', exact: true })
   await expect(card.getByRole('alert')).toHaveText('Não foi possível consultar a última revisão.')
   await expect(card).not.toContainText('3/4')
@@ -411,12 +412,13 @@ test('bônus descoberto depois do início não converte sessão normal já abert
   configureReview(platform)
   platform.on('start_course_review', () => ({ data: [session('normal')] }))
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   await page.getByRole('button', { name: 'Revisar curso', exact: true }).click()
   await page.getByRole('button', { name: 'Começar revisão' }).click()
   await expect(page.getByRole('heading', { name: 'Quanto é 1 + 1?' })).toBeVisible()
   platform.on('my_current_course_review', () => ({ data: [occurrence()] }))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await expect(page.getByRole('complementary', { name: 'Revisão do curso', exact: true })).toContainText('Bônus disponível')
+  await expect(page.locator('.course-review-entry__bonus')).toBeAttached()
   await expect(page.getByRole('dialog').getByText('Sem bônus de revisão')).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`revisao=normal&sessao=${sessionId}`))
   expect(platform.calls.filter(call => call.path === 'start_course_review')).toHaveLength(1)
@@ -428,6 +430,9 @@ test('troca de curso ignora histórico anterior ainda em trânsito', async ({ pa
   const otherCourse = '22222222-2222-4222-8222-333333333333'
   platform.tables.courses.push({ ...platform.tables.courses[0], id: otherCourse, title: 'Curso novo', slug: 'novo' })
   platform.tables.enrollments.push({ id: 'new-enrollment', user_id: ids.user, course_id: otherCourse, status: 'active', progress: 100 })
+  platform.tables.modules.push({ ...platform.tables.modules[0], id: 'other-module', course_id: otherCourse })
+  platform.tables.lessons.push({ ...platform.tables.lessons[0], id: 'other-lesson', module_id: 'other-module' })
+  platform.tables.completions.push({ user_id: ids.user, lesson_id: 'other-lesson', context: 'course', completed_at: new Date().toISOString() })
   platform.on('course_review_status', ({ body }) => ({ data: [status({ course_id: body.p_course_id, course_title: body.p_course_id === otherCourse ? 'Curso novo' : 'Lógica de Programação' })] }))
   let releaseOld: (() => void) | undefined
   const pendingOld = new Promise<void>(resolve => { releaseOld = resolve })
@@ -437,9 +442,12 @@ test('troca de curso ignora histórico anterior ainda em trânsito', async ({ pa
     return { data: [finishedReview()] }
   })
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   await expect.poll(() => platform.calls.some(call => call.path === 'course_review_sessions')).toBe(true)
+  await page.getByRole('button', { name: 'Fechar cartão de revisão' }).click()
   await page.getByRole('button', { name: 'Abrir seletor de cursos e salas' }).click()
   await page.getByRole('button', { name: /Curso novo/ }).click()
+  await page.locator('.course-review-entry__trigger').click()
   const card = page.getByRole('complementary', { name: 'Revisão do curso', exact: true })
   await expect(card).toContainText('Curso novo')
   await expect(card).toContainText('Nenhuma revisão finalizada neste curso.')
@@ -456,9 +464,11 @@ for (const scenario of ['outro curso', 'expirada'] as const) {
       ? { course_id: ids.educator, course_title: 'Outro curso' }
       : { state: 'expired', due_at: '2026-10-25T12:00:00.000Z', expires_at: '2026-11-01T12:00:00.000Z' }) })
     await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
     const card = page.getByRole('complementary', { name: 'Revisão do curso', exact: true })
     await expect(card.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
     await expect(card).not.toContainText('Bônus disponível')
+    await expect(page.locator('.course-review-entry__bonus')).toHaveCount(0)
     await expect(card).not.toContainText('Outro curso')
     await page.getByRole('button', { name: 'Revisar curso', exact: true }).click()
     await expect(page).toHaveURL(/revisao=normal/)
@@ -483,5 +493,6 @@ test('sala que compartilha curso concluído não exibe cartão ou entrada de rev
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(platform.calls.some(call => call.path === 'start_course_review')).toBe(false)
   await page.goto(`/dashboard?curso=${ids.course}`)
+  await page.locator('.course-review-entry__trigger').click()
   await expect(page.getByRole('button', { name: 'Revisar curso', exact: true })).toBeEnabled()
 })

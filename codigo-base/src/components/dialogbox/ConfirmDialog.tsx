@@ -54,6 +54,7 @@ export function ConfirmDialog({
   });
 
   const cancelarRef = useRef<HTMLButtonElement>(null);
+  const painelRef = useRef<HTMLElement>(null);
 
   // useId evita colisão caso dois diálogos coexistam na página.
   const idBase = useId();
@@ -63,18 +64,38 @@ export function ConfirmDialog({
   // Enquanto aberto: fecha no Esc, trava a rolagem e foca o cancelar.
   useEffect(() => {
     if (!open) return;
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
     function aoTeclar(evento: KeyboardEvent) {
-      if (evento.key === "Escape") onCancelRef.current();
+      const painel = painelRef.current;
+      const confirmacoes = document.querySelectorAll('[data-confirm-dialog]');
+      if (!painel || painel !== confirmacoes[confirmacoes.length - 1]) return;
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+        onCancelRef.current();
+      }
+      if (evento.key === "Tab") {
+        const controles = Array.from(painel.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+        const primeiro = controles[0];
+        const ultimo = controles[controles.length - 1];
+        if (evento.shiftKey && (document.activeElement === primeiro || !painel.contains(document.activeElement))) {
+          evento.preventDefault(); ultimo?.focus();
+        } else if (!evento.shiftKey && (document.activeElement === ultimo || !painel.contains(document.activeElement))) {
+          evento.preventDefault(); primeiro?.focus();
+        }
+        evento.stopImmediatePropagation();
+      }
     }
     const overflowAnterior = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", aoTeclar);
+    document.addEventListener("keydown", aoTeclar, true);
     cancelarRef.current?.focus();
 
     return () => {
       document.body.style.overflow = overflowAnterior;
-      document.removeEventListener("keydown", aoTeclar);
+      document.removeEventListener("keydown", aoTeclar, true);
+      if (anterior?.isConnected) anterior.focus();
     };
   }, [open]);
 
@@ -94,11 +115,14 @@ export function ConfirmDialog({
       onMouseDown={(event) => event.target === event.currentTarget && onCancel()}
     >
       <section
+        ref={painelRef}
+        data-confirm-dialog=""
         role="dialog"
         aria-modal="true"
         aria-labelledby={tituloId}
         aria-describedby={message ? mensagemId : undefined}
-        className="w-full max-w-[26rem] rounded-2xl border border-violet-mid/35 bg-surface p-6 text-ink shadow-2xl shadow-black/50"
+        className="w-full max-w-[26rem] overflow-y-auto rounded-2xl border border-violet-mid/35 bg-surface p-5 text-ink shadow-2xl shadow-black/50"
+        style={{ maxHeight: 'calc(100dvh - 16px)', overflowWrap: 'anywhere' }}
       >
         <h2 id={tituloId} className="font-display text-xl text-ink">
           {title}
@@ -109,7 +133,7 @@ export function ConfirmDialog({
           </p>
         )}
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-wrap justify-end gap-3">
           {tertiaryLabel && onTertiary && (
             <button
               type="button"

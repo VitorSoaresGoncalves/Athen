@@ -26,6 +26,7 @@
 }
 
 :root {
+  --sidebar-left-width: 260px;
   /* Variáveis de cor e fonte mantidas intactas */
   --amarelo-tangerina: #ffcc00;
   --amarelo-claro: #ffde5c;
@@ -70,6 +71,12 @@
 body {
   margin: 0;
   background: var(--bg);
+}
+
+/* Impede rolagem horizontal causada por decorações que vazam da viewport. */
+html,
+body {
+  overflow-x: hidden;
 }
 
 /* O #root agora não impõe text-align: center ou larguras fixas que vazam para o CRUD */

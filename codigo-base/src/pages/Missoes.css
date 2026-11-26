@@ -8,7 +8,7 @@
 
 /* ---------- Base ---------- */
 .missoes {
-  @apply flex min-h-svh w-full overflow-hidden bg-canvas font-body text-ink;
+  @apply flex min-h-svh w-full min-w-0 bg-canvas font-body text-ink;
   line-height: normal;
 }
 
@@ -124,6 +124,17 @@
   transition: opacity 0.2s ease;
 }
 .missoes__acao:hover { @apply opacity-90; }
+
+/* Textos de servidor e metadados não impõem mínimos à página. */
+.missoes__main { overflow-wrap: anywhere; }
+.missoes__brilho { right: 0; max-width: 100%; }
+.missoes__cabecalho > *,
+.missoes__detalhe-grade > * { min-width: 0; }
+.missoes__item-topo,
+.missoes__item-meta { flex-wrap: wrap; }
+.missoes__prazo { white-space: normal; }
+.missoes__acao { height: auto; min-height: 44px; max-width: 100%; padding-block: 10px; text-align: center; }
+.missoes :is(a, button):focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }
 
 @media (max-width: 760px) {
   .missoes__detalhe-grade { @apply grid-cols-1; }

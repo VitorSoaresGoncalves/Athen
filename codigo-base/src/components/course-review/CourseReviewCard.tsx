@@ -1,6 +1,8 @@
 import { useEffect, useState, type Ref } from 'react';
+import { createPortal } from 'react-dom';
 import { revisaoRepository, type DisponibilidadeRevisao, type OcorrenciaRevisao, type UltimaRevisaoCurso } from '../../data/repositories';
 import { supabase } from '../../lib/supabase';
+import { Modal, ModalFechar } from '../modal/Modal';
 import './CourseReviewCard.css';
 
 type Props = {
@@ -20,6 +22,7 @@ export function CourseReviewCard({ courseId, courseTitle, refreshKey, triggerRef
   const [historyError, setHistoryError] = useState('');
   const [reload, setReload] = useState(0);
   const [now, setNow] = useState(Date.now);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
@@ -81,32 +84,47 @@ export function CourseReviewCard({ courseId, courseTitle, refreshKey, triggerRef
   const bonus = occurrence?.state === 'available' && Date.parse(occurrence.expires_at) > now;
   const result = lastReview?.result;
   return (
-    <aside className="course-review-card" aria-label="Revisão do curso" aria-busy={loading}>
-      <div className="course-review-card__heading">
-        <h2>Revisão do curso</h2>
-        {(entryError || historyError) && <button type="button" className="course-review-card__refresh" aria-label="Atualizar revisão" disabled={loading} onClick={() => setReload(value => value + 1)}>↻</button>}
-      </div>
-      <p className="course-review-card__course">{courseTitle}</p>
-      <div className="course-review-card__body">
-      {loading ? <p role="status">Consultando revisão...</p> : <>
-        {historyError ? <p role="alert">{historyError}</p> : result ? (
-          <div className="course-review-card__result">
-            <p>Última revisão · {lastReview.mode === 'bonus' ? 'Com bônus' : 'Prática normal'}</p>
-            <p><strong>{Math.floor(result.correct_count * 10000 / result.total_count) / 100}%</strong> · {result.correct_count}/{result.total_count} acertos · +{result.bonus_earned} XP</p>
-            <p>{result.approved ? 'Meta atingida' : 'Meta não atingida'}</p>
-            <time dateTime={result.finished_at}>{new Date(result.finished_at).toLocaleString('pt-BR')}</time>
+    <div className="course-review-entry">
+      <button ref={triggerRef} className="course-review-entry__trigger" type="button" aria-haspopup="dialog"
+        aria-expanded={open} onClick={() => setOpen(true)}>
+        <span className="sr-only">Revisar</span>
+        <svg className="course-review-entry__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M9 4.5H6.5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V6.5a2 2 0 0 0-2-2H15" />
+          <rect x="9" y="2.5" width="6" height="4" rx="1" />
+          <path d="m8 13 2 2 5-5" />
+        </svg>
+        {bonus && !entryError && <span className="course-review-entry__bonus" role="img" aria-label="Bônus de XP de revisão ativo">!</span>}
+      </button>
+      {open && createPortal(<Modal ariaLabel="Revisão do curso" largura="estreito" className="course-review-dialog" onFechar={() => setOpen(false)}>
+      <ModalFechar variante="cabecalho" rotulo="Fechar cartão de revisão" onFechar={() => setOpen(false)}>×</ModalFechar>
+        <aside className="course-review-card" aria-label="Revisão do curso" aria-busy={loading}>
+          <div className="course-review-card__heading">
+            <h2>Revisão do curso</h2>
+            {(entryError || historyError) && <button type="button" className="course-review-card__refresh" aria-label="Atualizar revisão" disabled={loading} onClick={() => setReload(value => value + 1)}>↻</button>}
           </div>
-        ) : <p>Nenhuma revisão finalizada neste curso.</p>}
-        {entryError ? <p role="alert">{entryError}</p> : <>
-          {status?.reason === 'REVIEW_EMPTY' ? <p>Este curso não tem questões para revisão</p>
-            : !status?.can_review && <p>Conclua todas as aulas para revisar este curso.</p>}
-          {bonus && <p className="course-review-card__bonus">Bônus disponível · +10 XP · Meta: 70%<br />Até {new Date(occurrence.expires_at).toLocaleString('pt-BR')}</p>}
-        </>}
-      </>}
-      </div>
-      <button ref={triggerRef} className="course-review-card__action" type="button"
-        disabled={loading || Boolean(entryError) || !status?.can_review}
-        onClick={() => onReview(bonus ? occurrence.occurrence_id : undefined)}>Revisar curso</button>
-    </aside>
+          <p className="course-review-card__course">{courseTitle}</p>
+          <div className="course-review-card__body">
+          {loading ? <p role="status">Consultando revisão...</p> : <>
+            {historyError ? <p role="alert">{historyError}</p> : result ? (
+              <div className="course-review-card__result">
+                <p>Última revisão · {lastReview.mode === 'bonus' ? 'Com bônus' : 'Prática normal'}</p>
+                <p><strong>{Math.floor(result.correct_count * 10000 / result.total_count) / 100}%</strong> · {result.correct_count}/{result.total_count} acertos · +{result.bonus_earned} XP</p>
+                <p>{result.approved ? 'Meta atingida' : 'Meta não atingida'}</p>
+                <time dateTime={result.finished_at}>{new Date(result.finished_at).toLocaleString('pt-BR')}</time>
+              </div>
+            ) : <p>Nenhuma revisão finalizada neste curso.</p>}
+            {entryError ? <p role="alert">{entryError}</p> : <>
+              {status?.reason === 'REVIEW_EMPTY' ? <p>Este curso não tem questões para revisão</p>
+                : !status?.can_review && <p>Conclua todas as aulas para revisar este curso.</p>}
+              {bonus && <p className="course-review-card__bonus">Bônus disponível · +10 XP · Meta: 70%<br />Até {new Date(occurrence.expires_at).toLocaleString('pt-BR')}</p>}
+            </>}
+          </>}
+          </div>
+          <button className="course-review-card__action" type="button"
+            disabled={loading || Boolean(entryError) || !status?.can_review}
+            onClick={() => { setOpen(false); onReview(bonus ? occurrence.occurrence_id : undefined); }}>Revisar curso</button>
+        </aside>
+    </Modal>, document.body)}
+    </div>
   );
 }

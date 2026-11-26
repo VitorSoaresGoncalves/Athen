@@ -62,7 +62,7 @@ test('jornada do estudante: entrar, escolher curso, estudar, acompanhar missão 
   })
   await test.step('encerra a sessão e não consegue voltar à área privada', async () => {
     await page.getByRole('button', { name: 'Abrir opções de conta', exact: true }).click()
-    await page.getByRole('menuitem', { name: 'Sair da conta' }).click()
+    await page.getByRole('button', { name: 'Sair da conta', exact: true }).click()
     // A proteção da rota também pode levar à Home ao receber SIGNED_OUT.
     await expect(page).toHaveURL(/\/(?:login-page)?$/)
     await expect.poll(() => page.evaluate(() => localStorage.getItem('sb-example-auth-token'))).toBeNull()
