@@ -95,7 +95,8 @@ test('entradas r6 e detalhes essenciais mantêm conteúdo alcançável em 320 e 
     await page.getByRole('link', { name: 'Escolher conteúdo para estudar' }).click()
     await expect(page).toHaveURL('/catalogo')
 
-    await page.getByRole('button', { name: /Lógica de Programação/ }).click()
+    await page.getByRole('region', { name: 'Todos os cursos', exact: true })
+      .getByRole('button', { name: /Lógica de Programação/ }).click()
     const courseDialog = page.getByRole('dialog')
     await expect(courseDialog.getByRole('heading', { name: 'Lógica de Programação', exact: true })).toBeVisible()
     await expect(courseDialog.getByRole('button', { name: 'Fechar', exact: true })).toBeVisible()
