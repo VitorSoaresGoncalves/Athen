@@ -5,8 +5,11 @@ for (const path of protectedRoutes) {
   test(`visitante não acessa ${path}`, async ({ page }) => {
     const backend = await installPlatform(page, false)
     await page.goto(path)
-    await expect(page).toHaveURL('/')
-    await expect(page.getByRole('heading', { name: /Aprenda qualquer coisa/i })).toBeVisible()
+    // Visitante que nunca entrou vê a página 401 na própria URL, sem redirecionar.
+    await expect(page).toHaveURL(path)
+    await expect(page.getByRole('heading', { name: 'Entre para acessar esta página' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toHaveAttribute('href', '/login-page')
+    await expect(page.getByRole('link', { name: 'Criar conta', exact: true })).toHaveAttribute('href', '/register-page')
     expect(backend.calls.some(call => call.path === 'token')).toBe(false)
   })
 }
