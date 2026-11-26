@@ -10,6 +10,7 @@ export function RegisterPage() {
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -44,6 +45,30 @@ export function RegisterPage() {
     setMessage("Cadastro realizado com sucesso!");
     setRegistered(true);
     setLoading(false);
+  };
+
+  // Cadastro/entrada com Google: o Supabase cria a conta no primeiro acesso e volta
+  // ao /dashboard com a sessão ativa. O Google não leva cargo nem nome de usuário,
+  // então a conta nasce como estudante, com o nome de usuário derivado do e-mail.
+  const handleGoogleSignUp = async () => {
+    if (!supabaseConfigured) {
+      setMessage("Supabase não configurado.");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setMessage("Redirecionando para o Google...");
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+
+    // Em caso de sucesso o navegador sai da página; só chegamos aqui se houve erro.
+    if (error) {
+      setMessage(`Falha ao cadastrar com Google: ${error.message}`);
+      setGoogleLoading(false);
+    }
   };
 
   if (registered) {
@@ -154,12 +179,29 @@ export function RegisterPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || googleLoading}
             className="w-full cursor-pointer rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-[#211029] transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Criando..." : "Cadastrar"}
           </button>
         </form>
+
+        <div className="my-5 flex items-center gap-3 text-xs text-[#8f829f]" role="separator">
+          <span className="h-px flex-1 bg-[#a486d5]/25" />
+          ou
+          <span className="h-px flex-1 bg-[#a486d5]/25" />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void handleGoogleSignUp()}
+          disabled={loading || googleLoading}
+          className="flex w-full min-w-0 cursor-pointer items-center justify-center gap-2.5 rounded-lg border border-[#a486d5]/40 bg-[#171628] px-4 py-2.5 text-sm font-bold text-[#f4eeff] transition hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <img src="/google.svg" alt="" width={18} height={18} className="size-[18px] shrink-0" aria-hidden="true" />
+          Cadastrar com Google
+        </button>
+        <p className="mt-2 text-center text-xs text-[#8f829f]">Contas criadas com o Google entram como Estudante.</p>
 
         <p className="mt-6 text-center text-sm text-[#b8aacb]">
           Já tem conta?{" "}
